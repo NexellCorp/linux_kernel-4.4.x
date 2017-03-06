@@ -57,6 +57,7 @@ make ARCH=arm64 menuconfig
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image -j4
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- dtbs
 mkdir usr/modules
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules -j4
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules_install INSTALL_MOD_PATH=usr/modules INSTALL_MOD_STRIP=1
 make_ext4fs -b 4096 -L modules \
 	-l 32M usr/modules.img \
@@ -77,6 +78,7 @@ make ARCH=arm menuconfig
 make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage -j4
 make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- dtbs
 mkdir usr/modules
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules -j4
 make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- modules_install INSTALL_MOD_PATH=usr/modules INSTALL_MOD_STRIP=1
 make_ext4fs -b 4096 -L modules \
 	-l 32M usr/modules.img \
