@@ -135,6 +135,13 @@ pinctrl@C0010000 {
 			nexell,pin-strength = <3>;
 		};
 
+		gmac_rxen: gmac-rxen {
+			nexell,pins = "gpioe-19";
+			nexell,pin-function = <1>;
+			nexell,pin-pull = <2>;
+			nexell,pin-strength = <3>;
+		};
+
 		gmac_mdc: gmac-mdc {
 			nexell,pins = "gpioe-20";
 			nexell,pin-function = <1>;
