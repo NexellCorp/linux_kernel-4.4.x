@@ -244,3 +244,7 @@
 		     &cfg_wlanen &cfg_wlanhostwake>;
 	status = "okay";
 };
+
+&spi2_bus {
+	nexell,pin-strength = <2>;
+};
