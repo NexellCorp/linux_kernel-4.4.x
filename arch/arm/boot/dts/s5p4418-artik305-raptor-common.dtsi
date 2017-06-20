@@ -164,27 +164,6 @@
 				nexell,pin-pull = <1>;
 				nexell,pin-strength = <0>;
 			};
-
-			touchpanel_irq: touchpanel-irq {
-				nexell,pins = "gpiob-22";
-				nexell,pin-function = <1>;
-				nexell,pin-pull = <1>;
-				nexell,pin-strength = <0>;
-			};
-
-			tsp_irq: tsp-irq {
-				nexell,pins = "gpiob-8";
-				nexell,pin-function = <0>;
-				nexell,pin-pull = <1>;
-				nexell,pin-strength = <0>;
-			};
-
-			tsp_reset: tsp-reset {
-				nexell,pins = "gpioc-25";
-				nexell,pin-function = <0>;
-				nexell,pin-pull = <1>;
-				nexell,pin-strength = <0>;
-			};
 		};
 
 		adc:adc@c0053000 {
@@ -319,36 +298,6 @@
 			sram = <0 0>;
 		};
 	};	/*** soc ***/
-
-	backlight: pwm-backlight {
-		compatible = "pwm-backlight";
-		pwms = <&pwm 0 20000 0>;
-		pwm-names = "pwm-backlight";
-		brightness-levels = < 0  1  2  3  4  5  6  7  8  9
-				     10 11 12 13 14 15 16 17 18 19
-				     20 21 22 23 24 25 26 27 28 29
-				     30 31 32 33 34 35 36 37 38 39
-				     40 41 42 43 44 45 46 47 48 49
-				     50 51 52 53 54 55 56 57 58 59
-				     60 61 62 63 64 65 66 67 68 69
-				     70 71 72 73 74 75 76 77 78 79
-				     80 81 82 83 84 85 86 87 88 89
-				     90 91 92 93 94 95 96 97 98 99
-				    100>;
-		default-brightness-level = <60>;
-		status = "okay";
-	};
-
-	panel: panel-simple {
-		compatible = "dongguan,gst7d0038";
-		backlight = <&backlight>;
-		status = "okay";
-
-		port {
-			lvds_panel: endpoint {
-			};
-		};
-	};
 
 	i2c_gpio4: i2c@4 {
 		compatible = "i2c-gpio";
@@ -666,34 +615,6 @@
 	};
 };
 
-&i2c_2 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	status = "okay";
-
-	touchscreen@4a {
-		compatible = "atmel,maxtouch";
-		reg = <0x4a>;
-		interrupt-parent = <&gpio_b>;
-		interrupts = <22 IRQ_TYPE_EDGE_FALLING>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&touchpanel_irq>;
-		skip-cfg-load;
-		switch-xy;
-	};
-
-	touchscreen@20 {
-		compatible = "zinitix,zinitix_touch";
-		reg = <0x20>;
-		interrupt-parent = <&gpio_b>;
-		interrupts = <8 IRQ_TYPE_EDGE_FALLING>;
-		reset-gpio = <&gpio_c 25 1>;
-		int-gpio = <&gpio_b 8 0>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&tsp_irq &tsp_reset>;
-	};
-};
-
 &dp_drm {
 	status = "okay";
 	ports {
@@ -712,64 +633,8 @@
 	};
 };
 
-&dp_drm_mipi {
-	hs_bitrate = <960>;
-	lp_bitrate = <100>;
-	status = "ok";
-
-	panel@0 {
-		compatible = "samsung,s6e8fa0";
-		reg = <0>;
-		vdd3-supply = <&VCC_LDO0>;
-		vci-supply = <&VCC_LDO1>;
-		reset-gpio = <&gpio_e 30 0>;
-		power-on-delay= <50>;
-		reset-delay = <100>;
-		init-delay = <100>;
-		display-timings {
-			timing-0 {
-				clock-frequency = <130361520>;
-				hactive = <1080>;
-				vactive = <1920>;
-				hfront-porch = <32>;
-				hback-porch = <16>;
-				hsync-len = <12>;
-				vfront-porch = <12>;
-				vback-porch = <3>;
-				vsync-len = <1>;
-			};
-		};
-	};
-
-	dp_control {
-		clk_src_lv0 = <0>;
-		clk_div_lv0 = <6>;
-		clk_src_lv1 = <7>;
-		clk_div_lv1 = <1>;
-		out_format = <3>;
-		vs_start_offset = <480>;
-		ev_start_offset = <480>;
-		vs_end_offset = <0>;
-		ev_end_offset = <0>;
-	};
-};
-
 &dp_drm_hdmi {
 	ddc-i2c-bus = <&i2c_gpio7>;
 	enable-gpios = <&gpio_a 21 0>;
 	status = "ok";
-};
-
-&dp_drm_lvds {
-	status = "ok";
-
-	remote-endpoint = <&lvds_panel>;
-
-	dp_control {
-		clk_src_lv0 = <0>;
-		clk_div_lv0 = <16>;
-		clk_src_lv1 = <7>;
-		clk_div_lv1 = <1>;
-		out_format = <3>;
-	};
 };
