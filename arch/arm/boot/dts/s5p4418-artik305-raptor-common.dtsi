@@ -18,7 +18,7 @@
 
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/input/input.h>
-#include "s5p4418-artik530.dtsi"
+#include "s5p4418-artik305.dtsi"
 #include "s5p4418-artik305-cpu.dtsi"
 
 #define PMIC_PDATA_INIT(_id, _rname, _minuv,	\
