@@ -34,6 +34,8 @@ struct sd8x_rfkill_platform_data {
 	int gpio_power_down;
 	int gpio_reset;
 	int gpio_edge_wakeup;
+	int gpio_bt_wlan_1p8;
+	int gpio_wlan_2p2;
 
 	/* two GPIOs to control 1v8 and 3v3 */
 	int gpio_3v3_en;
