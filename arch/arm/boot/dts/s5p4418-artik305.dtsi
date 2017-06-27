@@ -45,4 +45,16 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&bt_wlan_1p8 &wlan_2p2>;
 	};
+
+	artik_s3t9mf {
+		pwms = <&pwm 1 1000 0>;
+		pwm-names = "pwm_t9mf";
+	};
+};
+
+&pwm {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm1_pin>;
+	samsung,pwm-outputs = <1>;
+	status = "okay";
 };
