@@ -97,5 +97,8 @@
 				regulator-always-on;
 				regulator-boot-on;};
 	}; /* regulators */
+};
 
+&sd8x_rfkill {
+	pd-gpio = <&gpio_d 30 0>; /* GPIOD30=WLAN_BT_PDN output*/
 };
