@@ -19,33 +19,6 @@
 #include "s5p4418-artik530.dtsi"
 
 / {
-	soc {
-		pinctrl@C0010000 {
-			bt_wlan_1p8: bt-wlan-1p8 {
-				nexell,pins = "gpioa-18";
-				nexell,pin-function = <0>;
-				nexell,pin-pull = <2>;
-				nexell,pin-strength = <0>;
-			};
-			wlan_2p2: wlan-2p2 {
-				nexell,pins = "gpiob-14";
-				nexell,pin-function = <2>;
-				nexell,pin-pull = <2>;
-				nexell,pin-strength = <0>;
-			};
-		};
-	};	/*** soc ***/
-
-	sd8x-rfkill {
-		/* GPIOA18=BT_WLAN_1P8_PDN output*/
-		bt-wlan-1p8-gpio = <&gpio_a 18 0>;
-		/* GPIOB14=WLAN_2P2_PDN output*/
-		wlan-2p2-gpio = <&gpio_b 14 0>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&bt_wlan_1p8 &wlan_2p2>;
-	};
-
 	artik_s3t9mf {
 		pwms = <&pwm 1 1000 0>;
 		pwm-names = "pwm_t9mf";

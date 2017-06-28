@@ -18,6 +18,31 @@
 
 /dts-v1/;
 #include "s5p4418-artik305-raptor-common.dtsi"
+/ {
+	soc {
+		pinctrl@C0010000 {
+			bt_wlan_1p8: bt-wlan-1p8 {
+				nexell,pins = "gpioa-18";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+			wlan_2p2: wlan-2p2 {
+				nexell,pins = "gpiob-14";
+				nexell,pin-function = <2>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+		};
+	};
+};
+
+&sd8x_rfkill {
+	bt-wlan-1p8-gpio = <&gpio_a 18 0>; /* GPIOA18=BT_WLAN_1P8_PDN output*/
+	wlan-2p2-gpio = <&gpio_b 14 0>; /* GPIOB14=WLAN_2P2_PDN output*/
+	pinctrl-names = "default";
+	pinctrl-0 = <&bt_wlan_1p8 &wlan_2p2>;
+};
 
 &usb3503 {
 	/delete-property/connect-gpios;
