@@ -20,7 +20,7 @@
 
 / {
 	artik_s3t9mf {
-		pwms = <&pwm 1 1000 0>;
+		pwms = <&pwm 1 500 0>;
 		pwm-names = "pwm_t9mf";
 	};
 };
