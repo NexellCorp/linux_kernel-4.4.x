@@ -581,31 +581,31 @@ static int sd8x_rfkill_probe_dt(struct platform_device *pdev)
 	gpio = of_get_named_gpio(np, "edge-wakeup-gpio", 0);
 	if (unlikely(gpio < 0)) {
 		dev_warn(&pdev->dev, "edge-wakeup-gpio undefined\n");
-		pdata->gpio_edge_wakeup = -1;
+		pdata->gpio_edge_wakeup = -ENODEV;
 	} else {
 		pdata->gpio_edge_wakeup = gpio;
 	}
 
 	gpio = of_get_named_gpio(np, "pd-gpio", 0);
 	if (unlikely(gpio < 0)) {
-		dev_err(&pdev->dev, "pd-gpio undefined\n");
-		pdata->gpio_power_down = -1;
+		dev_warn(&pdev->dev, "pd-gpio undefined\n");
+		pdata->gpio_power_down = -ENODEV;
 	} else {
 		pdata->gpio_power_down = gpio;
 	}
 
 	gpio = of_get_named_gpio(np, "bt-wlan-1p8-gpio", 0);
-	if (unlikely(gpio < 0)) {
-		dev_err(&pdev->dev, "bt-wlan-1p8-gpio undefined\n");
-		pdata->gpio_bt_wlan_1p8 = -1;
+	if (gpio < 0) {
+		dev_warn(&pdev->dev, "bt-wlan-1p8-gpio undefined\n");
+		pdata->gpio_bt_wlan_1p8 = -ENODEV;
 	} else {
 		pdata->gpio_bt_wlan_1p8 = gpio;
 	}
 
 	gpio = of_get_named_gpio(np, "wlan-2p2-gpio", 0);
-	if (unlikely(gpio < 0)) {
-		dev_err(&pdev->dev, "wlan-2p2-gpio undefined\n");
-		pdata->gpio_wlan_2p2 = -1;
+	if (gpio < 0) {
+		dev_warn(&pdev->dev, "wlan-2p2-gpio undefined\n");
+		pdata->gpio_wlan_2p2 = -ENODEV;
 	} else {
 		pdata->gpio_wlan_2p2 = gpio;
 	}
