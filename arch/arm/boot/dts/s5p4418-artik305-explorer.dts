@@ -265,10 +265,6 @@
 		};
 	};	/*** soc ***/
 
-	artik_zb_power {
-		status = "disabled";
-	};
-
 	i2c_gpio4: i2c@4 {
 		compatible = "i2c-gpio";
 		gpios = <&gpio_a 9 0 /* sda */
