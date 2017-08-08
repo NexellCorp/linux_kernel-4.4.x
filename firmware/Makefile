@@ -136,9 +136,6 @@ fw-shipped-$(CONFIG_USB_VICAM) += vicam/firmware.fw
 fw-shipped-$(CONFIG_VIDEO_CPIA2) += cpia2/stv0672_vp4.bin
 fw-shipped-$(CONFIG_YAM) += yam/1200.bin yam/9600.bin
 fw-shipped-$(CONFIG_TOUCHSCREEN_MELFAS_MMS427) += melfas/melfas_mip4_ts.fw
-fw-shipped-$(CONFIG_DRM_LOAD_EDID_FIRMWARE) += edid/1024x768.bin \
-	edid/1280x1024.bin edid/1280x720.bin edid/1920x1080.bin	 \
-	edid/720x480.bin edid/720x576.bin
 
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 
