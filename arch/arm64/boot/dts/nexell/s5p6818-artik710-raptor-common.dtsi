@@ -160,6 +160,9 @@
 			snps,reset-active-low;
 			snps,reset-delays-us = <0 10000 30000>;
 
+			boost-busfreq;
+			boost-busfreq-timeout = <100000>;
+
 			mdio {
 				#address-cells = <1>;
 				#size-cells = <0>;
