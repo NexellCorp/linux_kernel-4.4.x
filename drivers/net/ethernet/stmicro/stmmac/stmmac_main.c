@@ -63,18 +63,23 @@
 #define QOS_REQUEST_TIMEOUT_US	100000 /* 100 milliseconds */
 static struct pm_qos_request nx_net_qos;
 
-static void nx_net_qos_update(int val)
+static void nx_net_qos_update(int val, int timeout)
 {
 	if (!pm_qos_request_active(&nx_net_qos))
 		pm_qos_add_request(&nx_net_qos, PM_QOS_BUS_THROUGHPUT, val);
 	else
 		pm_qos_update_request_timeout(&nx_net_qos, val,
-					      QOS_REQUEST_TIMEOUT_US);
+					      timeout);
 }
 
 static void qos_request_work(struct work_struct *work)
 {
-	nx_net_qos_update(NX_BUS_CLK_HIGH_KHZ);
+	struct stmmac_priv *priv = container_of(work, struct stmmac_priv,
+						qos_work);
+	int timeout = priv->plat->boost_busfreq_timeout ? :
+		QOS_REQUEST_TIMEOUT_US;
+
+	nx_net_qos_update(NX_BUS_CLK_HIGH_KHZ, timeout);
 }
 #endif
 
@@ -1494,7 +1499,8 @@ static void stmmac_dma_interrupt(struct stmmac_priv *priv)
 			__napi_schedule(&priv->napi);
 		}
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
-		schedule_work(&priv->qos_work);
+		if (priv->plat->boost_busfreq)
+			schedule_work(&priv->qos_work);
 #endif
 	}
 	if (unlikely(status & tx_hard_error_bump_tc)) {

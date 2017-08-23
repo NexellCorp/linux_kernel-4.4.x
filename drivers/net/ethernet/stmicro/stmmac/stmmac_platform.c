@@ -203,6 +203,12 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	if (of_device_is_compatible(np, "nexell,s5p6818-gmac")) {
 		of_property_read_u32(np, "snps,multicast-filter-bins",
 				     &plat->multicast_filter_bins);
+		plat->boost_busfreq = of_property_read_bool(np,
+						    "boost-busfreq");
+		if (plat->boost_busfreq) {
+			of_property_read_u32(np, "boost-busfreq-timeout",
+					     &plat->boost_busfreq_timeout);
+		}
 	}
 
 	if (of_device_is_compatible(np, "snps,dwmac-3.610") ||

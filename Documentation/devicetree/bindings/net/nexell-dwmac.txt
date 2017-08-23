@@ -14,6 +14,10 @@ Required properties:
  - clock-names: Should contain the clock names "stmmaceth",
    and "nexell_gmac_tx"
 
+Optional properties:
+ - boost-busfreq: Enable nexell busfreq boosting to ensure performance
+ - boost-busfreq-timeout: Set timeout value since the boost has been
+   enabled(unit: microseconds)
 
 Example:
 
@@ -41,6 +45,8 @@ Example:
 		interrupt-names = "macirq";
 		mac-address = [000000000000];
 		phy-mode = "rgmii";
+		boost-busfreq;
+		boost-busfreq-timeout = <100000>;
 		status = "disable";
 	};
 
