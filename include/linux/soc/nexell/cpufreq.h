@@ -57,5 +57,7 @@ int nx_change_bus_freq(u32 pll_data);
 void nx_bus_qos_update(int val);
 int  nx_bus_add_notifier(void *data);
 void nx_bus_remove_notifier(void *data);
+void nx_bus_qos_lock(void);
+void nx_bus_qos_unlock(void);
 
 #endif

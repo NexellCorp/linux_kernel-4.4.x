@@ -28,6 +28,7 @@
 #include <linux/soc/nexell/cpufreq.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
+#include <linux/mutex.h>
 
 #include "governor.h"
 
@@ -45,6 +46,7 @@ struct nx_devfreq {
 	struct regulator *regulator;
 	struct device *dev;
 	unsigned long suspend_freq;
+	struct mutex qos_lock;
 };
 
 struct bus_opp_table {
@@ -105,21 +107,17 @@ void nx_bus_remove_notifier(void *data)
 	mutex_unlock(&nx_devfreq_notifier_list_lock);
 }
 
-static int register_all_pm_qos_notifiers(int pm_qos_class)
+static void call_nx_qos_notifiers(unsigned long val)
 {
-	int ret = 0;
 	struct nx_bus_notifier_data *noti_data;
+	struct notifier_block *nb;
 
 	mutex_lock(&nx_devfreq_notifier_list_lock);
 	list_for_each_entry(noti_data, &nx_devfreq_notifier_list, list) {
-		ret = pm_qos_add_notifier(pm_qos_class,
-					  noti_data->data);
-		if (ret)
-			break;
+		nb = noti_data->data;
+		nb->notifier_call(nb, val, NULL);
 	}
 	mutex_unlock(&nx_devfreq_notifier_list_lock);
-
-	return ret;
 }
 
 static struct pm_qos_request nx_bus_qos;
@@ -130,6 +128,20 @@ void nx_bus_qos_update(int val)
 	pm_qos_update_request(&nx_bus_qos, val);
 }
 EXPORT_SYMBOL(nx_bus_qos_update);
+
+void nx_bus_qos_lock(void)
+{
+	if (_nx_devfreq != NULL)
+		mutex_lock(&_nx_devfreq->qos_lock);
+}
+EXPORT_SYMBOL(nx_bus_qos_lock);
+
+void nx_bus_qos_unlock(void)
+{
+	if (_nx_devfreq != NULL)
+		mutex_unlock(&_nx_devfreq->qos_lock);
+}
+EXPORT_SYMBOL(nx_bus_qos_unlock);
 
 /* soc specific */
 struct pll_pms {
@@ -206,7 +218,7 @@ static int get_pll_data(u32 pll, unsigned long rate, u32 *pll_data,
 /* profile */
 static int nx_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 {
-	int err;
+	int err = 0;
 	u32 pll_data;
 	struct nx_devfreq *nx_devfreq = dev_get_drvdata(dev);
 	struct dev_pm_opp *opp;
@@ -214,12 +226,15 @@ static int nx_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 	unsigned long voltage;
 	bool is_up = false;
 
+	mutex_lock(&nx_devfreq->qos_lock);
+
 	rcu_read_lock();
 	opp = devfreq_recommended_opp(dev, freq, flags);
 	if (IS_ERR(opp)) {
 		rcu_read_unlock();
 		dev_err(dev, "failed to find opp for %lu KHz\n", *freq);
-		return PTR_ERR(opp);
+		err = PTR_ERR(opp);
+		goto unlock_and_return;
 	}
 	rate = dev_pm_opp_get_freq(opp);
 	rcu_read_unlock();
@@ -227,7 +242,7 @@ static int nx_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 	dev_dbg(dev, "freq: %lu KHz, rate: %lu\n", *freq, rate);
 
 	if (atomic_read(&nx_devfreq->cur_freq) == *freq)
-		return 0;
+		goto unlock_and_return;
 
 	if (atomic_read(&nx_devfreq->cur_freq) < *freq)
 		is_up = true;
@@ -235,7 +250,7 @@ static int nx_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 	err = get_pll_data(nx_devfreq->pll, *freq, &pll_data, &voltage);
 	if (err) {
 		dev_err(dev, "failed to get pll data of freq %lu KHz\n", *freq);
-		return err;
+		goto unlock_and_return;
 	}
 
 	if (is_up)
@@ -244,14 +259,19 @@ static int nx_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 	err = nx_change_bus_freq(pll_data);
 	if (err) {
 		dev_err(dev, "failed to change bus clock for %lu KHz\n", *freq);
-		return err;
+		goto unlock_and_return;
 	}
 
 	if (!is_up)
 		regulator_set_voltage(nx_devfreq->regulator, voltage, voltage);
 
+	call_nx_qos_notifiers(*freq);
+
 	atomic_set(&nx_devfreq->cur_freq, *freq);
-	return 0;
+
+unlock_and_return:
+	mutex_unlock(&nx_devfreq->qos_lock);
+	return err;
 }
 
 static int nx_devfreq_get_cur_freq(struct device *dev, unsigned long *freq)
@@ -329,12 +349,10 @@ static int nx_devfreq_register_notifier(struct devfreq *devfreq)
 
 	ret = pm_qos_add_notifier(nx_devfreq->pm_qos_class,
 				  &nx_devfreq->nb.nb);
-	if (ret) {
+	if (ret)
 		dev_err(nx_devfreq->dev, "failed to add notifier\n");
-		return ret;
-	}
 
-	return register_all_pm_qos_notifiers(nx_devfreq->pm_qos_class);
+	return ret;
 }
 
 static int nx_devfreq_unregister_notifier(struct devfreq *devfreq)
@@ -490,6 +508,8 @@ static int nx_devfreq_probe(struct platform_device *pdev)
 		dev_pm_opp_add(&pdev->dev, entry->clk, 0);
 		entry++;
 	}
+
+	mutex_init(&nx_devfreq->qos_lock);
 
 	nx_devfreq->pm_qos_class = PM_QOS_BUS_THROUGHPUT;
 	nx_devfreq_profile.initial_freq = NX_BUS_CLK_LOW_KHZ;
