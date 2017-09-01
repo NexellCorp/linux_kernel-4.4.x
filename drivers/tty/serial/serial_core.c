@@ -262,6 +262,8 @@ static int uart_startup(struct tty_struct *tty, struct uart_state *state,
  * This routine will shutdown a serial port; interrupts are disabled, and
  * DTR is dropped if the hangup on close termio flag is on.  Calls to
  * uart_shutdown are serialised by the per-port semaphore.
+ *
+ * uport == NULL if uart_port has already been removed
  */
 static void uart_shutdown(struct tty_struct *tty, struct uart_state *state)
 {
@@ -278,7 +280,7 @@ static void uart_shutdown(struct tty_struct *tty, struct uart_state *state)
 		/*
 		 * Turn off DTR and RTS early.
 		 */
-		if (uart_console(uport) && tty)
+		if (uport && uart_console(uport) && tty)
 			uport->cons->cflag = tty->termios.c_cflag;
 
 		if (!tty || (tty->termios.c_cflag & HUPCL))
@@ -1453,7 +1455,6 @@ out:
  * Calls to uart_close() are serialised via the tty_lock in
  *   drivers/tty/tty_io.c:tty_release()
  *   drivers/tty/tty_io.c:do_tty_hangup()
- * This runs from a workqueue and can sleep for a _short_ time only.
  */
 static void uart_close(struct tty_struct *tty, struct file *filp)
 {
@@ -1477,14 +1478,18 @@ static void uart_close(struct tty_struct *tty, struct file *filp)
 
 	pr_debug("uart_close(%d) called\n", uport ? uport->line : -1);
 
-	if (!port->count || tty_port_close_start(port, tty, filp) == 0)
+	if (tty_port_close_start(port, tty, filp) == 0)
 		return;
+
+	mutex_lock(&port->mutex);
+	uport = uart_port_check(state);
 
 	/*
 	 * At this point, we stop accepting input.  To do this, we
 	 * disable the receive line status interrupts.
 	 */
-	if (port->flags & ASYNC_INITIALIZED) {
+	if (port->flags & ASYNC_INITIALIZED ||
+			!WARN(!uport, "detached port still initialized!\n")) {
 		spin_lock_irq(&uport->lock);
 		uport->ops->stop_rx(uport);
 		spin_unlock_irq(&uport->lock);
@@ -1496,7 +1501,6 @@ static void uart_close(struct tty_struct *tty, struct file *filp)
 		uart_wait_until_sent(tty, uport->timeout);
 	}
 
-	mutex_lock(&port->mutex);
 	uart_shutdown(tty, state);
 	tty_port_tty_set(port, NULL);
 
@@ -1507,7 +1511,7 @@ static void uart_close(struct tty_struct *tty, struct file *filp)
 		if (port->close_delay)
 			msleep_interruptible(jiffies_to_msecs(port->close_delay));
 		spin_lock_irq(&port->lock);
-	} else if (!uart_console(uport)) {
+	} else if (uport && !uart_console(uport)) {
 		spin_unlock_irq(&port->lock);
 		uart_change_pm(state, UART_PM_STATE_OFF);
 		spin_lock_irq(&port->lock);
@@ -1595,11 +1599,14 @@ static void uart_hangup(struct tty_struct *tty)
 {
 	struct uart_state *state = tty->driver_data;
 	struct tty_port *port = &state->port;
+	struct uart_port *uport;
 	unsigned long flags;
 
 	pr_debug("uart_hangup(%d)\n", state->uart_port->line);
 
 	mutex_lock(&port->mutex);
+	uport = uart_port_check(state);
+	WARN(!uport, "hangup of detached port!\n");
 	if (port->flags & ASYNC_NORMAL_ACTIVE) {
 		uart_flush_buffer(tty);
 		uart_shutdown(tty, state);
@@ -1608,7 +1615,7 @@ static void uart_hangup(struct tty_struct *tty)
 		clear_bit(ASYNCB_NORMAL_ACTIVE, &port->flags);
 		spin_unlock_irqrestore(&port->lock, flags);
 		tty_port_tty_set(port, NULL);
-		if (!uart_console(state->uart_port))
+		if (uport && !uart_console(uport))
 			uart_change_pm(state, UART_PM_STATE_OFF);
 		wake_up_interruptible(&port->open_wait);
 		wake_up_interruptible(&port->delta_msr_wait);
@@ -1616,6 +1623,7 @@ static void uart_hangup(struct tty_struct *tty)
 	mutex_unlock(&port->mutex);
 }
 
+/* uport == NULL if uart_port has already been removed */
 static void uart_port_shutdown(struct tty_port *port)
 {
 	struct uart_state *state = container_of(port, struct uart_state, port);
@@ -1633,12 +1641,14 @@ static void uart_port_shutdown(struct tty_port *port)
 	/*
 	 * Free the IRQ and disable the port.
 	 */
-	uport->ops->shutdown(uport);
+	if (uport)
+		uport->ops->shutdown(uport);
 
 	/*
 	 * Ensure that the IRQ handler isn't running on another CPU.
 	 */
-	synchronize_irq(uport->irq);
+	if (uport)
+		synchronize_irq(uport->irq);
 }
 
 static int uart_carrier_raised(struct tty_port *port)
