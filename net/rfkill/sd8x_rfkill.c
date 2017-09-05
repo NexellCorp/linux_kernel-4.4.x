@@ -41,6 +41,7 @@
 #include "../../drivers/mmc/host/dw_mmc.h"
 #include "sd8x_rfkill.h"
 #include <linux/delay.h>
+#include <linux/pinctrl/consumer.h>
 #define SD8X_DEV_NAME "sd8x-rfkill"
 
 /*
