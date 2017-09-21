@@ -246,7 +246,7 @@ static int cw_init(struct cw_battery *cw_bat)
 	if (ret < 0)
 		return ret;
 
-	dev_err(cw_bat->dev, "ret=%d version(%x)\n", ret, reg_val);
+	dev_dbg(cw_bat->dev, "ret=%d version(%x)\n", ret, reg_val);
 
 	ret = cw_read(cw_bat->client, REG_CONFIG, &reg_val);
 	if (ret < 0)
@@ -265,9 +265,9 @@ static int cw_init(struct cw_battery *cw_bat)
 	if (ret < 0)
 		return ret;
 
-	dev_err(cw_bat->dev, "rkbat config %x\n", reg_val);
+	dev_dbg(cw_bat->dev, "rkbat config %x\n", reg_val);
 	if (!(reg_val & CONFIG_UPDATE_FLG)) {
-		dev_err(cw_bat->dev,
+		dev_info(cw_bat->dev,
 			"update flag for new battery info have not set\n");
 		ret = cw_update_config_info(cw_bat);
 		if (ret < 0)
@@ -301,14 +301,14 @@ static int cw_init(struct cw_battery *cw_bat)
 			break;
 		mdelay(50);
 		if (i > 25)
-			dev_err(cw_bat->dev,
+			dev_dbg(cw_bat->dev,
 				"cw2015/cw2013 input unvalid power error\n");
 	}
 
 	if (i >= 30) {
 		reg_val = MODE_SLEEP;
 		ret = cw_write(cw_bat->client, REG_MODE, &reg_val);
-		dev_err(cw_bat->dev, "report battery capacity error");
+		dev_dbg(cw_bat->dev, "report battery capacity error");
 		return -1;
 	}
 
