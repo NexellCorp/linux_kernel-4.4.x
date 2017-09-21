@@ -384,6 +384,10 @@ static inline int cw_reset_reg_mode(struct cw_battery *cw_bat)
 	if (ret < 0)
 		return ret;
 
+	ret = cw_init(cw_bat);
+	if (ret < 0)
+		return ret;
+
 	return 0;
 }
 
@@ -567,8 +571,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 
 			if_quickstart = 1;
 		}
-	} else if (if_quickstart == 1 && cw_bat->charger_mode == 0)
-		if_quickstart = 0;
+	}
 
 	if (gpio_is_valid(cw_bat->plat_data.chg_ok_pin)) {
 		if (gpio_get_value(cw_bat->plat_data.chg_ok_pin) !=
