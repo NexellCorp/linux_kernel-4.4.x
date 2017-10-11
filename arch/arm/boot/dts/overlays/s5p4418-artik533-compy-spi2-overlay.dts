@@ -1,0 +1,26 @@
+/*Overlay Test*/
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "samsung,artik530-compy";
+
+	fragment@0 {
+		target = <&spi_2>;
+		__overlay__ {
+			status = "okay";
+			cs-gpios = <&gpio_c 10 0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			spidev@0 {
+				compatible = "linux,spidev";
+				reg = <0>;
+				spi-max-frequency = <10000000>;
+				controller-data {
+					samsung,spi-feedback-delay = <0>;
+				};
+			};
+		};
+	};
+};
