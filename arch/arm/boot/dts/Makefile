@@ -786,6 +786,7 @@ dtb-$(CONFIG_ARCH_S5P4418) += \
 	s5p4418-artik305-raptor-rev00.dtb \
 	s5p4418-artik305-raptor-rev04.dtb \
 	s5p4418-artik305-explorer.dtb \
+	s5p4418-artik533-compy.dtb \
 	s5p4418-avn_ref-rev00.dtb \
 	s5p4418-navi_ref-rev00.dtb \
 	s5p4418-navi_ref-rev01.dtb \
