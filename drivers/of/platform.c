@@ -280,11 +280,32 @@ err_clear_flag:
 	of_node_clear_flag(node, OF_POPULATED);
 	return NULL;
 }
+
+/**
+ * of_find_amba_device_by_node - Find the amba_device associated with a node
+ * @np: Pointer to device tree node
+ *
+ * Returns amba_device pointer, or NULL if not found
+ */
+struct amba_device *of_find_amba_device_by_node(struct device_node *np)
+{
+	struct device *dev;
+
+	dev = bus_find_device(&amba_bustype, NULL, np, of_dev_node_match);
+	return dev ? to_amba_device(dev) : NULL;
+}
+EXPORT_SYMBOL(of_find_amba_device_by_node);
+
 #else /* CONFIG_ARM_AMBA */
 static struct amba_device *of_amba_device_create(struct device_node *node,
 						 const char *bus_id,
 						 void *platform_data,
 						 struct device *parent)
+{
+	return NULL;
+}
+
+struct amba_device *of_find_amba_device_by_node(struct device_node *np)
 {
 	return NULL;
 }
@@ -520,6 +541,7 @@ static int of_platform_notify(struct notifier_block *nb,
 {
 	struct of_reconfig_data *rd = arg;
 	struct platform_device *pdev_parent, *pdev;
+	struct amba_device *adev_p, *adev;
 	bool children_left;
 
 	switch (of_reconfig_get_state_change(action, rd)) {
@@ -533,35 +555,64 @@ static int of_platform_notify(struct notifier_block *nb,
 			return NOTIFY_OK;
 
 		/* pdev_parent may be NULL when no bus platform device */
-		pdev_parent = of_find_device_by_node(rd->dn->parent);
-		pdev = of_platform_device_create(rd->dn, NULL,
-				pdev_parent ? &pdev_parent->dev : NULL);
-		of_dev_put(pdev_parent);
+		if (of_device_is_compatible(rd->dn, "arm,primecell")) {
+#ifdef CONFIG_ARM_AMBA
+			adev_p = of_find_amba_device_by_node(rd->dn->parent);
+			adev = of_amba_device_create(rd->dn, NULL, NULL,
+				adev_p ? &adev_p->dev : NULL);
 
-		if (pdev == NULL) {
-			pr_err("%s: failed to create for '%s'\n",
-					__func__, rd->dn->full_name);
-			/* of_platform_device_create tosses the error code */
-			return notifier_from_errno(-EINVAL);
+			if (adev_p)
+				put_device(&adev_p->dev);
+
+			if (adev == NULL) {
+				pr_err("%s: failed to create for '%s'\n",
+						__func__, rd->dn->full_name);
+				/* of_amba_device_create tosses error */
+				return notifier_from_errno(-EINVAL);
+			}
+#endif
+		} else {
+			pdev_parent = of_find_device_by_node(rd->dn->parent);
+			pdev = of_platform_device_create(rd->dn, NULL,
+					pdev_parent ? &pdev_parent->dev : NULL);
+			of_dev_put(pdev_parent);
+			if (pdev == NULL) {
+				pr_err("%s: failed to create for '%s'\n",
+						__func__, rd->dn->full_name);
+				/* of_platform_device_create tosses errors */
+				return notifier_from_errno(-EINVAL);
+			}
 		}
 		break;
 
 	case OF_RECONFIG_CHANGE_REMOVE:
-
 		/* already depopulated? */
 		if (!of_node_check_flag(rd->dn, OF_POPULATED))
 			return NOTIFY_OK;
+		if (of_device_is_compatible(rd->dn, "arm,primecell")) {
+			/* find our device by node */
+			adev = of_find_amba_device_by_node(rd->dn);
+			if (adev == NULL)
+				return NOTIFY_OK; /* no? not meant for us */
 
-		/* find our device by node */
-		pdev = of_find_device_by_node(rd->dn);
-		if (pdev == NULL)
-			return NOTIFY_OK;	/* no? not meant for us */
+			/* unregister takes one ref away */
+			of_platform_device_destroy(&adev->dev, &children_left);
 
-		/* unregister takes one ref away */
-		of_platform_device_destroy(&pdev->dev, &children_left);
+			/* and put the reference of the find */
+			if (adev)
+				put_device(&adev->dev);
+		} else {
+			/* find our device by node */
+			pdev = of_find_device_by_node(rd->dn);
+			if (pdev == NULL)
+				return NOTIFY_OK; /* no? not meant for us */
 
-		/* and put the reference of the find */
-		of_dev_put(pdev);
+			/* unregister takes one ref away */
+			of_platform_device_destroy(&pdev->dev, &children_left);
+
+			/* and put the reference of the find */
+			of_dev_put(pdev);
+		}
 		break;
 	}
 
