@@ -1950,7 +1950,7 @@ static const char *pl011_type(struct uart_port *port)
  */
 static void pl011_release_port(struct uart_port *port)
 {
-	release_mem_region(port->mapbase, SZ_4K);
+	devm_release_mem_region(port->dev, port->mapbase, SZ_4K);
 }
 
 /*
@@ -1958,8 +1958,8 @@ static void pl011_release_port(struct uart_port *port)
  */
 static int pl011_request_port(struct uart_port *port)
 {
-	return request_mem_region(port->mapbase, SZ_4K, "uart-pl011")
-			!= NULL ? 0 : -EBUSY;
+	return devm_request_mem_region(port->dev, port->mapbase,
+			SZ_4K, "uart-pl011") != NULL ? 0 : -EBUSY;
 }
 
 /*
