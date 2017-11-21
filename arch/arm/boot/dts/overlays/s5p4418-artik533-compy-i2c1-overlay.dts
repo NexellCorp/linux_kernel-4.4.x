@@ -1,4 +1,6 @@
-/*Overlay Test*/
+/* Enables I2C_1 interface,
+ * It creates /dev/i2c-1 node for artik compy board.
+ */
 
 /dts-v1/;
 /plugin/;

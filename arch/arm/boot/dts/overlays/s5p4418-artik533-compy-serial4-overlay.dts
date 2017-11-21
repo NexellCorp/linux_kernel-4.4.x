@@ -1,4 +1,6 @@
-/*Overlay Test*/
+/* Enables serial4 interface,
+ * It creates /dev/ttyAMA4 node for artik compy board.
+ */
 
 /dts-v1/;
 /plugin/;

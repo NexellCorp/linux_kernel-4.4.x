@@ -1,4 +1,6 @@
-/*Overlay Test*/
+/* Enables spidev interface,
+ * It creates /dev/spidev2.0 node for artik compy board.
+ */
 
 /dts-v1/;
 /plugin/;
