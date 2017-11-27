@@ -28,6 +28,7 @@
 #include <linux/moduleparam.h>
 #include <linux/reset.h>
 #include <linux/clk.h>
+#include <linux/clk-provider.h>
 
 #include <linux/soc/nexell/cpufreq.h>
 #include <linux/pm_qos.h>
@@ -53,6 +54,8 @@ static struct pm_qos_request nexell_gpu_qos;
 static int bus_clk_step;
 static struct delayed_work qos_work;
 #endif
+static void mali_clk_enable(void);
+static void mali_clk_disable(void);
 
 void mali_gpu_utilization_callback(struct mali_gpu_utilization_data *data);
 
@@ -76,9 +79,22 @@ static void s5p6818_mali_axibus_lpi_enter(void)
 }
 #endif
 
+static void mali_clk_enable(void)
+{
+	if (clk_mali &&  !__clk_is_enabled(clk_mali))
+		clk_prepare_enable(clk_mali);
+}
+
+static void mali_clk_disable(void)
+{
+	if (clk_mali && __clk_is_enabled(clk_mali))
+		clk_disable_unprepare(clk_mali);
+}
+
 static void nexell_platform_resume(struct device *dev)
 {
-	clk_prepare_enable(clk_mali);
+	mali_clk_enable();
+
 	reset_control_reset(rst_mali);
 #ifdef CONFIG_MALI_PLATFORM_S5P6818
 	s5p6818_mali_axibus_lpi_exit();
@@ -94,8 +110,7 @@ static void nexell_platform_suspend(struct device *dev)
 		reset_control_assert(rst_mali);
 	}
 
-	if (clk_mali)
-		clk_disable_unprepare(clk_mali);
+	mali_clk_disable();
 }
 
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
@@ -191,7 +206,7 @@ int mali_platform_device_init(struct platform_device *device)
 		return -ENODEV;
 	}
 
-	clk_prepare_enable(clk_mali);
+	mali_clk_enable();
 
 	rst_mali = devm_reset_control_get(dev, "vr-reset");
 
@@ -273,8 +288,7 @@ int mali_platform_device_deinit(struct platform_device *device)
 		reset_control_assert(rst_mali);
 	}
 
-	if (clk_mali)
-		clk_disable_unprepare(clk_mali);
+	mali_clk_disable();
 
 #ifdef CONFIG_PM_RUNTIME
 	pm_runtime_disable(&(device->dev));
