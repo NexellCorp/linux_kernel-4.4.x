@@ -738,6 +738,9 @@ static int mali_driver_resume_scheduler(struct device *dev)
 		return -ENODEV;
 #endif
 
+	if (device_data->platform_resume)
+		device_data->platform_resume(dev);
+
 	/* Tracing the frequency and voltage after mali is resumed */
 #if defined(CONFIG_MALI400_PROFILING) && defined(CONFIG_MALI_DVFS)
 	/* Just call mali_get_current_gpu_clk_item() once,to record current clk info.*/
@@ -752,8 +755,6 @@ static int mali_driver_resume_scheduler(struct device *dev)
 				      mali_gpu_clk[1].vol / 1000,
 				      0, 0, 0);
 #endif
-	if (device_data->platform_resume)
-		device_data->platform_resume(dev);
 
 	mali_pm_os_resume();
 
@@ -810,6 +811,9 @@ static int mali_driver_runtime_resume(struct device *dev)
 		return -ENODEV;
 #endif
 
+	if (device_data->platform_resume)
+		device_data->platform_resume(dev);
+
 	/* Tracing the frequency and voltage after mali is resumed */
 #if defined(CONFIG_MALI400_PROFILING) && defined(CONFIG_MALI_DVFS)
 	/* Just call mali_get_current_gpu_clk_item() once,to record current clk info.*/
@@ -824,8 +828,6 @@ static int mali_driver_runtime_resume(struct device *dev)
 				      mali_gpu_clk[1].vol / 1000,
 				      0, 0, 0);
 #endif
-	if (device_data->platform_resume)
-		device_data->platform_resume(dev);
 
 	mali_pm_runtime_resume();
 
