@@ -302,6 +302,13 @@ static int dev_set_rate(struct clk_hw *hw, unsigned long rate)
 	return rate;
 }
 
+static int clk_dev_is_enabled(struct clk_hw *hw)
+{
+	struct clk_dev_peri *peri = to_clk_dev(hw)->peri;
+
+	return peri->enable;
+}
+
 /*
  *	clock devices interface
  */
@@ -414,6 +421,7 @@ static const struct clk_ops clk_dev_ops = {
 	.set_rate = clk_dev_set_rate,
 	.enable = clk_dev_enable,
 	.disable = clk_dev_disable,
+	.is_enabled = clk_dev_is_enabled,
 };
 
 static const struct clk_ops clk_empty_ops = {};
