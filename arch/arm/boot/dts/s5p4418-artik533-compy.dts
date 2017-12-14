@@ -263,8 +263,7 @@
 		mipi_csi:mipi_csi@c00d0000 {
 			data_lane = <2>;
 			pllval = <750>;
-			hssettle = <7>;
-			/* hssettle = <6>; */
+			hssettle = <15>;
 			status = "okay";
 		};
 
@@ -275,22 +274,24 @@
 			status = "okay";
 			sensor {
 				type = <NX_CAPTURE_SENSOR_I2C>;
-				i2c_name = "S5K4ECGA";
+				i2c_name = "ov5640";
 				i2c_adapter = <0>;
-				addr = <0x56>;
+				addr = <0x3C>;
 			};
 			power {
 				enable_seq = <
-					NX_ACTION_START NX_ACTION_TYPE_GPIO 2 1 2 NX_ACTION_END
-					NX_ACTION_START NX_ACTION_TYPE_GPIO 1 1 1 NX_ACTION_END
-					NX_ACTION_START NX_ACTION_TYPE_GPIO 0 1 1 NX_ACTION_END
+					NX_ACTION_START NX_ACTION_TYPE_GPIO 1 1 0 NX_ACTION_END
+					NX_ACTION_START NX_ACTION_TYPE_GPIO 0 0 5 NX_ACTION_END
+					NX_ACTION_START NX_ACTION_TYPE_GPIO 2 1 100 NX_ACTION_END
+					NX_ACTION_START NX_ACTION_TYPE_GPIO 1 0 10 NX_ACTION_END
+					NX_ACTION_START NX_ACTION_TYPE_GPIO 0 1 50 NX_ACTION_END
 					>;
 
 				disable_seq = <
 					NX_ACTION_START NX_ACTION_TYPE_GPIO 0 0 1 NX_ACTION_END
-					NX_ACTION_START NX_ACTION_TYPE_GPIO 1 0 1 NX_ACTION_END
+					NX_ACTION_START NX_ACTION_TYPE_GPIO 1 1 1 NX_ACTION_END
 					NX_ACTION_START NX_ACTION_TYPE_GPIO 2 0 2 NX_ACTION_END
-				>;
+					>;
 			};
 		};
 
