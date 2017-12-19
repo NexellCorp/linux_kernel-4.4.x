@@ -320,8 +320,10 @@ static int clk_dev_enable(struct clk_hw *hw)
 	if (peri->in_mask & I_GATE_PCLK)
 		clk_dev_pclk((void *)peri->base, 1);
 
-	if (!(peri->in_mask & I_CLOCK_MASK))
+	if (!(peri->in_mask & I_CLOCK_MASK)) {
+		peri->enable = true;
 		return 0;
+	}
 
 	for (i = 0, inv = peri->invert_0; peri->clk_step > i;
 		i++, inv = peri->invert_1)
@@ -364,8 +366,10 @@ static void clk_dev_disable(struct clk_hw *hw)
 	if (peri->in_mask & I_GATE_PCLK)
 		clk_dev_pclk((void *)peri->base, 0);
 
-	if (!(peri->in_mask & I_CLOCK_MASK))
+	if (!(peri->in_mask & I_CLOCK_MASK)) {
+		peri->enable = false;
 		return;
+	}
 
 	clk_dev_rate((void *)peri->base, 0, 7, 256); /* for power save */
 	clk_dev_enb((void *)peri->base, 0);
