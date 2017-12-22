@@ -302,6 +302,23 @@ static int bq24296_update_charge_mode(u8 value)
 	return ret;
 }
 
+static int bq24296_update_vsys_min(u8 value)
+{
+	int ret = 0;
+
+	ret = bq24296_update_reg(bq24296_di->client,
+		 POWE_ON_CONFIGURATION_REGISTER,
+		 value << VSYSMIN_OFFSET,
+		 VSYSMIN_MASK << VSYSMIN_OFFSET);
+	if (ret < 0) {
+		dev_err(&bq24296_di->client->dev,
+			"%s(): Failed to set VSYS_MIN(0x%x)\n",
+			__func__, value);
+	}
+
+	return ret;
+}
+
 static int bq24296_update_otg_mode_current(u8 value)
 {
 	int ret = 0;
@@ -577,6 +594,9 @@ static int bq24296_battery_probe(struct i2c_client *client,
 
 	/* Disable chagrer */
 	bq24296_update_charge_mode(CHARGE_MODE_CONFIG_CHARGE_DISABLE);
+
+	/* Set VSYS_MIN to 3.7V */
+	bq24296_update_vsys_min(VSYSMIN_3P7);
 
 	if (gpio_is_valid(pdev->chg_irq_pin)) {
 		dev_info(di->dev, "chg irq pin : %d\n", pdev->chg_irq_pin);
