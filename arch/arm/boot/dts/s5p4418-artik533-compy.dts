@@ -350,7 +350,7 @@
 		#size-cells = <0>;
 	};
 
-	sound {
+	sound0: sound@0 {
 		compatible = "simple-audio-card";
 		simple-audio-card,name = "Artik530 raptor Audio";
 		simple-audio-card,mclk-fs = <256>;
