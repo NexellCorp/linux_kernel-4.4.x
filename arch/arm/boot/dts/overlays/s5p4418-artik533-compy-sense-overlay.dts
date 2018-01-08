@@ -1,0 +1,49 @@
+/* Support Sense Hat */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "samsung,artik530-compy";
+
+	fragment@0 {
+		target = <&i2c_1>;
+		__overlay__ {
+			status = "okay";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			rpi-sense@46 {
+				compatible = "rpi,rpi-sense";
+				reg = <0x46>;
+				keys-int-gpios = <&gpio_e 2 1>;
+				reset-gpios = <&gpio_d 1 0>;
+				status = "okay";
+			};
+
+			lsm9ds1-magn@1c {
+				compatible = "st,lsm9ds1-magn";
+				reg = <0x1c>;
+				status = "okay";
+			};
+
+			lsm9ds1-accel6a {
+				compatible = "st,lsm9ds1-accel";
+				reg = <0x6a>;
+				status = "okay";
+			};
+
+			lps25h-press@5c {
+				compatible = "st,lps25h-press";
+				reg = <0x5c>;
+				status = "okay";
+			};
+
+			hts221-humid@5f {
+				compatible = "st,hts221-humid";
+				reg = <0x5f>;
+				status = "okay";
+			};
+		};
+	};
+};
