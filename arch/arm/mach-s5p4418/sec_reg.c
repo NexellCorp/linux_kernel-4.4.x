@@ -51,6 +51,9 @@ int write_sec_reg_by_id(void __iomem *reg, int val, int id)
 		case NEXELL_MALI_SEC_ID:
 			off = (u32)reg & SEC_64K_OFFSET;
 			break;
+		default:
+			pr_warn("%s: Unsupported id:%d\n", __func__, id);
+			return -EINVAL;
 	}
 	ret = __invoke_nexell_fn_smc(NEXELL_SMC_SEC_REG_WRITE +
 			((1 << SECURE_FILTER_SHIFT) + id), off, val, 0);
@@ -71,6 +74,9 @@ int read_sec_reg_by_id(void __iomem *reg, int id)
 		case NEXELL_MALI_SEC_ID:
 			off = (u32)reg & SEC_64K_OFFSET;
 			break;
+		default:
+			pr_warn("%s: Unsupported id:%d\n", __func__, id);
+			return -EINVAL;
 	}
 	ret = __invoke_nexell_fn_smc(NEXELL_SMC_SEC_REG_READ +
 			((1 << SECURE_FILTER_SHIFT) + id), off, 0, 0);
