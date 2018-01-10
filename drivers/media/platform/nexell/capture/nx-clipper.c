@@ -235,7 +235,7 @@ static int parse_sensor_i2c_board_info_dt(struct device_node *np,
 		return -EINVAL;
 	}
 
-	strcpy(info->board_info.type, name);
+	strlcpy(info->board_info.type, name, sizeof(info->board_info.type));
 	info->board_info.addr = addr;
 	info->i2c_adapter_id = adapter;
 
@@ -1668,7 +1668,8 @@ static int create_sysfs_for_camera_sensor(struct nx_clipper *me,
 		info->i2c_adapter_id,
 		info->board_info.addr);
 
-	strcpy(camera_sensor_info[me->module].name, sensor_name);
+	strlcpy(camera_sensor_info[me->module].name, sensor_name,
+		V4L2_SUBDEV_NAME_SIZE);
 	camera_sensor_info[me->module].is_mipi =
 		me->interface_type == NX_CAPTURE_INTERFACE_MIPI_CSI;
 
