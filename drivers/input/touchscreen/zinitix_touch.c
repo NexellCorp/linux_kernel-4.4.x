@@ -2870,8 +2870,7 @@ static int zinitix_touch_probe(struct i2c_client *client,
 		zinitix_printk("ts_esd_timer_start\n");
 	}
 
-
-	sprintf(touch_dev->phys, "input(ts)");
+	snprintf(touch_dev->phys, sizeof(touch_dev->phys), "input(ts)");
 	touch_dev->input_dev->name = ZINITIX_DRIVER_NAME;
 	touch_dev->input_dev->id.bustype = BUS_I2C;
 	touch_dev->input_dev->id.vendor = 0x0001;
