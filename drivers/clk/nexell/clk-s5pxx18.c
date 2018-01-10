@@ -177,7 +177,7 @@ static long clk_dev_pll_rate(int no)
 	char name[16];
 	long rate = 0;
 
-	sprintf(name, "pll%d", no);
+	snprintf(name, sizeof(name), "pll%d", no);
 	clk = clk_get(NULL, name);
 	rate = clk_get_rate(clk);
 	clk_put(clk);
@@ -547,7 +547,7 @@ static void __init clk_dev_of_setup(struct device_node *node)
 #ifdef CONFIG_ARM_NEXELL_CPUFREQ
 	char pll[16];
 
-	sprintf(pll, "sys-pll%d", CONFIG_NEXELL_CPUFREQ_PLLDEV);
+	snprintf(pll, sizeof(pll), "sys-pll%d", CONFIG_NEXELL_CPUFREQ_PLLDEV);
 #endif
 
 	num_clks = of_get_child_count(node);
