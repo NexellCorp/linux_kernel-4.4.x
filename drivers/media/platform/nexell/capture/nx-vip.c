@@ -99,14 +99,14 @@ static int nx_vip_parse_dt(struct platform_device *pdev, struct nx_vip *me)
 		return -EINVAL;
 	}
 
-	sprintf(clk_names, "vip%d", me->module);
+	snprintf(clk_names, sizeof(clk_names), "vip%d", me->module);
 	me->clk = devm_clk_get(dev, clk_names);
 	if (IS_ERR(me->clk)) {
 		dev_err(dev, "failed to devm_clk_get for %s\n", clk_names);
 		return -ENODEV;
 	}
 
-	sprintf(reset_names, "vip%d-reset", me->module);
+	snprintf(reset_names, sizeof(reset_names), "vip%d-reset", me->module);
 	me->rst = devm_reset_control_get(dev, reset_names);
 	if (IS_ERR(me->rst)) {
 		dev_err(dev, "failed to get reset control\n");
