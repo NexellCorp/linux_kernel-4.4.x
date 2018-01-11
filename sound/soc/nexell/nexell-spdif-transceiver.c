@@ -82,10 +82,16 @@ static int spdiftx_probe(struct platform_device *pdev)
 			driver = codec_dai->driver;
 	}
 
+	if (driver == NULL) {
+		dev_err(&pdev->dev, "%s, codec dai driver is not set\n",
+			__func__);
+		return -ENODEV;
+	}
+
 	/* Reset spdif sample rates and format */
 	if (sample_rate) {
 		sample_rate = snd_pcm_rate_to_rate_bit(sample_rate);
-		if (SNDRV_PCM_RATE_KNOT != sample_rate)
+		if (sample_rate != SNDRV_PCM_RATE_KNOT)
 			driver->playback.rates = sample_rate;
 		else
 			dev_err(&pdev->dev, "%s, invalid sample rates=%d\n",
