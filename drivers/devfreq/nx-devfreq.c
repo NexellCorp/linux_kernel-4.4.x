@@ -182,8 +182,8 @@ static int get_pll_data(u32 pll, unsigned long rate, u32 *pll_data,
 			unsigned long *voltage)
 {
 	struct pll_pms *p = NULL;
-	int len;
-	int i;
+	int len = 0;
+	int i = 0;
 	unsigned long freq = 0;
 
 	switch (pll) {
@@ -197,6 +197,8 @@ static int get_pll_data(u32 pll, unsigned long rate, u32 *pll_data,
 		p = &pll2_3_pms[0];
 		len = ARRAY_SIZE(pll2_3_pms);
 		break;
+	default:
+		return -EINVAL;
 	}
 
 	for (i = 0; i < len; i++) {
