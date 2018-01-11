@@ -537,11 +537,7 @@ static int bq24296_battery_probe(struct i2c_client *client,
 	di->dev = &client->dev;
 	di->client = client;
 
-	if (bq24296_node)
-		pdev = bq24296_parse_dt(di);
-	else
-		pdev = dev_get_platdata(di->dev);
-
+	pdev = bq24296_parse_dt(di);
 	if (!pdev) {
 		dev_err(&client->dev, "failed to get platform data\n");
 		return -EPROBE_DEFER;
