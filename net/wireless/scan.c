@@ -56,6 +56,19 @@
  * also linked into the probe response struct.
  */
 
+/*
+ * Limit the number of BSS entries stored in mac80211. Each one is
+ * a bit over 4k at most, so this limits to roughly 4-5M of memory.
+ * If somebody wants to really attack this though, they'd likely
+ * use small beacons, and only one type of frame, limiting each of
+ * the entries to a much smaller size (in order to generate more
+ * entries in total, so overhead is bigger.)
+ */
+static int bss_entries_limit = 1000;
+module_param(bss_entries_limit, int, 0644);
+MODULE_PARM_DESC(bss_entries_limit,
+                 "limit to number of scan BSS entries (per wiphy, default 1000)");
+
 #define IEEE80211_SCAN_RESULT_EXPIRE	(7 * HZ)
 
 static void bss_free(struct cfg80211_internal_bss *bss)
