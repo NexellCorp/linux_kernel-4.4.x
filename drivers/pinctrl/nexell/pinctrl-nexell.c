@@ -280,11 +280,30 @@ static int nexell_dt_node_to_map(struct pinctrl_dev *pctldev,
 	return 0;
 }
 
+static void nexell_get_group_status(struct pinctrl_dev *pctldev,
+		struct seq_file *s, unsigned offset)
+{
+	if ((offset & ~(32 - 1)) != PAD_GPIO_ALV) {
+		seq_printf(s, "\t: Func(%d), Dir(%d), Val(%d), Pull(%d), Drv(%d)",
+			nx_soc_gpio_get_io_func(offset),
+			nx_soc_gpio_get_io_dir(offset),
+			nx_soc_gpio_get_in_value(offset),
+			nx_soc_gpio_get_io_pull(offset),
+			nx_soc_gpio_get_io_drv(offset));
+	} else {
+		seq_printf(s, "\t: Func(N), Dir(%d), Val(%d), Pull(%d), Drv(N)",
+			nx_soc_gpio_get_io_dir(offset),
+			nx_soc_gpio_get_in_value(offset),
+			nx_soc_gpio_get_io_pull(offset));
+	}
+}
+
 /* list of pinctrl callbacks for the pinctrl core */
 static const struct pinctrl_ops nexell_pctrl_ops = {
 	.get_groups_count = nexell_get_group_count,
 	.get_group_name = nexell_get_group_name,
 	.get_group_pins = nexell_get_group_pins,
+	.pin_dbg_show = nexell_get_group_status,
 	.dt_node_to_map = nexell_dt_node_to_map,
 	.dt_free_map = nexell_dt_free_map,
 };
