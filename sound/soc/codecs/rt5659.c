@@ -3095,8 +3095,12 @@ static int rt5659_sto1_filter_event(struct snd_soc_dapm_widget *w,
 		break;
 
 	case SND_SOC_DAPM_POST_PMU:
-		schedule_delayed_work(&rt5659->dac1_depop_work,
-			msecs_to_jiffies(10));
+		if ((rt5659->dac1_sto_dac_mixer & DAC_L1_STO_MIXER_FLAG)
+				!= DAC_L1_STO_MIXER_FLAG ||
+			(rt5659->dac1_mono_dac_mixer & DAC_L1_MONO_MIXER_FLAG)
+				!= DAC_L1_MONO_MIXER_FLAG)
+			schedule_delayed_work(&rt5659->dac1_depop_work,
+				msecs_to_jiffies(0));
 		break;
 
 	default:
@@ -3130,8 +3134,12 @@ static int rt5659_monol_filter_event(struct snd_soc_dapm_widget *w,
 		break;
 
 	case SND_SOC_DAPM_POST_PMU:
-		schedule_delayed_work(&rt5659->dac2l_depop_work,
-			msecs_to_jiffies(10));
+		if ((rt5659->dac2l_sto_dac_mixer & DAC_L2_STO_MIXER_FLAG)
+				!= DAC_L2_STO_MIXER_FLAG ||
+			(rt5659->dac2l_mono_dac_mixer & DAC_L2_MONO_MIXER_FLAG)
+				!= DAC_L2_MONO_MIXER_FLAG)
+			schedule_delayed_work(&rt5659->dac2l_depop_work,
+				msecs_to_jiffies(0));
 		break;
 
 	default:
@@ -3165,8 +3173,12 @@ static int rt5659_monor_filter_event(struct snd_soc_dapm_widget *w,
 		break;
 
 	case SND_SOC_DAPM_POST_PMU:
-		schedule_delayed_work(&rt5659->dac2r_depop_work,
-			msecs_to_jiffies(10));
+		if ((rt5659->dac2r_sto_dac_mixer & DAC_R2_STO_MIXER_FLAG)
+				!= DAC_R2_STO_MIXER_FLAG ||
+			(rt5659->dac2r_mono_dac_mixer & DAC_R2_MONO_MIXER_FLAG)
+				!= DAC_R2_MONO_MIXER_FLAG)
+			schedule_delayed_work(&rt5659->dac2r_depop_work,
+				msecs_to_jiffies(0));
 		break;
 
 	default:
