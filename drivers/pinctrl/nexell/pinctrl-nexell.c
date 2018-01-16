@@ -419,6 +419,9 @@ static int nexell_soc_write_pin(unsigned int io,
 	case PINCFG_TYPE_DIR:
 		nx_soc_gpio_set_io_dir(io, data);
 		break;
+	default:
+		pr_err("unsupported pincfg_type : %s\n", __func__);
+		return -EINVAL;
 	}
 
 	return 0;
@@ -447,6 +450,9 @@ static int nexell_soc_read_pin(unsigned int io,
 	case PINCFG_TYPE_FUNC:
 		*data = nx_soc_gpio_get_io_func(io);
 		break;
+	default:
+		pr_err("unsupported pincfg_type : %s\n", __func__);
+		return -EINVAL;
 	}
 
 	return 0;
