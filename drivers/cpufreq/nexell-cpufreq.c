@@ -36,6 +36,8 @@
 #include <linux/soc/nexell/cpufreq.h>
 
 #define DEV_NAME_CPUFREQ	"nexell-cpufreq"
+#define ENTRY_LEN		(10)
+
 /*
  * DVFS info
  */
@@ -295,7 +297,7 @@ static ssize_t show_speed_duration(struct cpufreq_policy *policy, char *buf)
 		count += sprintf(&buf[count], "%8ld ",
 				 dvfs->time_stamp[i].duration);
 
-	count += sprintf(&buf[count], "\n");
+	count += snprintf(&buf[count], 2, "\n");
 	return count;
 }
 
@@ -359,7 +361,7 @@ static ssize_t show_cur_voltages(struct cpufreq_policy *policy, char *buf)
 	for (; dvfs->table_size > i; i++)
 		count += sprintf(&buf[count], "%ld ", dvfs_table[i][1]);
 
-	count += sprintf(&buf[count], "\n");
+	count += snprintf(&buf[count], 2, "\n");
 	return count;
 }
 

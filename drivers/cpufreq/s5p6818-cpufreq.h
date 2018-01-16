@@ -27,6 +27,8 @@
 #define	FREQ_ARRAY_SIZE		(13)
 #define	UV(v)				(v*1000)
 
+#define ASV_LEVEL_LEN		(15)
+
 struct asv_tb_info {
 	int ids;
 	int ro;
