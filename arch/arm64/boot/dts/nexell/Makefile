@@ -7,6 +7,10 @@ dtb-$(CONFIG_ARCH_S5P6818) += s5p6818-avn-ref-rev01.dtb
 dtb-$(CONFIG_ARCH_S5P6818) += s5p6818-kick-st-rev00.dtb
 dtb-$(CONFIG_ARCH_NXP5540) += nxp5540-evb.dtb
 
+ifeq ($(CONFIG_ARCH_S5P6818),y)
+	DTC_FLAGS	?= -@ -H epapr
+endif
+
 always		:= $(dtb-y)
 subdir-y	:= $(dts-dirs)
 clean-files	:= *.dtb
