@@ -689,6 +689,15 @@ config VIDEO_S5K4ECGA
 	  camera sensor with an embedded SoC image signal processor.
 	  This sensor is revised version of S5K4ECGX.
 
+config VIDEO_S5KRD4
+	tristate "Samsung S5KRD4 sensor support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  This is a V4L2 sensor-level driver for Samsung S5KRD4
+	  Dynamic Vision Sensor.
+	  The main feature of this sensor is Half VGA (320x480),
+	  1/3.33 inch, and 2000fps.
+
 source "drivers/media/i2c/smiapp/Kconfig"
 
 config VIDEO_S5C73M3
