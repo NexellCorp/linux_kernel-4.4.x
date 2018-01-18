@@ -145,6 +145,14 @@ struct hdmi_conf {
 	bool support;
 };
 
+struct hdmi_vic_conf {
+	const int pixelclock;
+	const unsigned int htotal;
+	const unsigned int vtotal;
+	const int refresh;
+	const u8 *hdmiphy_preset;
+};
+
 /* VENDOR header */
 #define HDMI_VSI_VERSION		0x01
 #define HDMI_VSI_LENGTH			0x05
@@ -186,5 +194,8 @@ enum HDMI_AUDIO_CODEC {
 
 extern const struct hdmi_conf hdmi_conf[];
 extern const int num_hdmi_presets;
+extern struct hdmi_preset hdmi_conf_2Ddynamic_detect;
+extern int hdmi_get_closest_timing(int pixelclock, u32 *htotal, u32 *vtotal,
+		int *refresh);
 
 #endif
