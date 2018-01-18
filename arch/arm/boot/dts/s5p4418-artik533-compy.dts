@@ -263,7 +263,7 @@
 		mipi_csi:mipi_csi@c00d0000 {
 			data_lane = <2>;
 			pllval = <750>;
-			hssettle = <15>;
+			hssettle = <2 7 15 7>;
 			status = "okay";
 		};
 

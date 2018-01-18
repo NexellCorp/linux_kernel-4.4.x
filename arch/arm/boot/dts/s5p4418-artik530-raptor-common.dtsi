@@ -278,8 +278,7 @@
 		mipi_csi:mipi_csi@c00d0000 {
 			data_lane = <2>;
 			pllval = <750>;
-			hssettle = <7>;
-			/* hssettle = <6>; */
+			hssettle = <7 7 7 7>;
 			status = "okay";
 		};
 
