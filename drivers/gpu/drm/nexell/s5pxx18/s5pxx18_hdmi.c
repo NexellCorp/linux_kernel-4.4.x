@@ -68,12 +68,17 @@ static int hdmi_hpd_status(void)
 	return hdmi_read(HDMI_HPD_STATUS);
 }
 
-static void hdmi_reset(struct reset_control *rsc[], int num)
+static int hdmi_reset(struct reset_control *rsc[], int num)
 {
 	int count = (num - 1);	/* skip hdmi phy reset */
 	int i;
 
 	pr_debug("%s: resets %d\n", __func__, num);
+	if (num < 0) {
+		pr_err("%s: resets num (currently %d) \
+				must be bigger that 0\n", __func__, num);
+		return -EINVAL;
+	}
 
 	for (i = 0; count > i; i++)
 		reset_control_assert(rsc[i]);
@@ -82,6 +87,8 @@ static void hdmi_reset(struct reset_control *rsc[], int num)
 
 	for (i = 0; count > i; i++)
 		reset_control_deassert(rsc[i]);
+
+	return 0;
 }
 
 static bool hdmi_wait_phy_ready(void)
@@ -903,6 +910,7 @@ static int hdmi_ops_enable(struct nx_drm_display *display)
 	const struct hdmi_preset *preset;
 	int pipe = hdmi->control.module;
 	u32 input = 0;
+	int err;
 
 	pr_debug("%s pipe.%d\n", __func__, pipe);
 
@@ -913,7 +921,9 @@ static int hdmi_ops_enable(struct nx_drm_display *display)
 	pr_debug("%s %s\n", __func__, preset->mode.name);
 
 	/* HDMI setup */
-	hdmi_reset(res->sub_resets, res->num_sub_resets);
+	err = hdmi_reset(res->sub_resets, res->num_sub_resets);
+	if (err < 0)
+		return -EINVAL;
 
 	hdmi_phy_set(conf, HDMI_PHY_TABLE_SIZE);
 
