@@ -1023,6 +1023,7 @@ static int plane_create(struct drm_device *drm,
 	struct nx_top_plane *top;
 	struct nx_plane_layer *layer;
 	struct plane_format_type *format;
+	int ret = 0;
 
 	layer = kzalloc(sizeof(*layer), GFP_KERNEL);
 	if (!layer)
@@ -1037,8 +1038,11 @@ static int plane_create(struct drm_device *drm,
 				NX_PLANE_TYPE_VIDEO : 0;
 	layer->color.alpha = layer->type & NX_PLANE_TYPE_VIDEO ? 15 : 0;
 
-	sprintf(layer->name, "%d-%s%d", top->module,
+	ret = snprintf(layer->name, 16, "%d-%s%d", top->module,
 		layer->type & NX_PLANE_TYPE_VIDEO ? "vid" : "rgb", plane_num);
+
+	if (ret < 0)
+		return -EINVAL;
 
 	list_add_tail(&layer->list, &top->plane_list);
 	format = &plane_formats[layer->type & NX_PLANE_TYPE_VIDEO ? 1 : 0];
