@@ -95,11 +95,12 @@ static int lvds_ops_prepare(struct nx_drm_display *display)
 		return 0;
 	}
 #endif
-	if (lvds) {
-		format = lvds->lvds_format;
-		voltage = lvds->voltage_level;
+	if (!lvds) {
+		return -EINVAL;
 	}
 
+	format = lvds->lvds_format;
+	voltage = lvds->voltage_level;
 	pr_debug("%s: format: %d\n", __func__, format);
 
 	/*
