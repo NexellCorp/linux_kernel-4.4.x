@@ -514,7 +514,7 @@ u32 nx_mlc_get_extended_color(u32 module_index, u32 color,
 	u32 bp[3] = {
 		0,
 	};
-	u32 blank = 0;
+	int blank = 0;
 	u32 fill = 0;
 	u32 i = 0;
 
