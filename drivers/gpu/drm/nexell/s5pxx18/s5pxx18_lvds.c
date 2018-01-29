@@ -26,12 +26,16 @@
 
 #define	DEF_VOLTAGE_LEVEL	(0x20)
 
-static void lvds_phy_reset(struct reset_control *rsc[], int num)
+static int lvds_phy_reset(struct reset_control *rsc[], int num)
 {
 	int count = num;
 	int i;
 
-	pr_debug("%s: resets %d\n", __func__, num);
+	if (num < 0) {
+		pr_err("%s: resets num (currently %d) must be bigger than 0\n",
+				__func__, num);
+		return -EINVAL;
+	}
 
 	for (i = 0; count > i; i++)
 		reset_control_assert(rsc[i]);
@@ -40,6 +44,8 @@ static void lvds_phy_reset(struct reset_control *rsc[], int num)
 
 	for (i = 0; count > i; i++)
 		reset_control_deassert(rsc[i]);
+
+	return 0;
 }
 
 static int lvds_ops_open(struct nx_drm_display *display, int pipe)
@@ -65,6 +71,7 @@ static int lvds_ops_prepare(struct nx_drm_display *display)
 	int clkid = NX_CLOCK_LVDS;
 	u32 voltage = DEF_VOLTAGE_LEVEL;
 	u32 val;
+	int err;
 
 	/*
 	 *-------- predefined type.
@@ -238,7 +245,9 @@ static int lvds_ops_prepare(struct nx_drm_display *display)
 	/*
 	 * LVDS PHY Reset, make sure last.
 	 */
-	lvds_phy_reset(res->sub_resets, res->num_sub_resets);
+	err = lvds_phy_reset(res->sub_resets, res->num_sub_resets);
+	if (err < 0)
+		return -EINVAL;
 
 	return 0;
 }
