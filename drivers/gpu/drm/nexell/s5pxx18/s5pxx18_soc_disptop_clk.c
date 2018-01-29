@@ -80,6 +80,7 @@ void nx_disp_top_clkgen_set_clock_bclk_mode(u32 module_index,
 	switch (mode) {
 	case nx_bclkmode_disable:
 		clkmode = 0;
+		break;
 	case nx_bclkmode_dynamic:
 		clkmode = 2;
 		break;
