@@ -225,7 +225,7 @@ static int s6e8fa0_get_brightness(struct backlight_device *bl_dev)
 static int s6e8fa0_set_brightness(struct backlight_device *bl_dev)
 {
 	struct s6e8fa0 *ctx = (struct s6e8fa0 *)bl_get_data(bl_dev);
-	unsigned int brightness = bl_dev->props.brightness;
+	int brightness = bl_dev->props.brightness;
 	/* FIXME: MIPI_DSI_DCS_SHORT_WRITE_PARAM is not working properly, the
 	 * panel is turned on from Power key source.
 	 */
