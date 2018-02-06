@@ -1084,6 +1084,9 @@ static int nexell_pinctrl_probe(struct platform_device *pdev)
 		bank->irq = irq;
 	}
 
+	if (ctrl->base_init)
+		ctrl->base_init(drvdata);
+
 	ret = nexell_gpiolib_register(pdev, drvdata);
 	if (ret)
 		return ret;
@@ -1094,8 +1097,6 @@ static int nexell_pinctrl_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	if (ctrl->base_init)
-		ctrl->base_init(drvdata);
 	if (ctrl->gpio_irq_init)
 		ctrl->gpio_irq_init(drvdata);
 	if (ctrl->alive_irq_init)
