@@ -23,15 +23,15 @@
 		pinctrl@C0010000 {
 			bt_wlan_1p8: bt-wlan-1p8 {
 				nexell,pins = "gpioa-18";
-				nexell,pin-function = <0>;
-				nexell,pin-pull = <2>;
-				nexell,pin-strength = <0>;
+				nexell,pin-function = <NX_PIN_FUNC0>;
+				nexell,pin-pull = <NX_PIN_PULL_NONE>;
+				nexell,pin-strength = <NX_PIN_STR0>;
 			};
 			wlan_2p2: wlan-2p2 {
 				nexell,pins = "gpiob-14";
-				nexell,pin-function = <2>;
-				nexell,pin-pull = <2>;
-				nexell,pin-strength = <0>;
+				nexell,pin-function = <NX_PIN_FUNC2>;
+				nexell,pin-pull = <NX_PIN_PULL_NONE>;
+				nexell,pin-strength = <NX_PIN_STR0>;
 			};
 		};
 	};
