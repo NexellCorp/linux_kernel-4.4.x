@@ -42,13 +42,16 @@ Nexell's pin configuration nodes act as a container for an arbitrary number of
 subnodes. Each of these subnodes represents some desired configuration for a
 pin, a group, or a list of pins or groups. This configuration can include the
 mux function to select on those pin(s)/group(s), and various pin configuration
-parameters.
+parameters. Values can be changed to macro string, and this is defined in
+(include/dt-bindings/pinctrl/nexell.h)
 
   Child nodes must be set at least one of the following settings:
   - nexell,pins = Select pins for using this function.
   - nexell,pin-function = Select the function for use in a selected pin.
   - nexell,pin-pull = Pull up/down configuration.
   - nexell,pin-strength = Drive strength configuration.
+  - nexell,pin-dir = GPIO direction configuration(Input/Output).
+  - nexell,pin-val = GPIO value configuration(High/Low).
 
   Valid values for nexell,pins are:
      "gpioX-N" : X in {A,B,C,D,E}, N in {0-31}
@@ -56,33 +59,56 @@ parameters.
      "N"       : N in {0-3}.
                  This setting means that the value is different for each pin.
                  Please refer to datasheet.
+		- Value to Macro
+			0 - NX_PIN_FUNC0
+			1 - NX_PIN_FUNC1
+			2 - NX_PIN_FUNC2
+			3 - NX_PIN_FUNC3
   Valid values for nexell,pin-pull are:
      "N"       : 0 - Down, 1 - Up, 2 - Off
+		- Value to Macro
+			0 - NX_PIN_PULL_DOWN
+			1 - NX_PIN_PULL_UP
+			2 - NX_PIN_PULL_NONE
   Valid values for nexell,pin-strength are:
      "N"       : 0,1,2,3
-
+		- Value to Macro
+			0 - NX_PIN_STR0
+			1 - NX_PIN_STR1
+			2 - NX_PIN_STR2
+			3 - NX_PIN_STR3
+  Valid value for nexell,pin-dir are:
+     "N"       : 0,1
+		- Value to Macro
+			0 - NX_GPIO_INPUT
+			1 - NX_GPIO_OUTPUT
+  Valid value for nexell,pin-val are:
+     "N"       : 0,1
+		- Value to Macro
+			0 - NX_GPIO_LOW
+			1 - NX_GPIO_HIGH
 
 Example:
   - pin settings
 	gmac_txd: gmac-txd {
 		nexell,pins = "gpioe-7", "gpioe-8", "gpioe-9", "gpioe-10";
-		nexell,pin-function = <1>;
-		nexell,pin-pull = <2>;
-		nexell,pin-strength = <3>;
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR3>;
 	};
 
 	gmac_rxd: gmac-rxd {
 		nexell,pins = "gpioe-14", "gpioe-15", "gpioe-16", "gpioe-17";
-		nexell,pin-function = <1>;
-		nexell,pin-pull = <2>;
-		nexell,pin-strength = <3>;
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR3>;
 	};
 
 	gmac_txen: gmac-txen {
 		nexell,pins = "gpioe-11";
-		nexell,pin-function = <1>;
-		nexell,pin-pull = <2>;
-		nexell,pin-strength = <3>;
+		nexell,pin-function = <NX_PIN_FUNC1>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+		nexell,pin-strength = <NX_PIN_STR3>;
 	};
 
   - used by client devices
