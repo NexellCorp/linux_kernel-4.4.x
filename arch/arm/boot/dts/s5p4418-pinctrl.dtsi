@@ -14,6 +14,33 @@
 
 #include <dt-bindings/pinctrl/nexell.h>
 
+#define PIN_CFG(_pin, _func, _pull, _str)			\
+	_pin {							\
+		nexell,pins = #_pin;				\
+		nexell,pin-function = <NX_PIN_ ##_func>;	\
+		nexell,pin-pull = <NX_PIN_PULL ##_pull>;	\
+		nexell,pin-strength = <NX_PIN_ ##_str>;		\
+	}
+
+#define PIN_IN(_pin, _func, _pull, _str)			\
+	_pin {							\
+		nexell,pins = #_pin;				\
+		nexell,pin-dir = <NX_GPIO_INPUT>;		\
+		nexell,pin-function = <NX_PIN_ ##_func>;	\
+		nexell,pin-pull = <NX_PIN_PULL_ ##_pull>;	\
+		nexell,pin-strength = <NX_PIN_ ##_str>;		\
+	}
+
+#define PIN_OUT(_pin, _val, _func, _pull, _str)			\
+	_pin {							\
+		nexell,pins = #_pin;				\
+		nexell,pin-dir = <NX_GPIO_OUTPUT>;		\
+		nexell,pin-val = <NX_GPIO_ ##_val>;		\
+		nexell,pin-function = <NX_PIN_ ##_func>;	\
+		nexell,pin-pull = <NX_PIN_PULL_ ##_pull>;	\
+		nexell,pin-strength = <NX_PIN_ ##_str>;		\
+	}
+
 pinctrl@C0010000 {
 	gpio_a: gpioa {
 		gpio-controller;
