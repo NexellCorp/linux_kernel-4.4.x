@@ -246,5 +246,5 @@
 };
 
 &spi2_bus {
-	nexell,pin-strength = <2>;
+	nexell,pin-strength = <1>;
 };
