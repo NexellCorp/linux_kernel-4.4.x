@@ -1208,7 +1208,7 @@ int vpu_enc_open_instance(struct nx_vpu_ctx *ctx)
 	struct nx_vpu_v4l2 *dev = ctx->dev;
 	struct nx_vpu_codec_inst *hInst = 0;
 	struct vpu_open_arg openArg;
-	int ret;
+	int ret = 0;
 
 	FUNC_IN();
 
@@ -1230,6 +1230,7 @@ int vpu_enc_open_instance(struct nx_vpu_ctx *ctx)
 	default:
 		NX_ErrMsg(("Invalid codec type (%x)!!!\n",
 			ctx->strm_fmt->fourcc));
+		ret = -1;
 		goto err_exit;
 	}
 	openArg.codecStd = ctx->codec_mode;
@@ -1239,6 +1240,7 @@ int vpu_enc_open_instance(struct nx_vpu_ctx *ctx)
 		4096);
 	if (ctx->instance_buf == NULL) {
 		NX_ErrMsg(("hinstance_buf allocation failed.\n"));
+		ret = -1;
 		goto err_exit;
 	}
 
