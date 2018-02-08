@@ -184,3 +184,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdmmc1_cclk &sdmmc1_cmd &sdmmc1_bus4 &cfg_wlanhostwake>;
 };
+
+&spi2_bus {
+	nexell,pin-strength = <1>;
+};
