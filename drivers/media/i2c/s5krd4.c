@@ -174,7 +174,7 @@ static int sensor_rd4_init(struct v4l2_subdev *subdev, u32 val)
 
 	dev_info(&client->dev, "%s start\n", __func__);
 
-	sensor_rd4_read_reg(client, 0x3052, &id);
+	ret = sensor_rd4_read_reg(client, 0x3052, &id);
 	if (ret < 0) {
 		dev_err(&client->dev, "failed to read id\n");
 		goto p_err;
