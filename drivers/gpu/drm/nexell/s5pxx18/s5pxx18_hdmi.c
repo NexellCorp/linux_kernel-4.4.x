@@ -74,9 +74,9 @@ static int hdmi_reset(struct reset_control *rsc[], int num)
 	int i;
 
 	pr_debug("%s: resets %d\n", __func__, num);
-	if (num < 0) {
-		pr_err("%s: resets num (currently %d) \
-				must be bigger that 0\n", __func__, num);
+	if (num <= 0) {
+		pr_err("%s: resets num (currently %d) must be bigger than 0\n",
+		       __func__, num);
 		return -EINVAL;
 	}
 
