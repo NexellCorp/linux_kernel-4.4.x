@@ -186,6 +186,44 @@
 		};
 
 		pinctrl@C0010000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&initial>;
+
+			initial: initial-state {
+				/* External GPIO */
+				PIN_OUT(gpioa-0, LOW, FUNC0, NONE, STR0);
+				PIN_OUT(gpioa-14, LOW, FUNC0, NONE, STR0);
+				PIN_OUT(gpioa-25, LOW, FUNC0, NONE, STR0);
+				PIN_OUT(gpioa-26, LOW, FUNC0, NONE, STR0);
+				PIN_OUT(gpioa-27, LOW, FUNC0, NONE, STR0);
+				PIN_OUT(gpiob-9, LOW, FUNC0, NONE, STR0);
+				PIN_OUT(gpiob-14, LOW, FUNC2, NONE, STR0);
+				PIN_OUT(gpioe-0, LOW, FUNC0, NONE, STR0);
+				PIN_OUT(gpioe-1, LOW, FUNC0, NONE, STR0);
+				PIN_OUT(gpioe-2, LOW, FUNC0, NONE, STR0);
+
+				/* NC */
+				PIN_OUT(gpiob-27, LOW, FUNC1, NONE, STR0);
+				PIN_OUT(gpioc-1, LOW, FUNC1, NONE, STR0);
+				PIN_OUT(gpioc-2, LOW, FUNC1, NONE, STR0);
+				PIN_OUT(gpioc-4, LOW, FUNC1, NONE, STR0);
+				PIN_OUT(gpioc-7, LOW, FUNC1, NONE, STR0);
+				PIN_OUT(gpioc-24, LOW, FUNC1, NONE, STR0);
+				PIN_OUT(gpioe-12, LOW, FUNC0, NONE, STR0);
+				PIN_OUT(gpioe-13, LOW, FUNC0, NONE, STR0);
+
+				/* Led & Switch */
+				PIN_OUT(gpioa-28, LOW, FUNC0, NONE, STR0);
+				PIN_IN(gpioa-30, FUNC0, NONE, STR0);
+				PIN_IN(gpiob-0, FUNC0, NONE, STR0);
+				PIN_OUT(gpiob-6, LOW, FUNC0, NONE, STR0);
+
+				/* Etc */
+				PIN_IN(gpioa-10, FUNC0, NONE, STR0);
+				PIN_IN(gpioa-11, FUNC0, NONE, STR0);
+				PIN_IN(gpiod-8, FUNC0, NONE, STR0);
+			};
+
 			key_pwr:key_pwr {
 				nexell,pins = "alive-1";
 				nexell,pin-function = <NX_PIN_FUNC0>;
