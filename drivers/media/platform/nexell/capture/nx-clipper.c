@@ -977,11 +977,12 @@ static irqreturn_t nx_clipper_irq_handler(void *data)
 				bool is_mipi = me->interface_type ==
 					NX_CAPTURE_INTERFACE_MIPI_CSI;
 
-				nx_vip_stop(me->module, VIP_CLIPPER);
-				if (is_mipi)
-					nx_mipi_csi_set_enable(0, 0);
-				nx_vip_reset_fifo(me->module);
-				me->buffer_underrun = true;
+				if (!me->buffer_underrun) {
+					nx_vip_pause(me->module, VIP_CLIPPER);
+					if (is_mipi && !nx_vip_is_running(me->module, VIP_DECIMATOR))
+						nx_mipi_csi_set_enable(0, 0);
+					me->buffer_underrun = true;
+				}
 			}
 
 			if (done_buf && done_buf->cb_buf_done) {
@@ -1022,12 +1023,11 @@ static int clipper_buffer_queue(struct nx_video_buffer *buf, void *data)
 	if (me->buffer_underrun) {
 		bool is_mipi = me->interface_type ==
 			NX_CAPTURE_INTERFACE_MIPI_CSI;
-
-		me->buffer_underrun = false;
-		if (is_mipi)
+		if (is_mipi && !nx_vip_is_running(me->module, VIP_DECIMATOR))
 			nx_mipi_csi_set_enable(0, 1);
 		update_buffer(me);
 		nx_vip_run(me->module, VIP_CLIPPER);
+		me->buffer_underrun = false;
 	}
 	return 0;
 }
@@ -1221,7 +1221,8 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 
 				NX_ATOMIC_CLEAR_MASK(STATE_MEM_STOPPING,
 						     &me->state);
-			}
+			} else
+				nx_vip_stop(module, VIP_CLIPPER);
 			me->buffer_underrun = false;
 			unregister_irq_handler(me);
 			nx_video_clear_buffer(&me->vbuf_obj);
@@ -1237,6 +1238,7 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 #else
 		if (NX_ATOMIC_READ(&me->state) & STATE_CLIP_RUNNING) {
 #endif
+		if (!nx_vip_is_running(me->module, VIP_DECIMATOR)) {
 			v4l2_subdev_call(remote, video, s_stream, 0);
 			enable_sensor_power(me, false);
 			NX_ATOMIC_CLEAR_MASK(STATE_CLIP_RUNNING, &me->state);
@@ -1245,7 +1247,7 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 			nx_clipper_qos_update(NX_BUS_CLK_IDLE_KHZ);
 			nx_clipper_qos_cpu_online_update(-1);
 #endif
-
+		}
 #ifndef CONFIG_VIDEO_NEXELL_CLIPPER
 		}
 #endif
