@@ -122,9 +122,11 @@ static irqreturn_t nx_decimator_irq_handler(void *data)
 		if (buf_count > 1) {
 			update_buffer(me);
 		} else {
-			pr_warn("[%s] under run\n", __func__);
-			nx_vip_stop(me->module, VIP_DECIMATOR);
-			me->buffer_underrun = true;
+			if (!me->buffer_underrun) {
+				pr_warn("[%s] under run\n", __func__);
+				nx_vip_pause(me->module, VIP_DECIMATOR);
+				me->buffer_underrun = true;
+			}
 		}
 		if (done && done->cb_buf_done) {
 			done->consumer_index++;
@@ -162,9 +164,9 @@ static int decimator_buffer_queue(struct nx_video_buffer *buf, void *data)
 
 	if (me->buffer_underrun) {
 		pr_debug("%s: rerun vip\n", __func__);
-		me->buffer_underrun = false;
 		update_buffer(me);
 		nx_vip_run(me->module, VIP_DECIMATOR);
+		me->buffer_underrun = false;
 	}
 	return 0;
 }
@@ -235,6 +237,7 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 		return -ENODEV;
 	}
 
+	pr_debug("[%s] (%s)\n", __func__, (enable) ? "start":"stop");
 	ret = down_interruptible(&me->s_stream_sem);
 	if (enable) {
 		if (NX_ATOMIC_READ(&me->state) & STATE_STOPPING) {
@@ -253,11 +256,9 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 		}
 		if (!(NX_ATOMIC_READ(&me->state) & STATE_RUNNING)) {
 			struct v4l2_crop crop;
-
 			hostdata_back = v4l2_get_subdev_hostdata(remote);
 			v4l2_set_subdev_hostdata(remote, NX_DECIMATOR_DEV_NAME);
-			if (!nx_vip_is_running(me->module, VIP_CLIPPER))
-				ret = v4l2_subdev_call(remote, video, s_stream, 1);
+			ret = v4l2_subdev_call(remote, video, s_stream, 1);
 			v4l2_set_subdev_hostdata(remote, hostdata_back);
 			if (ret) {
 				WARN_ON(1);
@@ -293,7 +294,8 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 
 				NX_ATOMIC_CLEAR_MASK(STATE_STOPPING,
 						     &me->state);
-			}
+			} else
+				nx_vip_stop(module, VIP_DECIMATOR);
 
 			me->buffer_underrun = false;
 			unregister_irq_handler(me);
@@ -390,18 +392,7 @@ static int nx_decimator_set_fmt(struct v4l2_subdev *sd,
 	me->height = format->format.height;
 
 	format->pad = 1;
-	if (!nx_vip_is_running(me->module, VIP_CLIPPER))
-		ret = v4l2_subdev_call(remote, pad, set_fmt, NULL, format);
-	else {
-		f.pad = format->pad;
-		f.which = format->which;
-		ret = v4l2_subdev_call(remote, pad, get_fmt, NULL, &f);
-		if ((!ret) && ((f.format.width != me->width) ||
-					(f.format.height != me->height))) {
-				pr_err("[%s] format mismatch\n", __func__);
-				ret = -EINVAL;
-		}
-	}
+	ret = v4l2_subdev_call(remote, pad, set_fmt, NULL, format);
 	return ret;
 }
 
