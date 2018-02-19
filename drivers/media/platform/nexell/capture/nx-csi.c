@@ -176,6 +176,14 @@ enum {
 	STATE_RUNNING = (1 << 0),
 };
 
+enum {
+	HSSETTLE_VGA = 0,
+	HSSETTLE_HD,
+	HSSETTLE_FHD,
+	HSSETTLE_5M,
+	HSSETTLE_MAX,
+};
+
 struct nx_csi {
 	u32 module;
 	void *base;
@@ -189,7 +197,7 @@ struct nx_csi {
 	u32 swap_clocklane;
 	u32 swap_datalane;
 	u32 pllval;
-	u32 hssettle;
+	u32 hssettle[HSSETTLE_MAX];
 
 	int irq;
 	struct reset_control *rst_mipi;
@@ -362,6 +370,24 @@ static void nx_mipi_set_base_address(u32 module_index, void *base_address)
 	__g_pregister[module_index] =
 		(struct nx_mipi_register_set *)base_address;
 }
+static int nx_mipi_find_hssettle(struct nx_csi *me)
+{
+	int ret;
+
+	if (me->width <= 640 && me->height <= 480)
+		ret = me->hssettle[HSSETTLE_VGA];
+	else if (me->width <= 1280 && me->height <= 720)
+		ret = me->hssettle[HSSETTLE_HD];
+	else if (me->width <= 1920 && me->height <= 1080)
+		ret = me->hssettle[HSSETTLE_FHD];
+	else
+		ret = me->hssettle[HSSETTLE_5M];
+
+	dev_info(me->dev, "hssettle found(%dx%d) = %d\n",
+			me->width, me->height, ret);
+
+	return ret;
+}
 
 static int nx_mipi_open_module(struct nx_csi *me)
 {
@@ -373,7 +399,7 @@ static int nx_mipi_open_module(struct nx_csi *me)
 	pregister = __g_pregister[module_index];
 
 	write_reg_wrapper(0, &pregister->csis_dphyctrl_1);
-	write_reg_wrapper(me->hssettle << CSIS_DPHYCTRL_HSSETTLE,
+	write_reg_wrapper(nx_mipi_find_hssettle(me) << CSIS_DPHYCTRL_HSSETTLE,
 			  &pregister->csis_dphyctrl);
 
 	return true;
@@ -672,6 +698,16 @@ static void nx_mipi_csi_software_reset(u32 module_index)
 		 (1 << CSIS_CTRL_SW_RST));
 }
 
+bool nx_mipi_csi_get_enable(u32 module_index)
+{
+	register struct nx_mipi_register_set *pregister;
+	u32 data;
+
+	pregister = __g_pregister[module_index];
+	read_reg_wrapper(&data, &pregister->csis_control);
+	return (data & (1 << CSIS_CTRL_CSI_EN));
+}
+
 void nx_mipi_csi_set_enable(u32 module_index, int enable)
 {
 	register struct nx_mipi_register_set *pregister;
@@ -773,8 +809,6 @@ static void nx_csi_run(struct nx_csi *me)
 	u32 module = me->module;
 	u32 pms;
 	u32 bandctl;
-	u32 val = 0;
-	register struct nx_mipi_register_set *pregister;
 
 	clk_prepare_enable(me->clk);
 	reset_control_assert(me->rst_mipi);
@@ -1018,20 +1052,25 @@ static int nx_csi_s_stream(struct v4l2_subdev *sd, int enable)
 
 	ret = down_interruptible(&me->s_stream_sem);
 
-	if (enable && !(NX_ATOMIC_READ(&me->state) & STATE_RUNNING)) {
-		ret = v4l2_subdev_call(remote_source, video, s_stream, 1);
-		if (ret) {
-			dev_err(me->dev, "failed to s_stream %d\n", enable);
-			goto UP_AND_OUT;
-		}
-		nx_csi_run(me);
-		NX_ATOMIC_SET(&me->state, STATE_RUNNING);
-	} else if (!enable && (NX_ATOMIC_READ(&me->state) & STATE_RUNNING)) {
-		nx_csi_stop(me);
-		v4l2_subdev_call(remote_source, video, s_stream, 0);
-		NX_ATOMIC_CLEAR_MASK(STATE_RUNNING, &me->state);
+	if (enable) {
+		if (!(NX_ATOMIC_READ(&me->state) & STATE_RUNNING)) {
+			ret = v4l2_subdev_call(remote_source, video, s_stream, 1);
+			if (ret) {
+				dev_err(me->dev, "failed to s_stream %d\n", enable);
+				goto UP_AND_OUT;
+			}
+			nx_csi_run(me);
+			NX_ATOMIC_SET(&me->state, STATE_RUNNING);
+		} else if (!nx_mipi_csi_get_enable(me->module))
+			nx_mipi_csi_set_enable(me->module, 1);
+	} else {
+		if (NX_ATOMIC_READ(&me->state) & STATE_RUNNING) {
+			nx_csi_stop(me);
+			v4l2_subdev_call(remote_source, video, s_stream, 0);
+			NX_ATOMIC_CLEAR_MASK(STATE_RUNNING, &me->state);
+		} else if (nx_mipi_csi_get_enable(me->module))
+			nx_mipi_csi_set_enable(me->module, 0);
 	}
-
 UP_AND_OUT:
 	up(&me->s_stream_sem);
 
@@ -1183,10 +1222,17 @@ static int nx_csi_parse_dt(struct platform_device *pdev, struct nx_csi *me)
 		return -EINVAL;
 	}
 
-	if (of_property_read_u32(np, "hssettle", &me->hssettle)) {
-		dev_err(dev, "failed to get dt hssettle\n");
-		return -EINVAL;
+	if (of_property_read_u32_array(np, "hssettle", me->hssettle,
+				HSSETTLE_MAX)) {
+		if (of_property_read_u32(np, "hssettle", &me->hssettle[0])) {
+			dev_err(dev, "failed to get dt hssettle\n");
+			return -EINVAL;
+		} else
+			me->hssettle[1] = me->hssettle[2] = me->hssettle[3]
+				= me->hssettle[0];
 	}
+	dev_dbg(dev, "hssettle:%d:%d:%d:%d\n", me->hssettle[0], me->hssettle[1],
+			me->hssettle[2], me->hssettle[3]);
 
 	return 0;
 }
@@ -1232,7 +1278,6 @@ static int nx_csi_probe(struct platform_device *pdev)
 		me->irq = ret;
 		register_irq_handler(me);
 	}
-
 	return 0;
 }
 
