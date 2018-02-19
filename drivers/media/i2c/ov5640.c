@@ -27,6 +27,7 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
 
+#define artik_patch_20180126
 /* min/typical/max system clock (xclk) frequencies */
 #define OV5640_XCLK_MIN  6000000
 #define OV5640_XCLK_MAX 24000000
@@ -82,10 +83,10 @@
 enum ov5640_mode_id {
 	OV5640_MODE_QCIF_176_144 = 0,
 	OV5640_MODE_QVGA_320_240,
-	/*OV5640_MODE_VGA_640_480,*/
+	OV5640_MODE_VGA_640_480,
 	OV5640_MODE_NTSC_720_480,
 	OV5640_MODE_PAL_720_576,
-	/*OV5640_MODE_XGA_1024_768,*/
+	OV5640_MODE_XGA_1024_768,
 	OV5640_MODE_720P_1280_720,
 	OV5640_MODE_1080P_1920_1080,
 	OV5640_MODE_QSXGA_2592_1944,
@@ -588,6 +589,8 @@ static const struct reg_value ov5640_setting_30fps_VGA_640_480[] = {
 	{0x4001, 0x02, 0, 0}, {0x4004, 0x02, 0, 0}, {0x4713, 0x03, 0, 0},
 	{0x4407, 0x04, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
 	{0x3824, 0x02, 0, 0}, {0x5001, 0xa3, 0, 0}, {0x3503, 0x00, 0, 0},
+	{0x4837, 0x44, 0, 0}, {0x3824, 0x02, 0, 0}, {0x5001, 0xa3, 0, 0},
+	{0x3503, 0x00, 0, 0},
 #else
 	{0x3008, 0x42, 0, 0},
 	{0x3035, 0x14, 0, 0},
@@ -642,7 +645,7 @@ static const struct reg_value ov5640_setting_15fps_VGA_640_480[] = {
 	{0x3a0d, 0x04, 0, 0}, {0x3a14, 0x03, 0, 0}, {0x3a15, 0xd8, 0, 0},
 	{0x4001, 0x02, 0, 0}, {0x4004, 0x02, 0, 0}, {0x4713, 0x03, 0, 0},
 	{0x4407, 0x04, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
-	{0x3824, 0x02, 0, 0}, {0x5001, 0xa3, 0, 0},
+	{0x4837, 0x44, 0, 0}, {0x3824, 0x02, 0, 0}, {0x5001, 0xa3, 0, 0},
 };
 
 static const struct reg_value ov5640_setting_30fps_XGA_1024_768[] = {
@@ -994,7 +997,7 @@ static const struct reg_value ov5640_setting_15fps_QSXGA_2592_1944[] = {
 	{0x3a0d, 0x04, 0, 0}, {0x3a14, 0x03, 0, 0}, {0x3a15, 0xd8, 0, 0},
 	{0x4001, 0x02, 0, 0}, {0x4004, 0x06, 0, 0}, {0x4713, 0x03, 0, 0},
 	{0x4407, 0x04, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
-	{0x3824, 0x02, 0, 0}, {0x5001, 0x83, 0, 70},
+	{0x3824, 0x02, 0, 0}, {0x5001, 0x83, 0, 70/*0*/},
 };
 
 /* power-on sensor init reg table */
@@ -1013,18 +1016,18 @@ ov5640_mode_data[OV5640_NUM_FRAMERATES][OV5640_NUM_MODES] = {
 		{OV5640_MODE_QVGA_320_240, SUBSAMPLING, 320,  240,
 		 ov5640_setting_15fps_QVGA_320_240,
 		 ARRAY_SIZE(ov5640_setting_15fps_QVGA_320_240)},
-		/*{OV5640_MODE_VGA_640_480, SUBSAMPLING, 640,  480,
+		{OV5640_MODE_VGA_640_480, SUBSAMPLING, 640,  480,
 		 ov5640_setting_15fps_VGA_640_480,
-		 ARRAY_SIZE(ov5640_setting_15fps_VGA_640_480)},*/
+		 ARRAY_SIZE(ov5640_setting_15fps_VGA_640_480)},
 		{OV5640_MODE_NTSC_720_480, SUBSAMPLING, 720, 480,
 		 ov5640_setting_15fps_NTSC_720_480,
 		 ARRAY_SIZE(ov5640_setting_15fps_NTSC_720_480)},
 		{OV5640_MODE_PAL_720_576, SUBSAMPLING, 720, 576,
 		 ov5640_setting_15fps_PAL_720_576,
 		 ARRAY_SIZE(ov5640_setting_15fps_PAL_720_576)},
-		/*{OV5640_MODE_XGA_1024_768, SUBSAMPLING, 1024, 768,
+		{OV5640_MODE_XGA_1024_768, SUBSAMPLING, 1024, 768,
 		 ov5640_setting_15fps_XGA_1024_768,
-		 ARRAY_SIZE(ov5640_setting_15fps_XGA_1024_768)},*/
+		 ARRAY_SIZE(ov5640_setting_15fps_XGA_1024_768)},
 		{OV5640_MODE_720P_1280_720, SUBSAMPLING, 1280, 720,
 		 ov5640_setting_15fps_720P_1280_720,
 		 ARRAY_SIZE(ov5640_setting_15fps_720P_1280_720)},
@@ -1041,18 +1044,18 @@ ov5640_mode_data[OV5640_NUM_FRAMERATES][OV5640_NUM_MODES] = {
 		{OV5640_MODE_QVGA_320_240, SUBSAMPLING, 320,  240,
 		 ov5640_setting_30fps_QVGA_320_240,
 		 ARRAY_SIZE(ov5640_setting_30fps_QVGA_320_240)},
-		/*{OV5640_MODE_VGA_640_480, SUBSAMPLING, 640,  480,
+		{OV5640_MODE_VGA_640_480, SUBSAMPLING, 640,  480,
 		 ov5640_setting_30fps_VGA_640_480,
-		 ARRAY_SIZE(ov5640_setting_30fps_VGA_640_480)},*/
+		 ARRAY_SIZE(ov5640_setting_30fps_VGA_640_480)},
 		{OV5640_MODE_NTSC_720_480, SUBSAMPLING, 720, 480,
 		 ov5640_setting_30fps_NTSC_720_480,
 		 ARRAY_SIZE(ov5640_setting_30fps_NTSC_720_480)},
 		{OV5640_MODE_PAL_720_576, SUBSAMPLING, 720, 576,
 		 ov5640_setting_30fps_PAL_720_576,
 		 ARRAY_SIZE(ov5640_setting_30fps_PAL_720_576)},
-		/*{OV5640_MODE_XGA_1024_768, SUBSAMPLING, 1024, 768,
+		{OV5640_MODE_XGA_1024_768, SUBSAMPLING, 1024, 768,
 		 ov5640_setting_30fps_XGA_1024_768,
-		 ARRAY_SIZE(ov5640_setting_30fps_XGA_1024_768)},*/
+		 ARRAY_SIZE(ov5640_setting_30fps_XGA_1024_768)},
 		{OV5640_MODE_720P_1280_720, SUBSAMPLING, 1280, 720,
 		 ov5640_setting_30fps_720P_1280_720,
 		 ARRAY_SIZE(ov5640_setting_30fps_720P_1280_720)},
@@ -1565,7 +1568,7 @@ ov5640_find_mode(struct ov5640_dev *sensor, enum ov5640_frame_rate fr,
 
 	dev_info(dev,"%s %dx%d fr=%d\n", __func__, width, height, fr);
 
-        if (width > 1920 && height > 1080)
+        if (width >= 1920 && height >= 1080)
                 fr = OV5640_15_FPS;
 
 	for (i = OV5640_NUM_MODES - 1; i >= 0; i--) {
@@ -1809,6 +1812,12 @@ static int ov5640_set_mode(struct ov5640_dev *sensor,
 		 * go through exposure calucation
 		 */
 		ret = ov5640_set_mode_exposure_calc(sensor, mode);
+#ifdef artik_patch_20180126
+		if (ret < 0)
+			return 0;
+	}
+	ret = ov5640_set_mode_direct(sensor, mode);
+#else
 	} else {
 		/*
 		 * change inside subsampling or scaling
@@ -1816,6 +1825,7 @@ static int ov5640_set_mode(struct ov5640_dev *sensor,
 		 */
 		ret = ov5640_set_mode_direct(sensor, mode);
 	}
+#endif
 	if (ret < 0) {
 		dev_info(dev,"%s set mode fail:%d\n", __func__, ret);
 		/*return ret;*/
@@ -1991,6 +2001,8 @@ static int ov5640_try_frame_interval(struct ov5640_dev *sensor,
 
 	minfps = ov5640_framerates[OV5640_15_FPS];
 	maxfps = ov5640_framerates[OV5640_30_FPS];
+	if (width >= 1920 && height >= 1080)
+		maxfps = ov5640_framerates[OV5640_15_FPS];
 
 	if (fi->numerator == 0) {
 		fi->denominator = maxfps;
@@ -2070,6 +2082,18 @@ static int ov5640_try_fmt_internal(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static bool ov5640_check_fmt(struct ov5640_dev *sensor,
+		struct v4l2_subdev_format *format)
+{
+	bool ret = false;
+
+	if ((sensor->fmt.width == format->format.width) &&
+			(sensor->fmt.height == format->format.height))
+		ret = true;
+
+	return ret;
+}
+
 static int ov5640_set_fmt(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_pad_config *cfg,
 			  struct v4l2_subdev_format *format)
@@ -2084,9 +2108,11 @@ static int ov5640_set_fmt(struct v4l2_subdev *sd,
 #endif
 	if (sensor->streaming) {
 		dev_info(dev, "%s stream is streaming\n", __func__);
+		if (ov5640_check_fmt(sensor, format))
+			return 0;
+		dev_err(dev, "%s : failed to set format\n", __func__);
 		ret = -EBUSY;
 		goto out;
-		//return 0;
 	}
 	mutex_lock(&sensor->lock);
 
@@ -2225,6 +2251,10 @@ static int ov5640_set_ctrl_exposure(struct ov5640_dev *sensor, int exp)
 
 		if (ctrls->exposure->val < max_exp)
 			ret = ov5640_set_exposure(sensor, ctrls->exposure->val);
+#ifdef artik_patch_20180126
+		else
+			ret = 0;
+#endif
 	}
 
 	return ret;
@@ -2558,6 +2588,10 @@ static int ov5640_s_stream(struct v4l2_subdev *sd, int enable)
 				goto out;
 			}
 		}
+#ifdef artik_patch_20180126
+		if (enable)
+			msleep(200);
+#endif
 		ret = ov5640_set_stream(sensor, enable);
 		if (!ret)
 			sensor->streaming = enable;
@@ -2624,17 +2658,14 @@ static int ov5640_probe(struct i2c_client *client,
 
 	sensor->i2c_client = client;
 	sensor->fmt.code = MEDIA_BUS_FMT_UYVY8_2X8;
-	sensor->fmt.width = 1280;
-	sensor->fmt.height = 720;
-	/*sensor->fmt.width = 640;
-	sensor->fmt.height = 480;*/
+	sensor->fmt.width = 640;
+	sensor->fmt.height = 480;
 	sensor->fmt.field = V4L2_FIELD_NONE;
 	sensor->frame_interval.numerator = 1;
 	sensor->frame_interval.denominator = ov5640_framerates[OV5640_30_FPS];
 	sensor->current_fr = OV5640_30_FPS;
 	sensor->current_mode =
-		&ov5640_mode_data[OV5640_30_FPS][OV5640_MODE_720P_1280_720];
-		/*&ov5640_mode_data[OV5640_30_FPS][OV5640_MODE_VGA_640_480];*/
+		&ov5640_mode_data[OV5640_30_FPS][OV5640_MODE_VGA_640_480];
 	sensor->pending_mode_change = true;
 
 	sensor->ae_target = 52;
