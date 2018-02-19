@@ -458,7 +458,8 @@
 &mipi_csi {
 	data_lane = <2>;
 	pllval = <750>;
-	hssettle = <2>;
+	/*hssettle = <2 7 15 7>;*/
+	hssettle = <2 2 2 2>;
 	interrupts = <IRQ_MIPI>;
 	status = "okay";
 };
