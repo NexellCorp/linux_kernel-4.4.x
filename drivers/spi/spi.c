@@ -1129,12 +1129,14 @@ static void __spi_pump_messages(struct spi_master *master, bool in_kthread)
 		master->busy = true;
 	spin_unlock_irqrestore(&master->queue_lock, flags);
 
+	mutex_lock(&master->io_mutex);
+
 	if (!was_busy && master->auto_runtime_pm) {
 		ret = pm_runtime_get_sync(master->dev.parent);
 		if (ret < 0) {
 			dev_err(&master->dev, "Failed to power device: %d\n",
 				ret);
-			return;
+			goto out;
 		}
 	}
 
@@ -1149,7 +1151,7 @@ static void __spi_pump_messages(struct spi_master *master, bool in_kthread)
 
 			if (master->auto_runtime_pm)
 				pm_runtime_put(master->dev.parent);
-			return;
+			goto out;
 		}
 	}
 
@@ -1162,7 +1164,7 @@ static void __spi_pump_messages(struct spi_master *master, bool in_kthread)
 				"failed to prepare message: %d\n", ret);
 			master->cur_msg->status = ret;
 			spi_finalize_current_message(master);
-			return;
+			goto out;
 		}
 		master->cur_msg_prepared = true;
 	}
@@ -1171,15 +1173,16 @@ static void __spi_pump_messages(struct spi_master *master, bool in_kthread)
 	if (ret) {
 		master->cur_msg->status = ret;
 		spi_finalize_current_message(master);
-		return;
+		goto out;
 	}
 
 	ret = master->transfer_one_message(master, master->cur_msg);
 	if (ret) {
 		dev_err(&master->dev,
 			"failed to transfer one message from queue\n");
-		return;
 	}
+out:
+	mutex_unlock(&master->io_mutex);
 }
 
 /**
@@ -1832,6 +1835,7 @@ int spi_register_master(struct spi_master *master)
 	spin_lock_init(&master->queue_lock);
 	spin_lock_init(&master->bus_lock_spinlock);
 	mutex_init(&master->bus_lock_mutex);
+	mutex_init(&master->io_mutex);
 	master->bus_lock_flag = 0;
 	init_completion(&master->xfer_completion);
 	if (!master->max_dma_len)
@@ -2092,13 +2096,15 @@ int spi_setup(struct spi_device *spi)
 	if (!spi->bits_per_word)
 		spi->bits_per_word = 8;
 
+	mutex_lock(&spi->master->io_mutex);
 	status = __spi_validate_bits_per_word(spi->master, spi->bits_per_word);
-	if (status)
+	if (status) {
+		mutex_unlock(&spi->master->io_mutex);
 		return status;
+	}
 
 	if (!spi->max_speed_hz)
 		spi->max_speed_hz = spi->master->max_speed_hz;
-
 	if (spi->master->setup)
 		status = spi->master->setup(spi);
 
@@ -2112,6 +2118,7 @@ int spi_setup(struct spi_device *spi)
 			(spi->mode & SPI_LOOP) ? "loopback, " : "",
 			spi->bits_per_word, spi->max_speed_hz,
 			status);
+	mutex_unlock(&spi->master->io_mutex);
 
 	return status;
 }
