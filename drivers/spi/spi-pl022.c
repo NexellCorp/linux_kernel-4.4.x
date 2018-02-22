@@ -2384,7 +2384,7 @@ static int pl022_resume(struct device *dev)
 		struct reset_control *rst;
 		struct reset_control *prst;
 
-		prst = devm_reset_control_get(dev, "pre-reset");
+		prst = reset_control_get(dev, "pre-reset");
 		if (IS_ERR(prst)) {
 			dev_err(dev, "failed to get pre-reset control\n");
 			return -EINVAL;
@@ -2392,13 +2392,17 @@ static int pl022_resume(struct device *dev)
 		if (reset_control_status(prst))
 			reset_control_reset(prst);
 
-		rst = devm_reset_control_get(dev, "spi-reset");
+		reset_control_put(prst);
+
+		rst = reset_control_get(dev, "spi-reset");
 		if (IS_ERR(rst)) {
 			dev_err(dev, "failed to get reset control\n");
 			return -EINVAL;
 		}
 		if (reset_control_status(rst))
 			reset_control_reset(rst);
+
+		reset_control_put(rst);
 	};
 #endif
 
