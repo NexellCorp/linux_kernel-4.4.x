@@ -129,11 +129,6 @@ static bool send_packet(char *buf, int len)
 
 long iuihid_ioctl(struct file *file,  unsigned int cmd, unsigned long arg)
 {
-	if (iui_dev == NULL) {
-		pr_debug("iui_dev is not connected\n");
-		return -ENODEV;
-	}
-
 	struct usb_interface *intf = to_usb_interface(iui_dev->dev.parent);
 	struct usb_device *dev = interface_to_usbdev(intf);
 	int ret = 0;
@@ -153,6 +148,11 @@ long iuihid_ioctl(struct file *file,  unsigned int cmd, unsigned long arg)
 		int len;
 		char buf[RECV_PCK_SIZE];
 	} recv_pck;
+
+	if (iui_dev == NULL) {
+		pr_debug("iui_dev is not connected\n");
+		return -ENODEV;
+	}
 
 	pr_debug("%s(%d)\r\n", __func__, cmd);
 
@@ -198,7 +198,7 @@ long iuihid_ioctl(struct file *file,  unsigned int cmd, unsigned long arg)
 				       &recv_pck.buf[770],
 				       recv_pck.len - 768);
 			}
-			copy_to_user((void __user *)arg, &recv_pck,
+			ret = copy_to_user((void __user *)arg, &recv_pck,
 				     recv_pck.len+sizeof(recv_pck.len));
 #ifdef PACKET_DEBUG
 			pr_debug("actual_length %d\n", actual_length);
@@ -239,7 +239,7 @@ static int iuihid_probe(struct hid_device *hdev,
 {
 	struct iuihid_sc *isc;
 	int ret;
-	static const char *envp[]
+	static char *envp[]
 		= {"change@/devices/virtual/iuihid/iuihid", NULL};
 
 	isc = kzalloc(sizeof(*isc), GFP_KERNEL);
@@ -289,7 +289,7 @@ err_free:
 static void iuihid_remove(struct hid_device *hdev)
 {
 	struct iuihid_sc *isc = hid_get_drvdata(hdev);
-	static const char *envp[]
+	static char *envp[]
 		= {"change@/devices/virtual/iuihid/iuihid", NULL};
 
 	iui_dev = NULL;
