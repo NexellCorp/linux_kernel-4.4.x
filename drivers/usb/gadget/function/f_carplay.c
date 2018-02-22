@@ -1082,7 +1082,7 @@ static ssize_t iap_read(struct file *fp, char __user *buf,
 	int r = count, xfer;
 	int ret;
 
-	pr_debug("iap_read(%ld)\n", count);
+	pr_debug("iap_read(%zu)\n", count);
 	if (!_iap_dev)
 		return -ENODEV;
 
@@ -1158,7 +1158,7 @@ static ssize_t iap_write(struct file *fp, const char __user *buf,
 	int r = count, xfer;
 	int ret;
 
-	pr_debug("iap_write(%ld)\n", count);
+	pr_debug("iap_write(%zu)\n", count);
 	if (!_iap_dev)
 		return -ENODEV;
 
