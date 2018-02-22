@@ -102,8 +102,6 @@ void nx_rearcam_draw_parking_guide_line(void *mem, void *ctx,
 void nx_rearcam_draw_rgb_overlay(int width, int height, int pixelbyte,
 				int rotation, void *ctx, void *mem)
 {
-	struct nx_vendor_context *_ctx = (struct nx_vendor_context *)ctx;
-
 #if defined(CONFIG_VIDEO_NEXELL_REARCAM_SAMPLEPARKINGLINE)
 	nx_rearcam_draw_parking_guide_line(mem, ctx, width, height, pixelbyte,
 			rotation);
@@ -131,8 +129,6 @@ void *nx_rearcam_alloc_vendor_context(void *priv,
         struct device *dev)
 {
 	struct nx_vendor_context *ctx;
-	struct device_node *np = dev->of_node;
-	struct device_node *gpio_node;
 
 	ctx = kmalloc(sizeof(struct nx_vendor_context), GFP_KERNEL);
 	if (!ctx)
@@ -170,8 +166,6 @@ bool nx_rearcam_pre_turn_on(void *ctx)
 
 void nx_rearcam_post_turn_off(void *ctx)
 {
-	struct nx_vendor_context *_ctx = (struct nx_vendor_context *)ctx;
-
 	pr_debug("+++ %s ---\n", __func__);
 }
 
@@ -186,7 +180,6 @@ void nx_rearcam_free_vendor_context(void *ctx)
 
 bool nx_rearcam_decide(void *ctx)
 {
-	struct nx_vendor_context *_ctx = (struct nx_vendor_context *)ctx;
 	bool is_on = false;
 
 	pr_debug("+++ %s ---is_on:%d\n", __func__, is_on);
