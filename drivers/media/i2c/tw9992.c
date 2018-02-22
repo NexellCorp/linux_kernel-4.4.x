@@ -390,7 +390,8 @@ static int tw9992_initialize_ctrls(struct tw9992_state *me)
 	return 0;
 }
 
-static void tw9992_dump_regset(struct tw9992_regset *regset)
+static __attribute__((unused))
+void tw9992_dump_regset(struct tw9992_regset *regset)
 {
 	if ((regset->data[0] == 0x00) && (regset->data[1] == 0x2A)) {
 		if (regset->size <= 6)
