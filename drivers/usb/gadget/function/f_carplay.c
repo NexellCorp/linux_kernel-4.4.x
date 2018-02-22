@@ -1082,7 +1082,7 @@ static ssize_t iap_read(struct file *fp, char __user *buf,
 	int r = count, xfer;
 	int ret;
 
-	pr_debug("iap_read(%d)\n", count);
+	pr_debug("iap_read(%ld)\n", count);
 	if (!_iap_dev)
 		return -ENODEV;
 
@@ -1158,7 +1158,7 @@ static ssize_t iap_write(struct file *fp, const char __user *buf,
 	int r = count, xfer;
 	int ret;
 
-	pr_debug("iap_write(%d)\n", count);
+	pr_debug("iap_write(%ld)\n", count);
 	if (!_iap_dev)
 		return -ENODEV;
 
@@ -1914,7 +1914,7 @@ static void iap_function_free(struct usb_function *f)
 
 	pr_info("iap_function_free\n");
 
-	carplay = func_to_iap(f);
+	carplay = (struct f_carplay *)func_to_iap(f);
 	opts = container_of(f->fi, struct f_carplay_opts, func_inst);
 
 	misc_deregister(&iap_device);
@@ -1934,7 +1934,7 @@ static void iap_function_suspend(struct usb_function *f)
 
 	pr_debug("iap_function_suspend\n");
 
-	carplay = func_to_iap(f);
+	carplay = (struct f_carplay *)func_to_iap(f);
 	opts = container_of(f->fi, struct f_carplay_opts, func_inst);
 
 	if (dev->online) {
@@ -1972,7 +1972,7 @@ int iap_bind_config(struct usb_configuration *c)
 		return -ENOMEM;
 	}
 
-	if (!can_support_ecm(c->cdev->gadget) || !hostaddr)
+	if (!can_support_ecm(c->cdev->gadget))
 		return -EINVAL;
 
 	spin_lock_init(&dev->ncm_lock);
@@ -2141,7 +2141,6 @@ static struct usb_function *carplay_alloc(struct usb_function_instance *fi)
 {
 	struct iap_dev *dev;
 	struct f_carplay_opts	*opts;
-	int status;
 	int ret;
 	struct device_attribute *attr = android_usb_attributes;
 
@@ -2213,6 +2212,7 @@ static struct usb_function *carplay_alloc(struct usb_function_instance *fi)
 err:
 	kfree(dev);
 	pr_err("iap gadget driver failed to initialize\n");
+	return NULL;
 }
 
 
