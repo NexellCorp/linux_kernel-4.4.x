@@ -233,13 +233,13 @@ static ssize_t sys_id_show(struct device *pdev, struct device_attribute *attr,
 	return (s - buf);
 }
 
-#define	ATTR_MODE	0644
+#define	ATTRIBUTE_MODE	0644
 static struct device_attribute __guid__ =
-			__ATTR(guid, ATTR_MODE, sys_id_show, NULL);
+			__ATTR(guid, ATTRIBUTE_MODE, sys_id_show, NULL);
 static struct device_attribute __uuid__ =
-			__ATTR(uuid, ATTR_MODE, sys_id_show, NULL);
+			__ATTR(uuid, ATTRIBUTE_MODE, sys_id_show, NULL);
 static struct device_attribute __name__ =
-			__ATTR(name, ATTR_MODE, sys_id_show, NULL);
+			__ATTR(name, ATTRIBUTE_MODE, sys_id_show, NULL);
 
 static struct attribute *sys_attrs[] = {
 	&__guid__.attr,
