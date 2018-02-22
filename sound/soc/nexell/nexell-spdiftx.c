@@ -179,11 +179,12 @@ static void spdif_reset(struct device *dev,
 #ifdef CONFIG_RESET_CONTROLLER
 	struct reset_control *rst;
 
-	rst = devm_reset_control_get(dev, "spdiftx-reset");
+	rst = reset_control_get(dev, "spdiftx-reset");
 
 	if (!IS_ERR(rst)) {
 		if (reset_control_status(rst))
 			reset_control_reset(rst);
+		reset_control_put(rst);
 	}
 #endif
 	writel((1 << CON_SW_RESET_POS), (base+SPDIF_CON_OFFSET));
