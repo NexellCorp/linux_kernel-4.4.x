@@ -1981,12 +1981,13 @@ static int s3c24xx_serial_resume_noirq(struct device *dev)
 		if (ourport->info->has_reset_control) {
 			struct reset_control *rst;
 
-			rst = devm_reset_control_get(dev, "uart-reset");
+			rst = reset_control_get(dev, "uart-reset");
 			if (!rst) {
 				dev_err(dev, "failed to get reset control\n");
 				return -EINVAL;
 			}
 			reset_control_reset(rst);
+			reset_control_put(rst);
 		}
 #endif
 		/* restore IRQ mask */
