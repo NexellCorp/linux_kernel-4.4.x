@@ -270,7 +270,6 @@ EXPORT_SYMBOL_GPL(nx_vip_unregister_irq_entry);
 int nx_vip_is_running(u32 module, u32 child)
 {
 	struct nx_vip *me;
-	int ret = 0;
 
 	if (module >= NUMBER_OF_VIP_MODULE) {
 		pr_err("[nx vip] invalid module num %d\n", module);
@@ -305,9 +304,6 @@ int nx_vip_pause(u32 module, u32 child)
 {
 	struct nx_vip *me;
 	u32 status = 0;
-	int vip_enable = 0, sep_enable = 0;
-	int clipper_enable = 0, decimator_enable = 0;
-	int ret = 0;
 
 	if (module >= NUMBER_OF_VIP_MODULE) {
 		pr_err("[nx vip] invalid module num %d\n", module);
