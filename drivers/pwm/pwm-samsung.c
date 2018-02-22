@@ -908,7 +908,7 @@ static int pwm_samsung_resume(struct device *dev)
 	    of_device_is_compatible(dev->of_node, "nexell,s5p6818-pwm")) {
 #ifdef CONFIG_RESET_CONTROLLER
 		struct reset_control *rst =
-			devm_reset_control_get(dev, "pwm-reset");
+			reset_control_get(dev, "pwm-reset");
 		if (IS_ERR(rst)) {
 			dev_err(dev, "PWM failed to get reset_control\n");
 			return -EINVAL;
@@ -916,6 +916,8 @@ static int pwm_samsung_resume(struct device *dev)
 
 		if (reset_control_status(rst))
 			reset_control_reset(rst);
+
+		reset_control_put(rst);
 #endif
 		/*
 		 * patch for s5p4418/s5p6818
