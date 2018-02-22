@@ -2678,7 +2678,9 @@ static int cgroup_procs_write_permission(struct task_struct *task,
 					 struct cgroup *dst_cgrp,
 					 struct kernfs_open_file *of)
 {
+#ifndef CONFIG_ANDROID
 	const struct cred *cred = current_cred();
+#endif
 	const struct cred *tcred = get_task_cred(task);
 	int ret = 0;
 
