@@ -762,15 +762,17 @@ static int s3c2410wdt_resume(struct device *dev)
 #ifdef CONFIG_RESET_CONTROLLER
 		struct reset_control *rst;
 
-		rst = devm_reset_control_get(dev, "wdt-reset");
+		rst = reset_control_get(dev, "wdt-reset");
 		if (!IS_ERR(rst)) {
 			if (reset_control_status(rst))
 				reset_control_reset(rst);
+			reset_control_put(rst);
 		}
-		rst = devm_reset_control_get(dev, "wdt-por-reset");
+		rst = reset_control_get(dev, "wdt-por-reset");
 		if (!IS_ERR(rst)) {
 			if (reset_control_status(rst))
 				reset_control_reset(rst);
+			reset_control_put(rst);
 		}
 #endif
 	}
