@@ -275,18 +275,12 @@ static void i2s_reset(struct device *dev)
 #ifdef CONFIG_RESET_CONTROLLER
 	struct reset_control *rst;
 
-	rst = devm_reset_control_get(dev, "i2s-apb-reset");
+	rst = reset_control_get(dev, "i2s-reset");
 
 	if (!IS_ERR(rst)) {
 		if (reset_control_status(rst))
 			reset_control_reset(rst);
-	}
-
-	rst = devm_reset_control_get(dev, "i2s-reset");
-
-	if (!IS_ERR(rst)) {
-		if (reset_control_status(rst))
-			reset_control_reset(rst);
+		reset_control_put(rst);
 	}
 #endif
 }
