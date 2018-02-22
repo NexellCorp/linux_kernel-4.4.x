@@ -2301,7 +2301,6 @@ static int rt5640_i2c_probe(struct i2c_client *i2c,
 	struct rt5640_platform_data *pdata = dev_get_platdata(&i2c->dev);
 	struct rt5640_priv *rt5640;
 	int ret;
-	unsigned int val;
 
 	rt5640 = devm_kzalloc(&i2c->dev,
 				sizeof(struct rt5640_priv),
