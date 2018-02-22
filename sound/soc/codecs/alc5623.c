@@ -78,7 +78,7 @@ static inline int alc5623_reset(struct snd_soc_codec *codec)
 	return snd_soc_write(codec, ALC5623_RESET, 0);
 }
 
-static int alc5623_reg_init(struct snd_soc_codec *codec)
+static void alc5623_reg_init(struct snd_soc_codec *codec)
 {
 	struct alc5623_priv *alc5623 = snd_soc_codec_get_drvdata(codec);
 	int i;
@@ -87,6 +87,7 @@ static int alc5623_reg_init(struct snd_soc_codec *codec)
 		regmap_write(alc5623->regmap,
 			      init_list[i].reg, init_list[i].def);
 }
+
 static int amp_mixer_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
@@ -808,7 +809,8 @@ static int alc5623_mute(struct snd_soc_dai *dai, int mute)
 	(ALC5623_PWR_ADD1_SHORT_CURR_DET_EN \
 	| ALC5623_PWR_ADD1_HP_OUT_AMP)
 
-static void enable_power_depop(struct snd_soc_codec *codec)
+static __attribute__((unused))
+void enable_power_depop(struct snd_soc_codec *codec)
 {
 	struct alc5623_priv *alc5623 = snd_soc_codec_get_drvdata(codec);
 
@@ -1021,7 +1023,7 @@ static int alc5623_i2c_probe(struct i2c_client *client,
 	struct alc5623_platform_data *pdata;
 	struct alc5623_priv *alc5623;
 	struct device_node *np;
-	unsigned int vid1, vid2;
+	unsigned int vid2;
 	int ret;
 	u32 val32;
 
