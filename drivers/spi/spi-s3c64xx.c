@@ -499,7 +499,7 @@ static int wait_for_dma(struct s3c64xx_spi_driver_data *sdd,
 	if(sdd->cntrlr_info->hierarchy == SSP_SLAVE)
 		ms += 1000; /* some tolerance */
 	else
-		ms += 10;
+		ms += 100;
 	val = msecs_to_jiffies(ms) + 10;
 	val = wait_for_completion_timeout(&sdd->xfer_completion, val);
 
@@ -768,9 +768,8 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 			    && (sdd->state & RXBUSY))
 				dmaengine_terminate_all(sdd->rx_dma.ch);
 		}
-	} else {
-		flush_fifo(sdd);
 	}
+	flush_fifo(sdd);
 
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
 	nx_spi_qos_update(NX_BUS_CLK_IDLE_KHZ);
