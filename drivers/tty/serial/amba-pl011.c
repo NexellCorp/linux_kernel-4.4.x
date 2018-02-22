@@ -2436,13 +2436,15 @@ static int pl011_resume(struct device *dev)
 	if (of_device_is_compatible(dev->of_node, "nexell,pl011")) {
 		struct reset_control *rst;
 
-		rst = devm_reset_control_get(dev, "uart-reset");
+		rst = reset_control_get(dev, "uart-reset");
 		if (!rst) {
 			dev_err(dev, "failed to get reset control\n");
 			return -EINVAL;
 		}
 		if (reset_control_status(rst))
 			reset_control_reset(rst);
+
+		reset_control_put(rst);
 	};
 #endif
 
