@@ -238,7 +238,6 @@ int isdbt_hw_setting(void)
 request_isdbt_irq:
 #endif
 gpio_isdbt_rst:
-gpio_isdbt_en:
 	return err;
 }
 
