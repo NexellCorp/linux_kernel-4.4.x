@@ -357,6 +357,7 @@ static const struct component_ops panel_comp_ops = {
 	.unbind = panel_hdmi_unbind,
 };
 
+#ifdef CONFIG_DRM_FBDEV_EMULATION
 static bool __drm_fb_bound(struct drm_fb_helper *fb_helper)
 {
 	struct drm_device *dev = fb_helper->dev;
@@ -436,6 +437,7 @@ static int panel_hdmi_wait_fb_bound(struct hdmi_context *ctx)
 
 	return 0;
 }
+#endif
 
 static void panel_hdmi_hpd_work(struct work_struct *work)
 {
