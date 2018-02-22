@@ -378,7 +378,6 @@ static int nx_decimator_set_fmt(struct v4l2_subdev *sd,
 	struct v4l2_subdev *remote = get_remote_source_subdev(me);
 	/* set memory format */
 	u32 nx_mem_fmt;
-	struct v4l2_subdev_format f;
 
 	int ret = nx_vip_find_nx_mem_format(format->format.code,
 					    &nx_mem_fmt);
