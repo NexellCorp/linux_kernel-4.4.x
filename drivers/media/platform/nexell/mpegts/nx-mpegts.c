@@ -647,7 +647,7 @@ static int _set_param(struct nx_mpegts *me)
 	return 0;
 }
 
-static int _clear_param(struct nx_mpegts *me)
+static __attribute__((unused)) int _clear_param(struct nx_mpegts *me)
 {
 	int i;
 	int channel_num;
