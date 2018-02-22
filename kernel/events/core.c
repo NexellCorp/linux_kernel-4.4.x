@@ -3444,7 +3444,6 @@ static struct task_struct *
 find_lively_task_by_vpid(pid_t vpid)
 {
 	struct task_struct *task;
-	int err;
 
 	rcu_read_lock();
 	if (!vpid)
@@ -3459,10 +3458,6 @@ find_lively_task_by_vpid(pid_t vpid)
 		return ERR_PTR(-ESRCH);
 
 	return task;
-errout:
-	put_task_struct(task);
-	return ERR_PTR(err);
-
 }
 
 /*
