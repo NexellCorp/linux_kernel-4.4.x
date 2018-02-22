@@ -136,6 +136,21 @@ static int __dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
 			return ret;
 	}
 
+	if (of_device_is_compatible(hsotg->dev->of_node,
+					    "nexell,nexell-dwc2otg")) {
+#ifdef CONFIG_RESET_CONTROLLER
+			struct reset_control *rst;
+
+			rst = reset_control_get(hsotg->dev,
+						     "usbotg-reset");
+			if (!IS_ERR(rst)) {
+				if (reset_control_status(rst))
+					reset_control_reset(rst);
+				reset_control_put(rst);
+			}
+#endif
+	}
+
 	if (hsotg->uphy) {
 		ret = usb_phy_init(hsotg->uphy);
 	} else if (hsotg->plat && hsotg->plat->phy_init) {
