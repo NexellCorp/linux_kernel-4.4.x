@@ -861,8 +861,9 @@ static int nx_i2c_remove(struct platform_device *pdev)
 #ifdef CONFIG_RESET_CONTROLLER
 	struct reset_control *rst;
 
-	rst = devm_reset_control_get(&pdev->dev, "i2c-reset");
+	rst = reset_control_get(&pdev->dev, "i2c-reset");
 	reset_control_assert(rst);
+	reset_control_put(rst);
 #endif
 	clk_disable_unprepare(par->clk);
 
@@ -880,8 +881,9 @@ static int nx_i2c_suspend_noirq(struct device *dev)
 #ifdef CONFIG_RESET_CONTROLLER
 	struct reset_control *rst;
 
-	rst = devm_reset_control_get(&pdev->dev, "i2c-reset");
+	rst = reset_control_get(&pdev->dev, "i2c-reset");
 	reset_control_assert(rst);
+	reset_control_put(rst);
 #endif
 	clk_disable_unprepare(par->clk);
 	dev_dbg(&pdev->dev, "%s\n", __func__);
@@ -900,11 +902,12 @@ static int nx_i2c_resume_noirq(struct device *dev)
 	pinctrl_select_state(par->pctrl, par->pins_sda_dft);
 	pinctrl_select_state(par->pctrl, par->pins_scl_dft);
 #ifdef CONFIG_RESET_CONTROLLER
-	rst = devm_reset_control_get(&pdev->dev, "i2c-reset");
+	rst = reset_control_get(&pdev->dev, "i2c-reset");
 
 	if (!IS_ERR(rst)) {
 		if (reset_control_status(rst))
 			reset_control_reset(rst);
+		reset_control_put(rst);
 	}
 #endif
 	clk_prepare_enable(par->clk);
