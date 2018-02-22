@@ -15,6 +15,7 @@ Required properties:
 - swap_datalane	: if 1, datalane is swapped
 - pllval	: 750(750MHz) or 1000(1GHz). Internally used pll value
 - hssettle	: value for HSSETTLE field of CSIS_DPHYCTRL
+		: Need to specify four hssettle values for VGA, HD, FHD, and 5M
 - status	: default is "disabled". when using, set to "okay"
 
 Example:
@@ -31,7 +32,7 @@ Example:
 		swap_clocklane = <0>;
 		swap_datalane = <0>;
 		pllval = <750>;
-		hssettle = <7>;
+		hssettle = <7 7 15 20>;
 		status = "disabled";
 	};
 
