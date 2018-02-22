@@ -491,6 +491,7 @@ static const struct of_device_id dt_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, dt_of_match);
 
+#ifdef CONFIG_PM_SLEEP
 static int nx_drm_pm_suspend(struct device *dev)
 {
 	struct drm_device *drm = dev_get_drvdata(dev);
@@ -567,6 +568,7 @@ static int nx_drm_pm_resume(struct device *dev)
 
 	return 0;
 }
+#endif
 
 static const struct dev_pm_ops nx_drm_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(nx_drm_pm_suspend, nx_drm_pm_resume)
