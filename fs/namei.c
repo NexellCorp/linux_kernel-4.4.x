@@ -3717,8 +3717,10 @@ int vfs_rmdir2(struct vfsmount *mnt, struct inode *dir, struct dentry *dentry)
 	mutex_lock(&dentry->d_inode->i_mutex);
 
 	error = -EBUSY;
+#ifndef CONFIG_ANDROID
 	if (is_local_mountpoint(dentry))
 		goto out;
+#endif
 
 	error = security_inode_rmdir(dir, dentry);
 	if (error)
