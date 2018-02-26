@@ -451,7 +451,7 @@ static int bq25895m_get_capacity(struct power_supply *psy)
 	struct bq25895m_device *bq = power_supply_get_drvdata(psy);
 
 	/* it need to delay to convert */
-	mdelay(1000);
+	/* mdelay(1000); */
 
 	vbatt = bq25895m_field_read(bq, F_BATV); /* read measured value */
 	if (vbatt < 0)
