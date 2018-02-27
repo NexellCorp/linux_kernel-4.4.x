@@ -314,6 +314,7 @@ static int nx_devfreq_pm_qos_notifier(struct notifier_block *nb,
 	devfreq_nb = container_of(nb, struct devfreq_notifier_block, nb);
 	nx_devfreq = devfreq_nb->df->data;
 
+	mutex_lock(&devfreq_nb->df->lock);
 	dev_dbg(nx_devfreq->dev, "%s: val --> %ld\n", __func__, val);
 	if (val == PM_QOS_DEFAULT_VALUE)
 		val = nx_devfreq_profile.initial_freq;
@@ -329,12 +330,12 @@ static int nx_devfreq_pm_qos_notifier(struct notifier_block *nb,
 		dev_dbg(nx_devfreq->dev, "%s changed from %d to %d\n",
 			 __func__, cur_freq, new);
 		atomic_set(&nx_devfreq->req_freq, new);
-		mutex_lock(&devfreq_nb->df->lock);
 		update_devfreq(devfreq_nb->df);
 		mutex_unlock(&devfreq_nb->df->lock);
 		return NOTIFY_OK;
 	}
 
+	mutex_unlock(&devfreq_nb->df->lock);
 	return NOTIFY_STOP;
 }
 
