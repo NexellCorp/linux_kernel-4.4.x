@@ -381,7 +381,7 @@ int drv_mode = DRV_MODE_UAP;
 #endif /* STA_SUPPORT */
 #endif /* STA_SUPPORT & UAP_SUPPORT */
 
-int gtk_rekey_offload = GTK_REKEY_OFFLOAD_ENABLE;
+int gtk_rekey_offload = GTK_REKEY_OFFLOAD_DISABLE;
 
 int pmic = 0;
 
@@ -6158,6 +6158,7 @@ woal_send_disconnect_to_system(moal_private *priv)
 #ifdef STA_CFG80211
 	unsigned long flags;
 #endif
+	mlan_ds_misc_gtk_rekey_data zero_gtk;
 
 	ENTER();
 	priv->media_connected = MFALSE;
@@ -6166,11 +6167,15 @@ woal_send_disconnect_to_system(moal_private *priv)
 		netif_carrier_off(priv->netdev);
 	woal_flush_tcp_sess_queue(priv);
 
-	if (priv->gtk_data_ready) {
-		priv->gtk_data_ready = MFALSE;
-		memset(&priv->gtk_rekey_data, 0,
-		       sizeof(mlan_ds_misc_gtk_rekey_data));
+	priv->gtk_data_ready = MFALSE;
+	memset(&zero_gtk, 0x00, sizeof(zero_gtk));
+	if (gtk_rekey_offload == GTK_REKEY_OFFLOAD_ENABLE &&
+	    memcmp(&priv->gtk_rekey_data, &zero_gtk,
+		   sizeof(priv->gtk_rekey_data)) != 0) {
+		PRINTM(MCMND, "clear GTK in woal_send_disconnect_to_system\n");
+		woal_set_rekey_data(priv, NULL, MLAN_ACT_CLEAR);
 	}
+	memset(&priv->gtk_rekey_data, 0, sizeof(mlan_ds_misc_gtk_rekey_data));
 
 	if (priv->bss_type == MLAN_BSS_TYPE_STA)
 		woal_flush_tdls_list(priv);

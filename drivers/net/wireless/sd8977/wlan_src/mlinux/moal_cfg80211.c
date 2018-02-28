@@ -1466,6 +1466,13 @@ woal_cfg80211_set_rekey_data(struct wiphy *wiphy, struct net_device *dev,
 
 	ENTER();
 
+	if (gtk_rekey_offload == GTK_REKEY_OFFLOAD_DISABLE) {
+		PRINTM(MMSG,
+		       "woal_cfg80211_set_rekey_data return: gtk_rekey_offload is DISABLE\n");
+		LEAVE();
+		return ret;
+	}
+
 	woal_request_get_fw_info(priv, MOAL_CMD_WAIT, &fw_info);
 	if (!fw_info.fw_supplicant_support) {
 		LEAVE();
@@ -1476,12 +1483,10 @@ woal_cfg80211_set_rekey_data(struct wiphy *wiphy, struct net_device *dev,
 	memcpy(rekey.kck, data->kck, MLAN_KCK_LEN);
 	memcpy(rekey.replay_ctr, data->replay_ctr, MLAN_REPLAY_CTR_LEN);
 
-	if (gtk_rekey_offload != GTK_REKEY_OFFLOAD_ENABLE) {
-		if (gtk_rekey_offload == GTK_REKEY_OFFLOAD_SUSPEND) {
-			priv->gtk_data_ready = MTRUE;
-			memcpy(&priv->gtk_rekey_data, &rekey,
-			       sizeof(mlan_ds_misc_gtk_rekey_data));
-		}
+	memcpy(&priv->gtk_rekey_data, &rekey,
+	       sizeof(mlan_ds_misc_gtk_rekey_data));
+	if (gtk_rekey_offload == GTK_REKEY_OFFLOAD_SUSPEND) {
+		priv->gtk_data_ready = MTRUE;
 		LEAVE();
 		return ret;
 	}
