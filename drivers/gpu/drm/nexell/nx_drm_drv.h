@@ -35,7 +35,11 @@
 #define MAX_PLNAES		10
 #endif
 
+#ifdef CONFIG_VIDEO_MAX9286
+#define MAX_FB_MODE_WIDTH	5120
+#else
 #define MAX_FB_MODE_WIDTH	4096
+#endif
 #define MAX_FB_MODE_HEIGHT	4096
 
 #define INVALID_IRQ		((unsigned)-1)
