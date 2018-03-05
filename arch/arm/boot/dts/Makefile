@@ -798,7 +798,8 @@ dtb-$(CONFIG_ARCH_S5P4418) += \
 	s5p4418-zh_blackdragon-rev00.dtb \
 	s5p4418-daudio_covi-rev00.dtb \
 	s5p4418-ff_voice.dtb \
-	s5p4418-clova-rev00.dtb
+	s5p4418-clova-rev00.dtb \
+	s5p4418-svm_ref-rev00.dtb
 endif
 
 ifeq ($(CONFIG_ARCH_S5P4418),y)
