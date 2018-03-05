@@ -1,0 +1,12 @@
+#
+# Semisens Touchscreen driver configuration
+#
+config TOUCHSCREEN_SEMISENS
+	tristate "SEMISENS I2C Touchscreen"
+	depends on I2C
+	help
+		Say Y here if you have Semisens I2C touchscreen,
+		such as SNXXXMQ, connected to your system.
+		If unsure, say N.
+		To compile this driver as a module, choose M here:
+		the module will be called SEMISENS.
