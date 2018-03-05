@@ -1054,12 +1054,21 @@ static int nx_csi_s_stream(struct v4l2_subdev *sd, int enable)
 
 	if (enable) {
 		if (!(NX_ATOMIC_READ(&me->state) & STATE_RUNNING)) {
+#ifdef CONFIG_VIDEO_MAX9286
+			nx_csi_run(me); 	
+			ret = v4l2_subdev_call(remote_source, video, s_stream, 1);
+			if (ret) {
+				dev_err(me->dev, "failed to s_stream %d\n", enable);
+				goto UP_AND_OUT;
+			}
+#else
 			ret = v4l2_subdev_call(remote_source, video, s_stream, 1);
 			if (ret) {
 				dev_err(me->dev, "failed to s_stream %d\n", enable);
 				goto UP_AND_OUT;
 			}
 			nx_csi_run(me);
+#endif
 			NX_ATOMIC_SET(&me->state, STATE_RUNNING);
 		} else if (!nx_mipi_csi_get_enable(me->module))
 			nx_mipi_csi_set_enable(me->module, 1);
