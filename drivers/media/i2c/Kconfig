@@ -634,6 +634,7 @@ config VIDEO_NVP6114A
 	  This is a Video4Linux2 sensor-level driver for Nextchip
 	  NVP6114A AHD sensor.
 
+source "drivers/media/i2c/maxim/Kconfig"
 config VIDEO_SR030PC30
 	tristate "Siliconfile SR030PC30 sensor support"
 	depends on I2C && VIDEO_V4L2

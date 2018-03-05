@@ -1,0 +1,12 @@
+
+config VIDEO_MAX9286
+    tristate "MAX9286 video decoder(nexell work)"
+    depends on I2C && VIDEO_V4L2
+    ---help---
+	  Support for the Maxim MAX9286 video decoder.
+
+config MAX9286_BACKWARD
+	bool "backward camera"
+	depends on SLSIAP_BACKWARD_CAMERA
+	help
+	  This set as backward camera
