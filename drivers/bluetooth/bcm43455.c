@@ -80,8 +80,8 @@ struct bcm_bt_gpio {
 	int irq;
 } bt_gpio;
 
-int bt_is_running;
-unsigned int is_inverted_power;
+static int bt_is_running;
+static unsigned int is_inverted_power;
 
 int check_bt_op(void)
 {
