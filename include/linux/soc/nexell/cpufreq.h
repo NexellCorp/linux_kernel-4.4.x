@@ -59,5 +59,6 @@ int  nx_bus_add_notifier(void *data);
 void nx_bus_remove_notifier(void *data);
 void nx_bus_qos_lock(void);
 void nx_bus_qos_unlock(void);
+int  nx_devfreq_read_cur_freq(void);
 
 #endif

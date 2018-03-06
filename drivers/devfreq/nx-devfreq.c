@@ -143,6 +143,14 @@ void nx_bus_qos_unlock(void)
 }
 EXPORT_SYMBOL(nx_bus_qos_unlock);
 
+int nx_devfreq_read_cur_freq(void)
+{
+	if (_nx_devfreq == NULL)
+		return -ENODEV;
+	return atomic_read(&_nx_devfreq->cur_freq);
+}
+EXPORT_SYMBOL(nx_devfreq_read_cur_freq);
+
 /* soc specific */
 struct pll_pms {
 	unsigned long rate;
