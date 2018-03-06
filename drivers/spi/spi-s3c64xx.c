@@ -708,7 +708,17 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 	int use_dma;
 
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
+	/* The SPI of S5p6818 must be transmitted with updated devfreq.
+	 * Otherwise, data will be transmitted with a lower clock.
+	 * It wait for up to 5ms.
+	 */
+	unsigned int count = 0;
 	nx_spi_qos_update(NX_BUS_CLK_SPI_KHZ);
+	while ((nx_devfreq_read_cur_freq() != NX_BUS_CLK_SPI_KHZ) &&
+			(count++ < 50))
+		udelay(100);
+	if (count > 50)
+		dev_err(&spi->dev, "devfreq has not been updated\n");
 #endif
 
 	reinit_completion(&sdd->xfer_completion);
