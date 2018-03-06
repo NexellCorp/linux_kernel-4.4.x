@@ -1178,7 +1178,6 @@ static int ov5640_write_reg16(struct ov5640_dev *sensor, u16 reg, u16 val)
 static int ov5640_mod_reg(struct ov5640_dev *sensor, u16 reg,
 			  u8 mask, u8 val)
 {
-	struct device *dev = &sensor->i2c_client->dev;
 	u8 readval;
 	int ret;
 
@@ -2134,7 +2133,6 @@ static int ov5640_set_fmt(struct v4l2_subdev *sd,
 	sensor->fmt = format->format;
 	sensor->pending_mode_change = true;
 
-	dev_info(dev,"%s %x\n", __func__, format->format);
 out:
 	mutex_unlock(&sensor->lock);
 	return ret;
@@ -2546,7 +2544,6 @@ static int ov5640_enum_mbus_code(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_mbus_code_enum *code)
 {
 	struct ov5640_dev *sensor = to_ov5640_dev(sd);
-	struct device *dev = &sensor->i2c_client->dev;
 #if 0
 	if (code->pad != 0)
 		return -EINVAL;
@@ -2693,11 +2690,11 @@ static int ov5640_probe(struct i2c_client *client,
 	/* request optional power down pin */
 	sensor->pwdn_gpio = devm_gpiod_get_optional(dev, "powerdown",
 						    GPIOD_OUT_HIGH);
-	dev_info(dev,"%s pwdn_gpio:%d\n", __func__, sensor->pwdn_gpio);
+	dev_info(dev,"%s pwdn_gpio:%p\n", __func__, sensor->pwdn_gpio);
 	/* request optional reset pin */
 	sensor->reset_gpio = devm_gpiod_get_optional(dev, "reset",
 						     GPIOD_OUT_HIGH);
-	dev_info(dev,"%s reset_gpio:%d\n", __func__, sensor->reset_gpio);
+	dev_info(dev,"%s reset_gpio:%p\n", __func__, sensor->reset_gpio);
 
 	v4l2_i2c_subdev_init(&sensor->sd, client, &ov5640_subdev_ops);
 
