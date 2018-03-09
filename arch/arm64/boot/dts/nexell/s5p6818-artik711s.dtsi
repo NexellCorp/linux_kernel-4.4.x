@@ -1,0 +1,34 @@
+/*
+ * Copyright (C) 2018 Samsung Electronics
+ * Author: Chanho Park <chanho61.park@samsung.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#include "s5p6818-artik710.dtsi"
+
+&dw_mmc_2 {
+	interrupts = <0 IRQ_SDMMC0 0>;
+	reg = <PHYS_BASE_SDMMC0 0x1000>;
+	resets  = <&nexell_reset RESET_ID_SDMMC0>;
+	clocks = <&sdhc0>, <&sdhc0>;
+	pinctrl-0 = <&sdmmc0_cclk &sdmmc0_cmd &sdmmc0_bus4>;
+};
+
+&dw_mmc_0 {
+	interrupts = <0 IRQ_SDMMC2 0>;
+	reg = <PHYS_BASE_SDMMC2 0x1000>;
+	resets  = <&nexell_reset RESET_ID_SDMMC2>;
+	clocks = <&sdhc2>, <&sdhc2>;
+	pinctrl-0 = <&sdmmc2_cclk &sdmmc2_cmd &sdmmc2_bus4>;
+};
