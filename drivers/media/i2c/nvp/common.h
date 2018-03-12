@@ -14,7 +14,9 @@
 
 	common define
 **************************************************************************/
+#ifndef __KERNEL__
 #define BIT(X)		(1<<X)
+#endif
 
 // device address define
 #define NVP1108		0x60
