@@ -195,45 +195,36 @@ static int nvp6114a_write_data(struct i2c_client *client, u8 write_addr, unsigne
 int nvp6114a_initialization(struct i2c_client *client)
 {
 	struct dev_state *state = NULL;
+	int i = 0;
 
 	state = &nvp6114a;
 	state->i2c_client = client;
-#if 0
-	unsigned char data;
-#endif
-	int i=0;
-	int width, height;
 
 	nvp6124_cnt = 1;
 	/* chip_id[0]  = NVP6114A_R0_ID; */
 	nvp6124_mode = NTSC;
 
-	if( !state->first )
-	{
+	if( !state->first ) {
 		if(!check_id(client))
 			return -EINVAL;
-#if 0
-		if (_i2c_read_byte(client, PID, &data) == 0)
-			pr_err("nvp6114a reg =0xF4, data = 0x%02X\n", data);
-#endif
 
-		if(chip_id[0] == NVP6114A_R0_ID) {
+		if(chip_id[0] == NVP6114A_R0_ID)
 			nvp6124_ntsc_common_init();
-		}
-		else if(chip_id[0] == NVP6124B_R0_ID) {
+		else if(chip_id[0] == NVP6124B_R0_ID)
 			nvp6124B_ntsc_common_init();
-		}
 
-		for (i=0 ; i<nvp6124_cnt ; i++)
+		for (i = 0 ; i < nvp6124_cnt ; i++)
 			audio_init(nvp6124_slave_addr[i],16,0,0);
 
 		state->first = true;
 	}
 
 	if(chip_id[0] == NVP6114A_R0_ID)
-		nvp6114a_outport_1mux(nvp6124_mode%2, 0x10|NVP6124_VI_720P_2530, 0x00|NVP6124_VI_720P_2530);
+		nvp6114a_outport_1mux(nvp6124_mode%2, 0x10|NVP6124_VI_720P_2530,
+				      0x00|NVP6124_VI_720P_2530);
 	else if(chip_id[0] == NVP6124B_R0_ID)
-		nvp6124B_outport_1mux(nvp6124_mode%2, 0x10|NVP6124_VI_720P_2530, 0x00|NVP6124_VI_720P_2530);
+		nvp6124B_outport_1mux(nvp6124_mode%2, 0x10|NVP6124_VI_720P_2530,
+				      0x00|NVP6124_VI_720P_2530);
 
 	return 0;
 }
