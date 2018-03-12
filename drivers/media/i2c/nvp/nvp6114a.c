@@ -90,7 +90,8 @@ unsigned char nvp_i2c_read(unsigned char slave, unsigned char addr)
     return ret;
 }
 
-static int _i2c_read_byte(struct i2c_client *client, u8 addr, u8 *data)
+static __always_unused
+int _i2c_read_byte(struct i2c_client *client, u8 addr, u8 *data)
 {
 	s8 i = 0;
 	s8 ret = 0;
@@ -155,23 +156,16 @@ static int _i2c_write_byte(struct i2c_client *client, u8 addr, u8 val)
 }
 
 
-static int nvp6114a_initialize_ctrls(struct dev_state *me)
-{
-	return 0;
-}
-
 static int nvp6114a_write_table(struct i2c_client *client,
-								unsigned char addr,
-								unsigned char *tbl_ptr, unsigned char tbl_cnt)
+				unsigned char addr,
+				unsigned char *tbl_ptr, unsigned char tbl_cnt)
 {
 	unsigned char i=0;
 
-	for(i=0; i<tbl_cnt; i++)
-	{
+	for(i=0; i<tbl_cnt; i++) {
 		printk("%s : reg_addr = 0x%02x, reg_val = 0x%02x\n", __func__, (addr+i), *(tbl_ptr+i));
 
-		if(_i2c_write_byte(client, (addr+i), *(tbl_ptr+i)) != 0)
-		{
+		if(_i2c_write_byte(client, (addr+i), *(tbl_ptr+i)) != 0) {
 			printk(KERN_ERR "%s : fail to write addr 0x%02X, val 0x%02X\n", __func__, (addr+i), *(tbl_ptr+i));
 			//break;
 		}
@@ -180,10 +174,11 @@ static int nvp6114a_write_table(struct i2c_client *client,
 	return 0;
 }
 
-static int nvp6114a_write_data(struct i2c_client *client, u8 write_addr, unsigned char reg_val[])
+static __always_unused
+int nvp6114a_write_data(struct i2c_client *client, u8 write_addr,
+			unsigned char reg_val[])
 {
-	if(_i2c_write_byte(client, 0xFF, write_addr) == 0)
-	{
+	if(_i2c_write_byte(client, 0xFF, write_addr) == 0) {
 		printk("%s - write_addr : 0x%02X\n", __func__, write_addr);
 
 		nvp6114a_write_table(client, 0x00, reg_val, 254);
@@ -235,9 +230,6 @@ static int nvp6114a_s_stream(struct v4l2_subdev *sd, int enable)
 {
     struct dev_state *state = to_state(sd);
     struct i2c_client *client = v4l2_get_subdevdata(sd);
-#if 0
-    unsigned char data;
-#endif
     int i=0;
     int width, height;
 
@@ -251,16 +243,12 @@ static int nvp6114a_s_stream(struct v4l2_subdev *sd, int enable)
         {
             if(!check_id(client))
                 return -EINVAL;
-#if 0
-            if (_i2c_read_byte(client, PID, &data) == 0)
-            	printk(KERN_ERR "nvp6114a reg =0xF4, data = 0x%02X\n", data);
-#endif
-		if(chip_id[0] == NVP6114A_R0_ID) {
-	        nvp6124_ntsc_common_init();
-		}
-		else if(chip_id[0] == NVP6124B_R0_ID) {
-	        nvp6124B_ntsc_common_init();
-		}
+
+	    if(chip_id[0] == NVP6114A_R0_ID) 
+		    nvp6124_ntsc_common_init();
+	    
+	    else if(chip_id[0] == NVP6124B_R0_ID)
+		    nvp6124B_ntsc_common_init();
 
             for (i=0 ; i<nvp6124_cnt ; i++)
                 audio_init(nvp6124_slave_addr[i],16,0,0);
