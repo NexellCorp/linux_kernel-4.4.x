@@ -4,7 +4,27 @@
  *
  * Definitions subject to change without notice.
  *
- * $Copyright Open Broadcom Corporation$
+ * Portions of this code are copyright (c) 2017, Cypress Semiconductor Corporation
+ * 
+ * Copyright (C) 1999-2017, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: wlioctl.h 665070 2017-05-17 19:24:20Z $
  */
@@ -22,7 +42,8 @@
 #include <proto/802.1d.h>
 #include <bcmwifi_channels.h>
 #include <bcmwifi_rates.h>
-#include <devctrl_if/wlioctl_defs.h>
+//htdo #include <devctrl_if/wlioctl_defs.h>
+#include <wlioctl_defs.h>
 
 #ifndef LINUX_POSTMOGRIFY_REMOVAL
 #include <bcm_mpool_pub.h>
@@ -429,6 +450,14 @@ typedef struct wl_scan_results {
 /* Used in EXT_STA */
 #define DNGL_RXCTXT_SIZE	45
 
+#if defined(SIMPLE_ISCAN)
+/* the buf lengh can be WLC_IOCTL_MAXLEN (8K) to reduce iteration */
+#define WLC_IW_ISCAN_MAXLEN   2048
+typedef struct iscan_buf {
+	struct iscan_buf * next;
+	char   iscan_buf[WLC_IW_ISCAN_MAXLEN];
+} iscan_buf_t;
+#endif /* SIMPLE_ISCAN */
 
 #define ESCAN_REQ_VERSION 1
 

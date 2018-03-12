@@ -1,7 +1,27 @@
 /*
  * Linux platform device for DHD WLAN adapter
  *
- * $Copyright Open Broadcom Corporation$
+ * Portions of this code are copyright (c) 2017, Cypress Semiconductor Corporation
+ * 
+ * Copyright (C) 1999-2017, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: dhd_linux_platdev.c 401742 2013-05-13 15:03:21Z $
  */
@@ -656,9 +676,9 @@ void dhd_wifi_platform_unregister_drv(void)
 extern int dhd_watchdog_prio;
 extern int dhd_dpc_prio;
 extern uint dhd_deferred_tx;
-#if defined(BCMLXSDMMC)
+#if defined(OEM_ANDROID) && defined(BCMLXSDMMC)
 extern struct semaphore dhd_registration_sem;
-#endif 
+#endif /* defined(OEM_ANDROID) && defined(BCMLXSDMMC) */
 
 #ifdef BCMSDIO
 static int dhd_wifi_platform_load_sdio(void)
@@ -677,7 +697,7 @@ static int dhd_wifi_platform_load_sdio(void)
 		!(dhd_watchdog_prio >= 0 && dhd_dpc_prio >= 0 && dhd_deferred_tx))
 		return -EINVAL;
 
-#if defined(BCMLXSDMMC)
+#if defined(OEM_ANDROID) && defined(BCMLXSDMMC)
 	if (dhd_wifi_platdata == NULL) {
 		DHD_ERROR(("DHD wifi platform data is required for Android build\n"));
 		return -EINVAL;
@@ -769,7 +789,7 @@ fail:
 	/* x86 bring-up PC needs no power-up operations */
 	err = dhd_bus_register();
 
-#endif 
+#endif /* defined(OEM_ANDROID) && defined(BCMLXSDMMC) */
 
 	return err;
 }
@@ -789,7 +809,9 @@ static int dhd_wifi_platform_load()
 {
 	int err = 0;
 
+#if defined(OEM_ANDROID)
 		wl_android_init();
+#endif /* OEM_ANDROID */
 
 	if ((err = dhd_wifi_platform_load_usb()))
 		goto end;
@@ -799,10 +821,12 @@ static int dhd_wifi_platform_load()
 		err = dhd_wifi_platform_load_pcie();
 
 end:
+#if defined(OEM_ANDROID)
 	if (err)
 		wl_android_exit();
 	else
 		wl_android_post_init();
+#endif /* OEM_ANDROID */
 
 	return err;
 }

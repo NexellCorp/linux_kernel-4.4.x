@@ -1,7 +1,27 @@
 /*
  * Misc system wide definitions
  *
- * $Copyright Open Broadcom Corporation$
+ * Portions of this code are copyright (c) 2017, Cypress Semiconductor Corporation
+ * 
+ * Copyright (C) 1999-2017, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: bcmdefs.h 433011 2013-10-30 09:19:54Z $
  */
@@ -44,18 +64,22 @@
  */
 
 #define bcmreclaimed 		0
-#define _data	_data
-#define _fn	_fn
+#define BCMATTACHDATA(_data)	_data
+#define BCMATTACHFN(_fn)	_fn
 #define BCMPREATTACHDATA(_data)	_data
 #define BCMPREATTACHFN(_fn)	_fn
-#define _data	_data
-#define _fn		_fn
-#define _fn	_fn
+#define BCMINITDATA(_data)	_data
+#define BCMINITFN(_fn)		_fn
+#define BCMUNINITFN(_fn)	_fn
 #define	BCMNMIATTACHFN(_fn)	_fn
 #define	BCMNMIATTACHDATA(_data)	_data
 #define CONST	const
 
+#if defined(__ARM_ARCH_7A__) && !defined(OEM_ANDROID)
+#define BCM47XX_CA9
+#else
 #undef BCM47XX_CA9
+#endif /* BCM47XX && __ARM_ARCH_7A__ && !OEM_ANDROID */
 
 #ifndef BCMFASTPATH
 #if defined(BCM47XX_CA9)
@@ -78,10 +102,10 @@
 
 
 /* Put some library data/code into ROM to reduce RAM requirements */
-#define _data	_data
+#define BCMROMDATA(_data)	_data
 #define BCMROMDAT_NAME(_data)	_data
-#define _fn		_fn
-#define _fn	_fn
+#define BCMROMFN(_fn)		_fn
+#define BCMROMFN_NAME(_fn)	_fn
 #define STATIC	static
 #define BCMROMDAT_ARYSIZ(data)	ARRAYSIZE(data)
 #define BCMROMDAT_SIZEOF(data)	sizeof(data)

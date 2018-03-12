@@ -551,6 +551,19 @@ sdioh_iovar_op(sdioh_info_t *si, const char *name,
 		/* Now set it */
 		si->client_block_size[func] = blksize;
 
+#if defined(CUSTOMER_HW4) && defined(USE_DYNAMIC_F2_BLKSIZE)
+		if (si->func[func] == NULL) {
+			sd_err(("%s: SDIO Device not present\n", __FUNCTION__));
+			bcmerror = BCME_NORESOURCE;
+			break;
+		}
+		sdio_claim_host(si->func[func]);
+		bcmerror = sdio_set_block_size(si->func[func], blksize);
+		if (bcmerror)
+			sd_err(("%s: Failed to set F%d blocksize to %d(%d)\n",
+				__FUNCTION__, func, blksize, bcmerror));
+		sdio_release_host(si->func[func]);
+#endif /* CUSTOMER_HW4 && USE_DYNAMIC_F2_BLKSIZE */
 		break;
 	}
 
@@ -1315,6 +1328,7 @@ sdioh_sdmmc_card_regwrite(sdioh_info_t *sd, int func, uint32 regaddr, int regsiz
 int
 sdioh_start(sdioh_info_t *sd, int stage)
 {
+#if defined(OEM_ANDROID) || defined(OEM_EMBEDDED_LINUX)
 	int ret;
 
 	if (!sd) {
@@ -1402,6 +1416,7 @@ sdioh_start(sdioh_info_t *sd, int stage)
 	}
 	else
 		sd_err(("%s Failed\n", __FUNCTION__));
+#endif /* defined(OEM_ANDROID) || defined(OEM_EMBEDDED_LINUX) */
 
 	return (0);
 }
@@ -1409,6 +1424,7 @@ sdioh_start(sdioh_info_t *sd, int stage)
 int
 sdioh_stop(sdioh_info_t *sd)
 {
+#if defined(OEM_ANDROID) || defined(OEM_EMBEDDED_LINUX)
 	/* MSM7201A Android sdio stack has bug with interrupt
 		So internaly within SDIO stack they are polling
 		which cause issue when device is turned off. So
@@ -1437,6 +1453,7 @@ sdioh_stop(sdioh_info_t *sd)
 	}
 	else
 		sd_err(("%s Failed\n", __FUNCTION__));
+#endif /* defined(OEM_ANDROID) ||  defined(OEM_EMBEDDED_LINUX) */
 	return (0);
 }
 

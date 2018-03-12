@@ -10,7 +10,6 @@ config BCMDHD
 config BCMDHD_SDIO
 	bool "SDIO bus interface support"
 	depends on BCMDHD && MMC
-	default n
 
 config BCMDHD_PCIE
 	bool "PCIe bus interface support"

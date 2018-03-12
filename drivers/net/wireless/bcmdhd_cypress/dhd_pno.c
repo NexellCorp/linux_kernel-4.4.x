@@ -2,7 +2,27 @@
  * Broadcom Dongle Host Driver (DHD)
  * Prefered Network Offload and Wi-Fi Location Service(WLS) code.
  *
- * $Copyright Open Broadcom Corporation$
+ * Portions of this code are copyright (c) 2017, Cypress Semiconductor Corporation
+ * 
+ * Copyright (C) 1999-2017, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: dhd_pno.c 423669 2013-09-18 13:01:55Z yangj$
  */
@@ -14,11 +34,13 @@
 #include <bcmutils.h>
 
 #include <bcmendian.h>
+#ifdef OEM_ANDROID
 #include <linuxver.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/sort.h>
+#endif
 #include <dngl_stats.h>
 #include <wlioctl.h>
 
@@ -44,6 +66,7 @@
 #define dtohchanspec(i) (i)
 #endif /* IL_BIGENDINA */
 
+#ifdef OEM_ANDROID
 #define NULL_CHECK(p, s, err)  \
 			do { \
 				if (!(p)) { \
@@ -1878,4 +1901,251 @@ int dhd_pno_deinit(dhd_pub_t *dhd)
 	dhd->pno_state = NULL;
 	return err;
 }
+#elif defined(NDISVER) && (NDISVER >= 0x0630)
+#define DHD_IOVAR_BUF_SIZE	128
+int
+dhd_pno_cfg(dhd_pub_t *dhd, wl_pfn_cfg_t *pcfg)
+{
+	int ret = -1;
+	uint len = 0;
+	char iovbuf[2 * DHD_IOVAR_BUF_SIZE];
+
+	if (!dhd)
+		return ret;
+
+	if ((len =
+	     bcm_mkiovar("pfn_cfg", (char *)pcfg,
+	     sizeof(wl_pfn_cfg_t), iovbuf, sizeof(iovbuf))) > 0) {
+		if ((ret =
+		dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, len, TRUE, 0)) < 0)
+			DHD_ERROR(("%s failed for error=%d\n",
+			           __FUNCTION__, ret));
+		else
+			DHD_ERROR(("%s set OK\n", __FUNCTION__));
+	} else {
+		DHD_ERROR(("%s iovar failed\n", __FUNCTION__));
+		ret = -1;
+	}
+
+	return ret;
+}
+
+int
+dhd_pno_suspend(dhd_pub_t *dhd, int pfn_suspend)
+{
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	int ret = -1;
+
+	if ((!dhd) || ((pfn_suspend != 0) && (pfn_suspend != 1))) {
+		DHD_ERROR(("%s error exit\n", __FUNCTION__));
+		return ret;
+	}
+
+	memset(iovbuf, 0, sizeof(iovbuf));
+	/* suspend/resume PNO */
+	if ((ret = bcm_mkiovar("pfn_suspend", (char *)&pfn_suspend, 4, iovbuf,
+		sizeof(iovbuf))) > 0) {
+		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
+		                            sizeof(iovbuf), TRUE, 0)) < 0)
+			DHD_ERROR(("%s failed for error=%d\n", __FUNCTION__, ret));
+		else  {
+			DHD_TRACE(("%s set pno to %s\n", __FUNCTION__,
+				(pfn_suspend? "suspend" : "resume")));
+			dhd->pno_suspend = pfn_suspend;
+		}
+	}
+	else {
+		DHD_ERROR(("%s failed at mkiovar, err=%d\n", __FUNCTION__, ret));
+		ret = -1;
+	}
+
+	return ret;
+}
+
+int
+dhd_pno_set_add(dhd_pub_t *dhd, wl_pfn_t *netinfo, int nssid, ushort scan_fr, ushort slowscan_fr,
+	uint8 pno_repeat, uint8 pno_freq_expo_max, int16 flags)
+{
+	int err = -1;
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	int k, i;
+	wl_pfn_param_t pfn_param;
+	wl_pfn_t	pfn_element;
+	uint len = 0;
+
+	DHD_TRACE(("%s nssid=%d scan_fr=%d\n", __FUNCTION__, nssid, scan_fr));
+
+	if ((!dhd) || (!netinfo) ||
+		(nssid > MAX_PFN_LIST_COUNT) || (nssid <= 0)) {
+		DHD_ERROR(("%s error exit\n", __FUNCTION__));
+		return err;
+	}
+
+	/* Check for broadcast ssid */
+	for (k = 0; k < nssid; k++) {
+		if (!netinfo[k].ssid.SSID_len) {
+			DHD_ERROR(("%d: Broadcast SSID is ilegal for PNO setting\n", k));
+			return err;
+		}
+	}
+
+	/* clean up everything */
+	if  (dhd_pno_clean(dhd) < 0) {
+		DHD_ERROR(("%s failed\n", __FUNCTION__));
+		return err;
+	}
+	memset(&pfn_param, 0, sizeof(pfn_param));
+	memset(&pfn_element, 0, sizeof(pfn_element));
+
+	/* set pfn parameters */
+	pfn_param.version = htod32(PFN_VERSION);
+	pfn_param.flags = htod16(flags |(PFN_LIST_ORDER << SORT_CRITERIA_BIT));
+
+	/* set extra pno params */
+	pfn_param.repeat = pno_repeat;
+	pfn_param.exp = pno_freq_expo_max;
+	pfn_param.slow_freq = slowscan_fr;
+
+	/* set up pno scan fr */
+	if (scan_fr > PNO_SCAN_MAX_FW_SEC) {
+		DHD_ERROR(("%s pno freq above %d sec\n", __FUNCTION__, PNO_SCAN_MAX_FW_SEC));
+		return err;
+	}
+	if (scan_fr < PNO_SCAN_MIN_FW_SEC) {
+		DHD_ERROR(("%s pno freq less %d sec\n", __FUNCTION__, PNO_SCAN_MIN_FW_SEC));
+		return err;
+	}
+	pfn_param.scan_freq = htod32(scan_fr);
+	if (slowscan_fr)
+		pfn_param.lost_network_timeout = -1; /* so no aging out */
+
+	len = bcm_mkiovar("pfn_set", (char *)&pfn_param, sizeof(pfn_param), iovbuf, sizeof(iovbuf));
+	if (!len)
+		return err;
+
+	if (dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, len, TRUE, 0) < 0)
+		return err;
+
+	/* set all pfn ssid */
+	for (i = 0; i < nssid; i++) {
+		pfn_element.infra = htod32(1);
+		pfn_element.auth = htod32(netinfo[i].auth);
+		pfn_element.wpa_auth = htod32(netinfo[i].wpa_auth);
+		pfn_element.wsec = htod32(netinfo[i].wsec);
+		pfn_element.flags = htod32(netinfo[i].flags);
+
+		memcpy((char *)pfn_element.ssid.SSID, netinfo[i].ssid.SSID,
+			netinfo[i].ssid.SSID_len);
+		pfn_element.ssid.SSID_len = netinfo[i].ssid.SSID_len;
+
+		if ((len =
+		bcm_mkiovar("pfn_add", (char *)&pfn_element,
+			sizeof(pfn_element), iovbuf, sizeof(iovbuf))) > 0) {
+			if ((err =
+			dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, len, TRUE, 0)) < 0) {
+				DHD_ERROR(("%s failed for i=%d error=%d\n",
+					__FUNCTION__, i, err));
+				return err;
+			}
+			else
+				DHD_ERROR(("%s set ssid %s\n",
+					__FUNCTION__, netinfo[i].ssid.SSID));
+		}
+		else
+			DHD_ERROR(("%s: mkiovar pfn_add failed\n", __FUNCTION__));
+
+		memset(&pfn_element, 0, sizeof(pfn_element));
+	}
+
+	return err;
+}
+
+int
+dhd_pno_enable(dhd_pub_t *dhd, int pfn_enabled)
+{
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	int ret = -1;
+
+	if ((!dhd) && ((pfn_enabled != 0) || (pfn_enabled != 1))) {
+		DHD_ERROR(("%s error exit\n", __FUNCTION__));
+		return ret;
+	}
+
+#ifndef WL_SCHED_SCAN
+	memset(iovbuf, 0, sizeof(iovbuf));
+
+	if ((pfn_enabled) && (dhd_is_associated(dhd, 0, NULL) == TRUE)) {
+		DHD_ERROR(("%s pno is NOT enable : called in assoc mode , ignore\n", __FUNCTION__));
+		return ret;
+	}
+#endif /* !WL_SCHED_SCAN */
+
+	/* make sure PNO is not suspended when it is going to be enabled */
+	if (pfn_enabled) {
+		int pfn_suspend = 0;
+		memset(iovbuf, 0, sizeof(iovbuf));
+		if ((ret = bcm_mkiovar("pfn_suspend", (char *)&pfn_suspend, 4, iovbuf,
+		        sizeof(iovbuf))) > 0) {
+			if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
+				sizeof(iovbuf), TRUE, 0)) < 0) {
+				DHD_ERROR(("pfn_suspend failed for error=%d\n", __FUNCTION__, ret));
+				return ret;
+			} else {
+				DHD_TRACE(("pno resumed\n"));
+			}
+		} else {
+			return -1;
+		}
+	}
+
+	/* Enable/disable PNO */
+	if ((ret = bcm_mkiovar("pfn", (char *)&pfn_enabled, 4, iovbuf, sizeof(iovbuf))) > 0) {
+		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR,
+		        iovbuf, sizeof(iovbuf), TRUE, 0)) < 0) {
+			DHD_ERROR(("%s failed for error=%d\n", __FUNCTION__, ret));
+			return ret;
+		} else {
+			dhd->pno_enable = pfn_enabled;
+			DHD_TRACE(("%s set pno as %s\n",
+			        __FUNCTION__, dhd->pno_enable ? "Enable" : "Disable"));
+		}
+	}
+	else DHD_ERROR(("%s failed err=%d\n", __FUNCTION__, ret));
+
+	return ret;
+}
+
+int
+dhd_pno_clean(dhd_pub_t *dhd)
+{
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	int pfn_enabled = 0;
+	int iov_len = 0;
+	int ret;
+
+	/* Disable pfn */
+	iov_len = bcm_mkiovar("pfn", (char *)&pfn_enabled, 4, iovbuf, sizeof(iovbuf));
+	if (!iov_len) {
+		DHD_ERROR(("%s: Insufficient iovar buffer size %d \n",
+		        __FUNCTION__, sizeof(iovbuf)));
+		return -1;
+	}
+	if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, iov_len, TRUE, 0)) >= 0) {
+		/* clear pfn */
+		iov_len = bcm_mkiovar("pfnclear", 0, 0, iovbuf, sizeof(iovbuf));
+		if (iov_len) {
+			if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
+			                            iov_len, TRUE, 0)) < 0) {
+				DHD_ERROR(("%s failed code %d\n", __FUNCTION__, ret));
+			}
+		} else {
+			ret = -1;
+			DHD_ERROR(("%s failed code %d\n", __FUNCTION__, iov_len));
+		}
+	} else
+		DHD_ERROR(("%s failed code %d\n", __FUNCTION__, ret));
+
+	return ret;
+}
+#endif /* OEM_ANDROID */
 #endif /* PNO_SUPPORT */

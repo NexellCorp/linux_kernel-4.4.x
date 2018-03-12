@@ -1,7 +1,27 @@
 /*
  * DHD Protocol Module for CDC and BDC.
  *
- * $Copyright Open Broadcom Corporation$
+ * Portions of this code are copyright (c) 2017, Cypress Semiconductor Corporation
+ * 
+ * Copyright (C) 1999-2017, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: dhd_cdc.c 677348 2017-11-09 19:23:25Z $
  *
@@ -83,9 +103,9 @@ dhdcdc_cmplt(dhd_pub_t *dhd, uint32 id, uint32 len)
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
-#if defined(CUSTOMER_HW5)
+#if defined(OEM_ANDROID) && (defined(CUSTOMER_HW4) || defined(CUSTOMER_HW5))
 	DHD_OS_WAKE_LOCK(dhd);
-#endif 
+#endif /* OEM_ANDROID && (CUSTOMER_HW4 || CUSTOMER_HW5) */
 
 	do {
 		ret = dhd_bus_rxctl(dhd->bus, (uchar*)&prot->msg, cdc_len);
@@ -93,9 +113,9 @@ dhdcdc_cmplt(dhd_pub_t *dhd, uint32 id, uint32 len)
 			break;
 	} while (CDC_IOC_ID(ltoh32(prot->msg.flags)) != id);
 
-#if defined(CUSTOMER_HW5)
+#if defined(OEM_ANDROID) && (defined(CUSTOMER_HW4) || defined(CUSTOMER_HW5))
 	DHD_OS_WAKE_UNLOCK(dhd);
-#endif 
+#endif /* OEM_ANDROID && (CUSTOMER_HW4 || CUSTOMER_HW5) */
 
 	return ret;
 }
@@ -136,6 +156,16 @@ dhdcdc_query_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uin
 
 	memset(msg, 0, sizeof(cdc_ioctl_t));
 
+#ifdef BCMSPI
+	/* 11bit gSPI bus allows 2048bytes of max-data.  We restrict 'len'
+	 * value which is 8Kbytes for various 'get' commands to 2000.  48 bytes are
+	 * left for sw headers and misc.
+	 */
+	if (len > 2000) {
+		DHD_ERROR(("dhdcdc_query_ioctl: len is truncated to 2000 bytes\n"));
+		len = 2000;
+	}
+#endif /* BCMSPI */
 	msg->cmd = htol32(cmd);
 	msg->len = htol32(len);
 	msg->flags = (++prot->reqid << CDCF_IOC_ID_SHIFT);
@@ -191,6 +221,9 @@ done:
 	return ret;
 }
 
+#if defined(CUSTOMER_HW4) && defined(CONFIG_CONTROL_PM)
+extern bool g_pm_control;
+#endif /* CUSTOMER_HW4 & CONFIG_CONTROL_PM */
 
 static int
 dhdcdc_set_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uint8 action)
@@ -215,6 +248,18 @@ dhdcdc_set_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uint8
 		return -EIO;
 	}
 
+#ifdef CUSTOMER_HW4
+	if (cmd == WLC_SET_PM) {
+#ifdef CONFIG_CONTROL_PM
+		if (g_pm_control == TRUE) {
+			DHD_ERROR(("%s: SET PM ignored!(Requested:%d)\n",
+				__FUNCTION__, *(char *)buf));
+			goto done;
+		}
+#endif /* CONFIG_CONTROL_PM */
+		DHD_ERROR(("%s: SET PM to %d\n", __FUNCTION__, *(char *)buf));
+	}
+#endif /* CUSTOMER_HW4 */
 	memset(msg, 0, sizeof(cdc_ioctl_t));
 
 	msg->cmd = htol32(cmd);
@@ -515,8 +560,19 @@ dhd_prot_init(dhd_pub_t *dhd)
 {
 	int ret = 0;
 	wlc_rev_info_t revinfo;
+#ifndef OEM_ANDROID
+	char buf[128];
+#endif /* OEM_ANDROID */
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
+#ifndef OEM_ANDROID
+	/* Get the device MAC address */
+	strcpy(buf, "cur_etheraddr");
+	ret = dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, buf, sizeof(buf), FALSE, 0);
+	if (ret < 0)
+		goto done;
+	memcpy(dhd->mac.octet, buf, ETHER_ADDR_LEN);
+#endif /* OEM_ANDROID */
 
 	/* Get the device rev info */
 	memset(&revinfo, 0, sizeof(revinfo));

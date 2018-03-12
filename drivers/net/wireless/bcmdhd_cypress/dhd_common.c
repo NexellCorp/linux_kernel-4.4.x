@@ -1,7 +1,27 @@
 /*
  * Broadcom Dongle Host Driver (DHD), common DHD core.
  *
- * $Copyright Open Broadcom Corporation$
+ * Portions of this code are copyright (c) 2017, Cypress Semiconductor Corporation
+ * 
+ * Copyright (C) 1999-2017, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: dhd_common.c 665070 2017-05-17 19:24:20Z $
  */
@@ -61,9 +81,9 @@ extern void htsf_update(struct dhd_info *dhd, void *data);
 int dhd_msg_level = DHD_ERROR_VAL ;// | DHD_INFO_VAL ; // | DHD_TRACE_VAL; // htdo
 
 
-#if defined(WL_WIRELESS_EXT)
+#if defined(OEM_ANDROID) && defined(WL_WIRELESS_EXT)
 #include <wl_iw.h>
-#endif 
+#endif /* defined(OEM_ANDROID) && defined(WL_WIRELESS_EXT) */
 
 #ifdef SOFTAP
 char fw_path2[MOD_PARAM_PATHLEN];
@@ -81,14 +101,16 @@ extern int dhd_iscan_in_progress(void *h);
 void dhd_iscan_lock(void);
 void dhd_iscan_unlock(void);
 extern int dhd_change_mtu(dhd_pub_t *dhd, int new_mtu, int ifidx);
-#if !defined(AP) && defined(WLP2P)
+#if defined(OEM_ANDROID) && !defined(AP) && defined(WLP2P)
 extern int dhd_get_concurrent_capabilites(dhd_pub_t *dhd);
 #endif
 
 #define MAX_CHUNK_LEN 1408 /* 8 * 8 * 22 */
 
+#if defined(OEM_ANDROID)
 bool ap_cfg_running = FALSE;
 bool ap_fw_loaded = FALSE;
+#endif /* defined(OEM_ANDROID) && defined(SOFTAP) */
 
 /* Version string to report */
 #ifdef DHD_DEBUG
@@ -298,7 +320,12 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *buf, int le
 	{
 
 		ret = dhd_prot_ioctl(dhd_pub, ifindex, ioc, buf, len);
+#if defined(OEM_ANDROID)
+#if defined(CUSTOMER_HW4)
+		if ((ret || ret == -ETIMEDOUT) && (dhd_pub->up))
+#else
 		if ((ret) && (dhd_pub->up))
+#endif /* CUSTOMER_HW4 */
 			/* Send hang event only if dhd_open() was success */
 			dhd_os_check_hang(dhd_pub, ifindex, ret);
 
@@ -308,9 +335,23 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *buf, int le
 				" bring up\n", __FUNCTION__));
 			dhd_pub->busstate = DHD_BUS_DOWN;
 		}
+#endif /* defined(OEM_ANDROID) */
 
 		dhd_os_proto_unblock(dhd_pub);
 
+#if defined(OEM_ANDROID) // htdo && defined(CUSTOMER_HW4)
+		if (ret < 0) {
+			if (ioc->cmd == WLC_GET_VAR)
+				DHD_ERROR(("%s: WLC_GET_VAR: %s, ret = %d\n",
+					__FUNCTION__, (char *)ioc->buf, ret));
+			else if (ioc->cmd == WLC_SET_VAR)
+				DHD_ERROR(("%s: WLC_SET_VAR: %s, ret = %d\n",
+					__FUNCTION__, (char *)ioc->buf, ret));
+			else
+				DHD_ERROR(("%s: WLC_IOCTL: cmd: %d, ret = %d\n",
+					__FUNCTION__, ioc->cmd, ret));
+		}
+#endif /* OEM_ANDROID && CUSTOMER_HW4 */
 
 	}
 
@@ -1685,13 +1726,13 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata, uint16 pktlen,
 	case WLC_E_PFN_NET_FOUND:
 	case WLC_E_PFN_NET_LOST:
 		break;
-#if defined(PNO_SUPPORT)
+#if defined(OEM_ANDROID) && defined(PNO_SUPPORT)
 	case WLC_E_PFN_BSSID_NET_FOUND:
 	case WLC_E_PFN_BSSID_NET_LOST:
 	case WLC_E_PFN_BEST_BATCHING:
 		dhd_pno_event_handler(dhd_pub, event, (void *)event_data);
 		break;
-#endif 
+#endif /* #if defined(OEM_ANDROID) && defined(PNO_SUPPORT) */
 		/* These are what external supplicant/authenticator wants */
 		/* fall through */
 	case WLC_E_LINK:
@@ -2305,6 +2346,191 @@ dhd_sendup_event_common(dhd_pub_t *dhdp, wl_event_msg_t *event, void *data)
 	dhd_sendup_event(dhdp, event, data);
 }
 
+#ifdef SIMPLE_ISCAN
+
+uint iscan_thread_id = 0;
+iscan_buf_t * iscan_chain = 0;
+
+iscan_buf_t *
+dhd_iscan_allocate_buf(dhd_pub_t *dhd, iscan_buf_t **iscanbuf)
+{
+	iscan_buf_t *iscanbuf_alloc = 0;
+	iscan_buf_t *iscanbuf_head;
+
+	DHD_ISCAN(("%s: Entered\n", __FUNCTION__));
+	dhd_iscan_lock();
+
+	iscanbuf_alloc = (iscan_buf_t*)MALLOC(dhd->osh, sizeof(iscan_buf_t));
+	if (iscanbuf_alloc == NULL)
+		goto fail;
+
+	iscanbuf_alloc->next = NULL;
+	iscanbuf_head = *iscanbuf;
+
+	DHD_ISCAN(("%s: addr of allocated node = 0x%X"
+		   "addr of iscanbuf_head = 0x%X dhd = 0x%X\n",
+		   __FUNCTION__, iscanbuf_alloc, iscanbuf_head, dhd));
+
+	if (iscanbuf_head == NULL) {
+		*iscanbuf = iscanbuf_alloc;
+		DHD_ISCAN(("%s: Head is allocated\n", __FUNCTION__));
+		goto fail;
+	}
+
+	while (iscanbuf_head->next)
+		iscanbuf_head = iscanbuf_head->next;
+
+	iscanbuf_head->next = iscanbuf_alloc;
+
+fail:
+	dhd_iscan_unlock();
+	return iscanbuf_alloc;
+}
+
+void
+dhd_iscan_free_buf(void *dhdp, iscan_buf_t *iscan_delete)
+{
+	iscan_buf_t *iscanbuf_free = 0;
+	iscan_buf_t *iscanbuf_prv = 0;
+	iscan_buf_t *iscanbuf_cur;
+	dhd_pub_t *dhd = dhd_bus_pub(dhdp);
+	DHD_ISCAN(("%s: Entered\n", __FUNCTION__));
+
+	dhd_iscan_lock();
+
+	iscanbuf_cur = iscan_chain;
+
+	/* If iscan_delete is null then delete the entire
+	 * chain or else delete specific one provided
+	 */
+	if (!iscan_delete) {
+		while (iscanbuf_cur) {
+			iscanbuf_free = iscanbuf_cur;
+			iscanbuf_cur = iscanbuf_cur->next;
+			iscanbuf_free->next = 0;
+			MFREE(dhd->osh, iscanbuf_free, sizeof(iscan_buf_t));
+		}
+		iscan_chain = 0;
+	} else {
+		while (iscanbuf_cur) {
+			if (iscanbuf_cur == iscan_delete)
+				break;
+			iscanbuf_prv = iscanbuf_cur;
+			iscanbuf_cur = iscanbuf_cur->next;
+		}
+		if (iscanbuf_prv)
+			iscanbuf_prv->next = iscan_delete->next;
+
+		iscan_delete->next = 0;
+		MFREE(dhd->osh, iscan_delete, sizeof(iscan_buf_t));
+
+		if (!iscanbuf_prv)
+			iscan_chain = 0;
+	}
+	dhd_iscan_unlock();
+}
+
+iscan_buf_t *
+dhd_iscan_result_buf(void)
+{
+	return iscan_chain;
+}
+
+int
+dhd_iscan_issue_request(void * dhdp, wl_iscan_params_t *pParams, uint32 size)
+{
+	int rc = -1;
+	dhd_pub_t *dhd = dhd_bus_pub(dhdp);
+	char *buf;
+	char iovar[] = "iscan";
+	uint32 allocSize = 0;
+	wl_ioctl_t ioctl;
+
+	if (pParams) {
+		allocSize = (size + strlen(iovar) + 1);
+		if ((allocSize < size) || (allocSize < strlen(iovar)))
+		{
+			DHD_ERROR(("%s: overflow - allocation size too large %d < %d + %d!\n",
+				__FUNCTION__, allocSize, size, strlen(iovar)));
+			goto cleanUp;
+		}
+		buf = MALLOC(dhd->osh, allocSize);
+
+		if (buf == NULL)
+			{
+			DHD_ERROR(("%s: malloc of size %d failed!\n", __FUNCTION__, allocSize));
+			goto cleanUp;
+			}
+		ioctl.cmd = WLC_SET_VAR;
+		bcm_mkiovar(iovar, (char *)pParams, size, buf, allocSize);
+		rc = dhd_wl_ioctl(dhd, 0, &ioctl, buf, allocSize);
+	}
+
+cleanUp:
+	if (buf) {
+		MFREE(dhd->osh, buf, allocSize);
+	}
+
+	return rc;
+}
+
+static int
+dhd_iscan_get_partial_result(void *dhdp, uint *scan_count)
+{
+	wl_iscan_results_t *list_buf;
+	wl_iscan_results_t list;
+	wl_scan_results_t *results;
+	iscan_buf_t *iscan_cur;
+	int status = -1;
+	dhd_pub_t *dhd = dhd_bus_pub(dhdp);
+	int rc;
+	wl_ioctl_t ioctl;
+
+	DHD_ISCAN(("%s: Enter\n", __FUNCTION__));
+
+	iscan_cur = dhd_iscan_allocate_buf(dhd, &iscan_chain);
+	if (!iscan_cur) {
+		DHD_ERROR(("%s: Failed to allocate node\n", __FUNCTION__));
+		dhd_iscan_free_buf(dhdp, 0);
+		dhd_iscan_request(dhdp, WL_SCAN_ACTION_ABORT);
+		dhd_ind_scan_confirm(dhdp, FALSE);
+		goto fail;
+	}
+
+	dhd_iscan_lock();
+
+	memset(iscan_cur->iscan_buf, 0, WLC_IW_ISCAN_MAXLEN);
+	list_buf = (wl_iscan_results_t*)iscan_cur->iscan_buf;
+	results = &list_buf->results;
+	results->buflen = WL_ISCAN_RESULTS_FIXED_SIZE;
+	results->version = 0;
+	results->count = 0;
+
+	memset(&list, 0, sizeof(list));
+	list.results.buflen = htod32(WLC_IW_ISCAN_MAXLEN);
+	bcm_mkiovar("iscanresults", (char *)&list, WL_ISCAN_RESULTS_FIXED_SIZE,
+		iscan_cur->iscan_buf, WLC_IW_ISCAN_MAXLEN);
+	ioctl.cmd = WLC_GET_VAR;
+	ioctl.set = FALSE;
+	rc = dhd_wl_ioctl(dhd, 0, &ioctl, iscan_cur->iscan_buf, WLC_IW_ISCAN_MAXLEN);
+
+	results->buflen = dtoh32(results->buflen);
+	results->version = dtoh32(results->version);
+	*scan_count = results->count = dtoh32(results->count);
+	status = dtoh32(list_buf->status);
+	DHD_ISCAN(("%s: Got %d resuls status = (%x)\n", __FUNCTION__, results->count, status));
+
+	dhd_iscan_unlock();
+
+	if (!(*scan_count)) {
+		 /* TODO: race condition when FLUSH already called */
+		dhd_iscan_free_buf(dhdp, 0);
+	}
+fail:
+	return status;
+}
+
+#endif /* SIMPLE_ISCAN */
 
 /*
  * returns = TRUE if associated, FALSE if not associated
@@ -2456,7 +2682,7 @@ int dhd_keep_alive_onoff(dhd_pub_t *dhd)
 	return res;
 }
 #endif /* defined(KEEP_ALIVE) */
-#if defined(WL_WIRELESS_EXT)
+#if defined(OEM_ANDROID) && defined(WL_WIRELESS_EXT)
 /* Android ComboSCAN support */
 /*
  *  data parsing from ComboScan tlv list
@@ -2638,9 +2864,10 @@ wl_iw_parse_channel_list(char** list_str, uint16* channel_list, int channel_num)
 	return num;
 }
 
-#endif 
+#endif /* defined(OEM_ANDROID) && defined(WL_WIRELESS_EXT) */
 
-#if defined(WL_WIRELESS_EXT) || (defined(PNO_SUPPORT) && !defined(WL_SCHED_SCAN))
+#if (defined(OEM_ANDROID) && defined(WL_WIRELESS_EXT)) || (defined(PNO_SUPPORT) && \
+	!defined(WL_SCHED_SCAN))
 /*
 *  SSIDs list parsing from cscan tlv list
 */

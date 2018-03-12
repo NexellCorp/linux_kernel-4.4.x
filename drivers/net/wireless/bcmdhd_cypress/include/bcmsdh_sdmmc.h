@@ -29,13 +29,18 @@
 #ifndef __BCMSDH_SDMMC_H__
 #define __BCMSDH_SDMMC_H__
 
-#define sd_err(x)
+// htdo 1208 printk
+#define sd_err(x)	do { if (sd_msglevel & SDH_ERROR_VAL) printk x; } while (0)
 #define sd_trace(x)
 #define sd_info(x)
 #define sd_debug(x)
 #define sd_data(x)
 #define sd_ctrl(x)
 
+#ifdef CUSTOMER_HW4
+#undef sd_err
+#define sd_err(x) do {printf x;} while (0)
+#endif
 
 #define sd_sync_dma(sd, read, nbytes)
 #define sd_init_dma(sd)

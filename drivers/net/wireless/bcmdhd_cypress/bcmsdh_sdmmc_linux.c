@@ -270,11 +270,11 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 		dhd_mmc_suspend = FALSE;
 		return err;
 	}
-#if defined(OOB_INTR_ONLY)
+#if defined(OOB_INTR_ONLY) && !defined(CUSTOMER_HW4)
 	OOB_PARAM_IF(!(sdioh_get_oob_disable(sdioh))) {
 		bcmsdh_oob_intr_set(sdioh->bcmsdh, FALSE);
 	}
-#endif 
+#endif /* OOB_INTR_ONLY && !CUSTOMER_HW4 */
 	smp_mb();
 
 	return 0;

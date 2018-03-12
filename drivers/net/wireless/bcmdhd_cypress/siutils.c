@@ -2,7 +2,27 @@
  * Misc utility routines for accessing chip-specific features
  * of the SiliconBackplane-based Broadcom chips.
  *
- * $Copyright Open Broadcom Corporation$
+ * Portions of this code are copyright (c) 2017, Cypress Semiconductor Corporation
+ * 
+ * Copyright (C) 1999-2017, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: siutils.c 550969 2015-04-22 00:27:43Z $
  */
@@ -28,6 +48,9 @@
 #include <bcmsdpcm.h>
 #endif /* BCMSDIO */
 #include <hndpmu.h>
+#ifdef BCMSPI
+#include <spid.h>
+#endif /* BCMSPI */
 
 #ifdef BCM_SDRBL
 #include <hndcpu.h>
@@ -67,7 +90,7 @@ static si_cores_info_t ksii_cores_info;
  * varsz - pointer to int to return the size of the vars
  */
 si_t *
-si_attach(uint devid, osl_t *osh, void *regs,
+BCMATTACHFN(si_attach)(uint devid, osl_t *osh, void *regs,
                        uint bustype, void *sdh, char **vars, uint *varsz)
 {
 	si_info_t *sii;
@@ -102,7 +125,7 @@ static uint32	wd_msticks;		/* watchdog timer ticks normalized to ms */
 
 /** generic kernel variant of si_attach() */
 si_t *
-si_kattach(osl_t *osh)
+BCMATTACHFN(si_kattach)(osl_t *osh)
 {
 	static bool ksii_attached = FALSE;
 	si_cores_info_t *cores_info;
@@ -142,7 +165,7 @@ si_kattach(osl_t *osh)
 
 
 static bool
-si_buscore_prep(si_info_t *sii, uint bustype, uint devid, void *sdh)
+BCMATTACHFN(si_buscore_prep)(si_info_t *sii, uint bustype, uint devid, void *sdh)
 {
 	/* need to set memseg flag for CF card first before any sb registers access */
 	if (BUSTYPE(bustype) == PCMCIA_BUS)
@@ -182,13 +205,31 @@ si_buscore_prep(si_info_t *sii, uint bustype, uint devid, void *sdh)
 		bcmsdh_cfg_write(sdh, SDIO_FUNC_1, SBSDIO_FUNC1_SDIOPULLUP, 0, NULL);
 	}
 
+#ifdef BCMSPI
+	/* Avoid backplane accesses before wake-wlan (i.e. htavail) for spi.
+	 * F1 read accesses may return correct data but with data-not-available dstatus bit set.
+	 */
+	if (BUSTYPE(bustype) == SPI_BUS) {
+
+		int err;
+		uint32 regdata;
+		/* wake up wlan function :WAKE_UP goes as HT_AVAIL request in hardware */
+		regdata = bcmsdh_cfg_read_word(sdh, SDIO_FUNC_0, SPID_CONFIG, NULL);
+		SI_MSG(("F0 REG0 rd = 0x%x\n", regdata));
+		regdata |= WAKE_UP;
+
+		bcmsdh_cfg_write_word(sdh, SDIO_FUNC_0, SPID_CONFIG, regdata, &err);
+
+		OSL_DELAY(100000);
+	}
+#endif /* BCMSPI */
 #endif /* BCMSDIO && BCMDONGLEHOST */
 
 	return TRUE;
 }
 
 static bool
-si_buscore_setup(si_info_t *sii, chipcregs_t *cc, uint bustype, uint32 savewin,
+BCMATTACHFN(si_buscore_setup)(si_info_t *sii, chipcregs_t *cc, uint bustype, uint32 savewin,
 	uint *origidx, void *regs)
 {
 	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
@@ -344,7 +385,7 @@ si_buscore_setup(si_info_t *sii, chipcregs_t *cc, uint bustype, uint32 savewin,
  *        function set 'vars' to NULL.
  */
 static si_info_t *
-si_doattach(si_info_t *sii, uint devid, osl_t *osh, void *regs,
+BCMATTACHFN(si_doattach)(si_info_t *sii, uint devid, osl_t *osh, void *regs,
                        uint bustype, void *sdh, char **vars, uint *varsz)
 {
 	struct si_pub *sih = &sii->pub;
@@ -546,7 +587,7 @@ exit:
 
 /** may be called with core in reset */
 void
-si_detach(si_t *sih)
+BCMATTACHFN(si_detach)(si_t *sih)
 {
 	si_info_t *sii = SI_INFO(sih);
 	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
@@ -596,7 +637,7 @@ si_setosh(si_t *sih, osl_t *osh)
 
 /** register driver interrupt disabling and restoring callback functions */
 void
-si_register_intr_callback(si_t *sih, void *intrsoff_fn, void *intrsrestore_fn,
+BCMATTACHFN(si_register_intr_callback)(si_t *sih, void *intrsoff_fn, void *intrsrestore_fn,
                           void *intrsenabled_fn, void *intr_arg)
 {
 	si_info_t *sii = SI_INFO(sih);
@@ -612,7 +653,7 @@ si_register_intr_callback(si_t *sih, void *intrsoff_fn, void *intrsrestore_fn,
 }
 
 void
-si_deregister_intr_callback(si_t *sih)
+BCMATTACHFN(si_deregister_intr_callback)(si_t *sih)
 {
 	si_info_t *sii;
 
@@ -1119,7 +1160,7 @@ si_corebist(si_t *sih)
 }
 
 static uint32
-factor6(uint32 x)
+BCMINITFN(factor6)(uint32 x)
 {
 	switch (x) {
 	case CC_F6_2:	return 2;
@@ -1145,7 +1186,7 @@ divide_clock(uint32 clock, uint32 div)
 
 /** calculate the speed the SI would run at given a set of clockcontrol values */
 uint32
-si_clock_rate(uint32 pll_type, uint32 n, uint32 m)
+BCMINITFN(si_clock_rate)(uint32 pll_type, uint32 n, uint32 m)
 {
 	uint32 n1, n2, clock, m1, m2, m3, mc;
 
@@ -1425,7 +1466,7 @@ si_slowclk_freq(si_info_t *sii, bool max_freq, chipcregs_t *cc)
 }
 
 static void
-si_clkctl_setdelay(si_info_t *sii, void *chipcregs)
+BCMINITFN(si_clkctl_setdelay)(si_info_t *sii, void *chipcregs)
 {
 	chipcregs_t *cc = (chipcregs_t *)chipcregs;
 	uint slowmaxfreq, pll_delay, slowclk;
@@ -1453,7 +1494,7 @@ si_clkctl_setdelay(si_info_t *sii, void *chipcregs)
 
 /** initialize power control delay registers */
 void
-si_clkctl_init(si_t *sih)
+BCMINITFN(si_clkctl_init)(si_t *sih)
 {
 	si_info_t *sii;
 	uint origidx = 0;
@@ -1722,7 +1763,7 @@ si_gpioevent(si_t *sih, uint regtype, uint32 mask, uint32 val)
 }
 
 void *
-si_gpio_handler_register(si_t *sih, uint32 event,
+BCMATTACHFN(si_gpio_handler_register)(si_t *sih, uint32 event,
 	bool level, gpio_handler_t cb, void *arg)
 {
 	si_info_t *sii = SI_INFO(sih);
@@ -1750,7 +1791,7 @@ si_gpio_handler_register(si_t *sih, uint32 event,
 }
 
 void
-si_gpio_handler_unregister(si_t *sih, void *gpioh)
+BCMATTACHFN(si_gpio_handler_unregister)(si_t *sih, void *gpioh)
 {
 	si_info_t *sii = SI_INFO(sih);
 	gpioh_item_t *p, *n;
@@ -1805,7 +1846,7 @@ si_gpio_handler_process(si_t *sih)
 }
 
 uint32
-si_gpio_int_enable(si_t *sih, bool enable)
+BCMATTACHFN(si_gpio_int_enable)(si_t *sih, bool enable)
 {
 	uint offs;
 
@@ -2720,7 +2761,7 @@ si_is_sprom_available(si_t *sih)
 }
 
 
-uint32 si_get_sromctl(si_t *sih)
+uint32 BCMATTACHFN(si_get_sromctl)(si_t *sih)
 {
 	chipcregs_t *cc;
 	uint origidx = si_coreidx(sih);
@@ -2737,7 +2778,7 @@ uint32 si_get_sromctl(si_t *sih)
 	return sromctl;
 }
 
-int si_set_sromctl(si_t *sih, uint32 value)
+int BCMATTACHFN(si_set_sromctl)(si_t *sih, uint32 value)
 {
 	chipcregs_t *cc;
 	uint origidx = si_coreidx(sih);

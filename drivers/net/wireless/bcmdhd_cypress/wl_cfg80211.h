@@ -1,7 +1,27 @@
 /*
  * Linux cfg80211 driver
  *
- * $Copyright Open Broadcom Corporation$
+ * Portions of this code are copyright (c) 2017, Cypress Semiconductor Corporation
+ * 
+ * Copyright (C) 1999-2017, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: wl_cfg80211.h 662786 2016-11-11 09:06:37Z $
  */
@@ -47,7 +67,11 @@ struct wl_ibss;
 /* 0 invalidates all debug messages.  default is 1 */
 #define WL_DBG_LEVEL 0xFF
 
+#ifdef CUSTOMER_HW4
+#define CFG80211_ERROR_TEXT		"CFG80211-INFO2) "
+#else
 #define CFG80211_ERROR_TEXT		"CFG80211-ERROR) "
+#endif
 
 #define MAX_WAIT_TIME 1500
 #define DNGL_FUNC(func, parameters) func parameters;
@@ -106,7 +130,17 @@ do {									\
 #ifdef WL_TRACE_HW4
 #undef WL_TRACE_HW4
 #endif
+#ifdef CUSTOMER_HW4
+#define	WL_TRACE_HW4(args)					\
+do {										\
+	if (wl_dbg_level & WL_DBG_ERR) {				\
+			printk(KERN_INFO "CFG80211-TRACE) %s : ", __func__);	\
+			printk args;						\
+		} 								\
+} while (0)
+#else
 #define	WL_TRACE_HW4			WL_TRACE
+#endif /* CUSTOMER_HW4 */
 #if (WL_DBG_LEVEL > 0)
 #define	WL_DBG(args)								\
 do {									\
@@ -432,10 +466,22 @@ struct escan_info {
 #ifndef CONFIG_DHD_USE_STATIC_BUF
 #error STATIC_WL_PRIV_STRUCT should be used with CONFIG_DHD_USE_STATIC_BUF
 #endif /* CONFIG_DHD_USE_STATIC_BUF */
+#ifdef DUAL_ESCAN_RESULT_BUFFER
+	u8 *escan_buf[2];
+#else
 	u8 *escan_buf;
+#endif /* DUAL_ESCAN_RESULT_BUFFER */
+#else
+#ifdef DUAL_ESCAN_RESULT_BUFFER
+	u8 escan_buf[2][ESCAN_BUF_SIZE];
 #else
 	u8 escan_buf[ESCAN_BUF_SIZE];
+#endif /* DUAL_ESCAN_RESULT_BUFFER */
 #endif /* STATIC_WL_PRIV_STRUCT */
+#ifdef DUAL_ESCAN_RESULT_BUFFER
+	u8 cur_sync_id;
+	u8 escan_type[2];
+#endif /* DUAL_ESCAN_RESULT_BUFFER */
 	struct wiphy *wiphy;
 	struct net_device *ndev;
 };
@@ -648,6 +694,10 @@ struct bcm_cfg80211 {
 	bool p2p_supported;
 	void *btcoex_info;
 	struct timer_list scan_timeout;   /* Timer for catch scan event timeout */
+#ifdef WL_CFG80211_GON_COLLISION
+	u8 block_gon_req_tx_count;
+	u8 block_gon_req_rx_count;
+#endif /* WL_CFG80211_GON_COLLISION */
 	s32(*state_notifier) (struct bcm_cfg80211 *cfg,
 		struct net_info *_net_info, enum wl_status state, bool set);
 	unsigned long interrested_state;
@@ -668,8 +718,10 @@ struct bcm_cfg80211 {
 	u8 curr_band;
 #endif /* WL_HOST_BAND_MGMT */
 	bool scan_suppressed;
+#ifdef OEM_ANDROID
 	struct timer_list scan_supp_timer;
 	struct work_struct wlan_work;
+#endif /* OEM_ANDROID */
 	struct mutex event_sync;	/* maily for up/down synchronization */
 	bool disable_roam_event;
 	bool pm_enable_work_on;
@@ -698,6 +750,9 @@ struct bcm_cfg80211 {
 #endif /* WLTDLS */
 	bool nan_running;
 	bool need_wait_afrx;
+#if defined(CUSTOMER_HW4) && defined(WL_CFG80211_P2P_DEV_IF)
+	bool down_disc_if;
+#endif /* CUSTOMER_HW4 && WL_CFG80211_P2P_DEV_IF */
 	struct ether_addr last_roamed_addr;
 };
 
@@ -1252,7 +1307,7 @@ extern void wl_stop_wait_next_action_frame(struct bcm_cfg80211 *cfg, struct net_
 #ifdef WL_HOST_BAND_MGMT
 extern s32 wl_cfg80211_set_band(struct net_device *ndev, int band);
 #endif /* WL_HOST_BAND_MGMT */
-#if defined(DHCP_SCAN_SUPPRESS)
+#if defined(OEM_ANDROID) && defined(DHCP_SCAN_SUPPRESS)
 extern int wl_cfg80211_scan_suppress(struct net_device *dev, int suppress);
 #endif /* OEM_ANDROID */
 extern void wl_cfg80211_add_to_eventbuffer(wl_eventmsg_buf_t *ev, u16 event, bool set);
@@ -1274,6 +1329,47 @@ wl_cfg80211_get_sta_channel(struct net_device *dev);
 #define SCAN_BUF_NEXT	1
 #define WL_SCANTYPE_LEGACY	0x1
 #define WL_SCANTYPE_P2P		0x2
+#if defined(DUAL_ESCAN_RESULT_BUFFER)
+#define wl_escan_set_sync_id(a, b) ((a) = (b)->escan_info.cur_sync_id)
+#define wl_escan_set_type(a, b) ((a)->escan_info.escan_type\
+[((a)->escan_info.cur_sync_id)%SCAN_BUF_CNT] = (b))
+static inline wl_scan_results_t *wl_escan_get_buf(struct bcm_cfg80211 *cfg, bool aborted)
+{
+	u8 index;
+	if (aborted) {
+		if (cfg->escan_info.escan_type[0] == cfg->escan_info.escan_type[1])
+			index = (cfg->escan_info.cur_sync_id + 1)%SCAN_BUF_CNT;
+		else
+			index = (cfg->escan_info.cur_sync_id)%SCAN_BUF_CNT;
+	}
+	else
+		index = (cfg->escan_info.cur_sync_id)%SCAN_BUF_CNT;
+
+	return (wl_scan_results_t *)cfg->escan_info.escan_buf[index];
+}
+static inline int wl_escan_check_sync_id(s32 status, u16 result_id, u16 wl_id)
+{
+	if (result_id != wl_id) {
+		WL_ERR(("ESCAN sync id mismatch :status :%d "
+			"cur_sync_id:%d coming sync_id:%d\n",
+			status, wl_id, result_id));
+		return -1;
+	}
+	else
+		return 0;
+}
+static inline void wl_escan_print_sync_id(s32 status, u16 result_id, u16 wl_id)
+{
+	if (result_id != wl_id) {
+		WL_ERR(("ESCAN sync id mismatch :status :%d "
+			"cur_sync_id:%d coming sync_id:%d\n",
+			status, wl_id, result_id));
+	}
+}
+
+#define wl_escan_increment_sync_id(a, b) ((a)->escan_info.cur_sync_id += b)
+#define wl_escan_init_sync_id(a) ((a)->escan_info.cur_sync_id = 0)
+#else
 #define wl_escan_set_sync_id(a, b) ((a) = htod16(0x1234))
 #define wl_escan_set_type(a, b)
 #define wl_escan_get_buf(a, b) ((wl_scan_results_t *) (a)->escan_info.escan_buf)
@@ -1281,6 +1377,7 @@ wl_cfg80211_get_sta_channel(struct net_device *dev);
 #define wl_escan_print_sync_id(a, b, c)
 #define wl_escan_increment_sync_id(a, b)
 #define wl_escan_init_sync_id(a)
+#endif /* DUAL_ESCAN_RESULT_BUFFER */
 
 extern void wl_cfg80211_ibss_vsie_set_buffer(vndr_ie_setbuf_t *ibss_vsie, int ibss_vsie_len);
 extern s32 wl_cfg80211_ibss_vsie_delete(struct net_device *dev);

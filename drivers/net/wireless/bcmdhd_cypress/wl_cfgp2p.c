@@ -1,7 +1,27 @@
 /*
  * Linux cfgp2p driver
  *
- * $Copyright Open Broadcom Corporation$
+ * Portions of this code are copyright (c) 2017, Cypress Semiconductor Corporation
+ * 
+ * Copyright (C) 1999-2017, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: wl_cfgp2p.c 662965 2016-11-24 03:53:15Z $
  *
@@ -608,10 +628,19 @@ wl_cfgp2p_init_discovery(struct bcm_cfg80211 *cfg)
 
 	CFGP2P_DBG(("enter\n"));
 
+#if defined(CUSTOMER_HW4) && defined(PLATFORM_SLP)
+	if ((int)wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE) > 0) {
+		CFGP2P_ERR(("do nothing, already initialized index=%u\n",
+			wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE)));
+		return ret;
+	}
+
+#else
 	if (wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE) != 0) {
 		CFGP2P_ERR(("do nothing, already initialized\n"));
 		return ret;
 	}
+#endif /* CUSTOMER_HW4 && PLATFORM_SLP */
 
 	ret = wl_cfgp2p_set_discovery(cfg, 1);
 	if (ret < 0) {
@@ -777,6 +806,11 @@ wl_cfgp2p_disable_discovery(struct bcm_cfg80211 *cfg)
 	/* Do a scan abort to stop the driver's scan engine in case it is still
 	 * waiting out an action frame tx dwell time.
 	 */
+#ifdef NOT_YET
+	if (wl_get_p2p_status(cfg, SCANNING)) {
+		p2pwlu_scan_abort(hdl, FALSE);
+	}
+#endif
 	wl_clr_p2p_status(cfg, DISCOVERY_ON);
 	ret = wl_cfgp2p_deinit_discovery(cfg);
 
@@ -951,6 +985,16 @@ wl_cfgp2p_act_frm_search(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		chan_cnt = AF_PEER_SEARCH_CNT;
 	else
 		chan_cnt = SOCIAL_CHAN_CNT;
+#ifdef CUSTOMER_HW4
+	if (cfg->afx_hdl->pending_tx_act_frm && cfg->afx_hdl->is_active) {
+		wl_action_frame_t *action_frame;
+		action_frame = &(cfg->afx_hdl->pending_tx_act_frm->action_frame);
+		if (wl_cfgp2p_is_p2p_gas_action(action_frame->data, action_frame->len))	{
+			chan_cnt = 1;
+			p2p_scan_purpose = P2P_SCAN_AFX_PEER_REDUCED;
+		}
+	}
+#endif /* CUSTOMER_HW4 */
 	default_chan_list = kzalloc(chan_cnt * sizeof(*default_chan_list), GFP_KERNEL);
 	if (default_chan_list == NULL) {
 		CFGP2P_ERR(("channel list allocation failed \n"));
@@ -1279,6 +1323,10 @@ wl_cfgp2p_cancel_listen(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	/* Irrespective of whether timer is running or not, reset
 	 * the LISTEN state.
 	 */
+#ifdef NOT_YET
+	wl_cfgp2p_set_p2p_mode(cfg, WL_P2P_DISC_ST_SCAN, 0, 0,
+		wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE));
+#endif /* NOT_YET */
 	if (timer_pending(&cfg->p2p->listen_timer)) {
 		del_timer_sync(&cfg->p2p->listen_timer);
 		if (notify) {
@@ -2289,7 +2337,11 @@ static int wl_cfgp2p_do_ioctl(struct net_device *net, struct ifreq *ifr, int cmd
 	 * For Android PRIV CMD handling map it to primary I/F
 	 */
 	if (cmd == SIOCDEVPRIVATE+1) {
+#if defined(OEM_ANDROID)
 		ret = wl_android_priv_cmd(ndev, ifr, cmd);
+#else
+	(void)ndev;
+#endif
 
 	} else {
 		CFGP2P_ERR(("%s: IOCTL req 0x%x on p2p0 I/F. Ignoring. \n",
@@ -2302,6 +2354,10 @@ static int wl_cfgp2p_do_ioctl(struct net_device *net, struct ifreq *ifr, int cmd
 #endif /*  P2PONEINT */
 #endif /* WL_ENABLE_P2P_IF || WL_NEWCFG_PRIVCMD_SUPPORT || defined(P2PONEINT) */
 
+#if defined(CUSTOMER_HW4) && defined(PLATFORM_SLP)
+char g_if_flag = 0;
+extern void dhd_stop_p2p(void);
+#endif /* CUSTOMER_HW4 && PLATFORM_SLP */
 
 #if defined(WL_ENABLE_P2P_IF) || defined(P2PONEINT)
 #ifdef  P2PONEINT
@@ -2381,8 +2437,13 @@ wl_cfgp2p_add_p2p_disc_if(struct bcm_cfg80211 *cfg)
 
 	if (cfg->p2p_wdev) {
 		CFGP2P_ERR(("p2p_wdev defined already.\n"));
+#if (defined(CUSTOMER_HW10) && defined(CONFIG_ARCH_ODIN)) || defined(CUSTOMER_HW4) || \
+	defined(OEM_ANDROID)
 		wl_cfgp2p_del_p2p_disc_if(cfg->p2p_wdev, cfg);
 		CFGP2P_ERR(("p2p_wdev deleted.\n"));
+#else
+		return ERR_PTR(-ENFILE);
+#endif  /* (defined(CUSTOMER_HW10) && defined(CONFIG_ARCH_ODIN))||defined(CUSTOMER_HW4) */
 	}
 
 	wdev = kzalloc(sizeof(*wdev), GFP_KERNEL);
@@ -2410,6 +2471,10 @@ wl_cfgp2p_add_p2p_disc_if(struct bcm_cfg80211 *cfg)
 
 	CFGP2P_ERR(("P2P interface registered\n"));
 
+#if defined(CUSTOMER_HW4) && defined(PLATFORM_SLP)
+	g_if_flag |= DHD_FLAG_P2P_MODE;
+	WL_TRACE(("%s: p2p0 IF up : g_if_flag(%d)\n", __FUNCTION__, g_if_flag));
+#endif /* CUSTOMER_HW4 && PLATFORM_SLP */
 
 	return wdev;
 }
@@ -2476,6 +2541,34 @@ wl_cfgp2p_stop_p2p_device(struct wiphy *wiphy, struct wireless_dev *wdev)
 	return;
 }
 
+#if defined(CUSTOMER_HW4) && defined(PLATFORM_SLP)
+void
+wl_cfgp2p_probe_init_priv(struct bcm_cfg80211 *cfg)
+{
+#define INIT_IE(IE_TYPE, BSS_TYPE) \
+	do { \
+		memset(wl_to_p2p_bss_saved_ie(cfg, BSS_TYPE).p2p_ ## IE_TYPE ## _ie, 0, \
+			sizeof(wl_to_p2p_bss_saved_ie(cfg, BSS_TYPE).p2p_ ## IE_TYPE ## _ie)); \
+		wl_to_p2p_bss_saved_ie(cfg, BSS_TYPE).p2p_ ## IE_TYPE ## _ie_len = 0; \
+	} while (0);
+	INIT_IE(probe_req, P2PAPI_BSSCFG_PRIMARY);
+	INIT_IE(probe_res, P2PAPI_BSSCFG_PRIMARY);
+	INIT_IE(assoc_req, P2PAPI_BSSCFG_PRIMARY);
+	INIT_IE(assoc_res, P2PAPI_BSSCFG_PRIMARY);
+	INIT_IE(beacon,    P2PAPI_BSSCFG_PRIMARY);
+	INIT_IE(probe_req, P2PAPI_BSSCFG_DEVICE);
+	INIT_IE(probe_res, P2PAPI_BSSCFG_DEVICE);
+	INIT_IE(assoc_req, P2PAPI_BSSCFG_DEVICE);
+	INIT_IE(assoc_res, P2PAPI_BSSCFG_DEVICE);
+	INIT_IE(beacon,    P2PAPI_BSSCFG_DEVICE);
+	INIT_IE(probe_req, P2PAPI_BSSCFG_CONNECTION);
+	INIT_IE(probe_res, P2PAPI_BSSCFG_CONNECTION);
+	INIT_IE(assoc_req, P2PAPI_BSSCFG_CONNECTION);
+	INIT_IE(assoc_res, P2PAPI_BSSCFG_CONNECTION);
+	INIT_IE(beacon,    P2PAPI_BSSCFG_CONNECTION);
+#undef INIT_IE
+}
+#endif /* CUSTOMER_HW4 && PLATFORM_SLP */
 
 int
 wl_cfgp2p_del_p2p_disc_if(struct wireless_dev *wdev, struct bcm_cfg80211 *cfg)
@@ -2510,6 +2603,15 @@ wl_cfgp2p_del_p2p_disc_if(struct wireless_dev *wdev, struct bcm_cfg80211 *cfg)
 
 	CFGP2P_ERR(("P2P interface unregistered\n"));
 
+#if defined(CUSTOMER_HW4) && defined(PLATFORM_SLP)
+	g_if_flag &= DHD_FLAG_STA_MODE;
+	WL_TARCE(("%s: p2p0 IF down : g_if_flag(%d)\n", __FUNCTION__, g_if_flag));
+	wl_cfgp2p_probe_init_priv(cfg);
+	if (!g_if_flag) {
+		dhd_stop_p2p();
+		WL_TRACE(("%s: wlan0 IF down\n", __FUNCTION__));
+	}
+#endif /* CUSTOMER_HW4 && PLATFORM_SLP */
 
 	return 0;
 }

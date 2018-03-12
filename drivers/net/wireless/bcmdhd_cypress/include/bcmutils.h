@@ -1,7 +1,27 @@
 /*
  * Misc useful os-independent macros and functions.
  *
- * $Copyright Open Broadcom Corporation$
+ * Portions of this code are copyright (c) 2017, Cypress Semiconductor Corporation
+ * 
+ * Copyright (C) 1999-2017, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: bcmutils.h 490613 2014-07-11 05:23:34Z $
  */
@@ -174,7 +194,11 @@ typedef bool (*ifpkt_cb_t)(void*, int);
 
 #ifdef BCMPKTPOOL
 #define POOL_ENAB(pool)		((pool) && (pool)->inited)
+#if defined(BCM4329C0)
+#define SHARED_POOL		(pktpool_shared_ptr)
+#else
 #define SHARED_POOL		(pktpool_shared)
+#endif /* BCM4329C0 */
 #else /* BCMPKTPOOL */
 #define POOL_ENAB(bus)		0
 #define SHARED_POOL		((struct pktpool *)NULL)
@@ -262,11 +286,15 @@ typedef struct pktpool {
 #endif
 } pktpool_t;
 
+#if defined(BCM4329C0)
+extern pktpool_t *pktpool_shared_ptr;
+#else
 extern pktpool_t *pktpool_shared;
 #ifdef BCMFRAGPOOL
 extern pktpool_t *pktpool_shared_lfrag;
 #endif
 extern pktpool_t *pktpool_shared_rxlfrag;
+#endif /* BCM4329C0 */
 
 /* Incarnate a pktpool registry. On success returns total_pools. */
 extern int pktpool_attach(osl_t *osh, uint32 total_pools);
@@ -428,11 +456,11 @@ extern void *pktoffset(osl_t *osh, void *p,  uint offset);
 extern uint pktsetprio(void *pkt, bool update_vtag);
 
 /* string */
-extern int bcm_atoi(const char *s);
-extern ulong bcm_strtoul(const char *cp, char **endp, uint base);
-extern char *bcmstrstr(const char *haystack, const char *needle);
-extern char *bcmstrcat(char *dest, const char *src);
-extern char *bcmstrncat(char *dest, const char *src, uint size);
+extern int BCMROMFN(bcm_atoi)(const char *s);
+extern ulong BCMROMFN(bcm_strtoul)(const char *cp, char **endp, uint base);
+extern char *BCMROMFN(bcmstrstr)(const char *haystack, const char *needle);
+extern char *BCMROMFN(bcmstrcat)(char *dest, const char *src);
+extern char *BCMROMFN(bcmstrncat)(char *dest, const char *src, uint size);
 extern ulong wchar2ascii(char *abuf, ushort *wbuf, ushort wbuflen, ulong abuflen);
 char* bcmstrtok(char **string, const char *delimiters, char *tokdelim);
 int bcmstricmp(const char *s1, const char *s2);
@@ -441,13 +469,13 @@ int bcmstrnicmp(const char* s1, const char* s2, int cnt);
 
 /* ethernet address */
 extern char *bcm_ether_ntoa(const struct ether_addr *ea, char *buf);
-extern int bcm_ether_atoe(const char *p, struct ether_addr *ea);
+extern int BCMROMFN(bcm_ether_atoe)(const char *p, struct ether_addr *ea);
 
 /* ip address */
 struct ipv4_addr;
 extern char *bcm_ip_ntoa(struct ipv4_addr *ia, char *buf);
 extern char *bcm_ipv6_ntoa(void *ipv6, char *buf);
-extern int bcm_atoipv4(const char *p, struct ipv4_addr *ip);
+extern int BCMROMFN(bcm_atoipv4)(const char *p, struct ipv4_addr *ip);
 
 /* delay */
 extern void bcm_mdelay(uint ms);
@@ -904,9 +932,9 @@ xor_128bit_block(const uint8 *src1, const uint8 *src2, uint8 *dst)
 
 /* externs */
 /* crc */
-extern uint8 hndcrc8(uint8 *p, uint nbytes, uint8 crc);
-extern uint16 hndcrc16(uint8 *p, uint nbytes, uint16 crc);
-extern uint32 hndcrc32(uint8 *p, uint nbytes, uint32 crc);
+extern uint8 BCMROMFN(hndcrc8)(uint8 *p, uint nbytes, uint8 crc);
+extern uint16 BCMROMFN(hndcrc16)(uint8 *p, uint nbytes, uint16 crc);
+extern uint32 BCMROMFN(hndcrc32)(uint8 *p, uint nbytes, uint32 crc);
 
 /* format/print */
 #if defined(DHD_DEBUG) || defined(WLMSG_PRHDRS) || defined(WLMSG_PRPKT) || \
@@ -1044,13 +1072,13 @@ extern void bcm_print_bytes(const char *name, const uchar *cdata, int len);
 typedef  uint32 (*bcmutl_rdreg_rtn)(void *arg0, uint arg1, uint32 offset);
 extern uint bcmdumpfields(bcmutl_rdreg_rtn func_ptr, void *arg0, uint arg1, struct fielddesc *str,
                           char *buf, uint32 bufsize);
-extern uint bcm_bitcount(uint8 *bitmap, uint bytelength);
+extern uint BCMROMFN(bcm_bitcount)(uint8 *bitmap, uint bytelength);
 
 extern int bcm_bprintf(struct bcmstrbuf *b, const char *fmt, ...);
 
 /* power conversion */
-extern uint16 bcm_qdbm_to_mw(uint8 qdbm);
-extern uint8 bcm_mw_to_qdbm(uint16 mw);
+extern uint16 BCMROMFN(bcm_qdbm_to_mw)(uint8 qdbm);
+extern uint8 BCMROMFN(bcm_mw_to_qdbm)(uint16 mw);
 extern uint bcm_mkiovar(char *name, char *data, uint datalen, char *buf, uint len);
 
 unsigned int process_nvram_vars(char *varbuf, unsigned int len);

@@ -1,7 +1,27 @@
 /*
  * Linux OS Independent Layer
  *
- * $Copyright Open Broadcom Corporation$
+ * Portions of this code are copyright (c) 2017, Cypress Semiconductor Corporation
+ * 
+ * Copyright (C) 1999-2017, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: linux_osl.c 658506 2016-09-08 06:44:19Z $
  */
@@ -22,6 +42,9 @@
 #include <linux/delay.h>
 #include <pcicfg.h>
 
+#if defined(BCMASSERT_LOG) && !defined(OEM_ANDROID)
+#include <bcm_assert_log.h>
+#endif
 
 
 #include <linux/fs.h>
@@ -371,6 +394,9 @@ static struct sk_buff *osl_alloc_skb(osl_t *osh, unsigned int len)
 	gfp_t flags = (in_atomic() || irqs_disabled()) ? GFP_ATOMIC : GFP_KERNEL;
 #if defined(CONFIG_SPARSEMEM) && defined(CONFIG_ZONE_DMA)
 	flags |= GFP_ATOMIC;
+#endif
+#if defined(CUSTOMER_HW4)
+	flags = GFP_ATOMIC;
 #endif
 	skb = __dev_alloc_skb(len, flags);
 #else
@@ -1278,7 +1304,11 @@ osl_assert(const char *exp, const char *file, int line)
 #ifdef BCMASSERT_LOG
 	snprintf(tempbuf, 64, "\"%s\": file \"%s\", line %d\n",
 		exp, basename, line);
+#ifdef OEM_ANDROID
 	printk("%s", tempbuf);
+#else
+	bcm_assert_log(tempbuf);
+#endif /* OEM_ANDROID */
 #endif /* BCMASSERT_LOG */
 
 
