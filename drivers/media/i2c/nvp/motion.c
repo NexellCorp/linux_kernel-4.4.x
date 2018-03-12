@@ -46,7 +46,7 @@ extern int nvp_i2c_write(unsigned int slave, u8 addr, u8 data);
 void nvp6124_hi3520_viu_init(void)
 {
 	printk("nvp6124_hi3520_viu_init...\n");
-	viu_virt = ioremap(0x10100000, 0x100000);
+	viu_virt = (unsigned int)ioremap(0x10100000, 0x100000);
 	printk("viu_virt  = %x\n", viu_virt);
 }
 
@@ -69,9 +69,10 @@ void hi3520_init_blank_data(unsigned int ch)
 
 void nvp6124_motion_init(void)
 {
+	int i = 0;
+
 	printk("nvp6124_motion_init...\n");
 
-	int i = 0;
 	nvp_i2c_write( NVP6124+i, 0xff, 0x03 );
 	nvp_i2c_write( NVP6124+i, 0x80, 0x40 );
 	nvp_i2c_write( NVP6124+i, 0x82, 0x40 );
@@ -130,7 +131,6 @@ void nvp6124_motion_init(void)
 
 nvp6124_motion_area nvp6124_get_motion_info(unsigned int ch)
 {
-	int i;
 	nvp6124_motion_area m_area;
 
 	if(viu_virt == 0)

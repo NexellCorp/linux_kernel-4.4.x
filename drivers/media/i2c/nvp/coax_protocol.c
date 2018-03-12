@@ -129,7 +129,8 @@ extern int chip_id[4];
 
 void nvp6124_pelco_coax_mode(void)
 {
-	int i, j, ch;
+	int i;
+
 	Write_I2CV6_1( NVP6124, 0xFF, 0,BANK1,1 );
 	if(chip_id[0] == NVP6124_R0_ID)
 	{
@@ -358,7 +359,7 @@ void acp_read(nvp6124_input_videofmt *pvideoacp)
 			buf[i] = Read_I2CV6_1(NVP6124,ACP_RX_D0+i);
 			//pvideoacp->getacpdata[i] = buf[i];
 			pvideoacp->getacpdata[i] = buf[i];
-			printk("ACP_DATA_0x%d = 0x%x\n",i,buf[i]);
+			printk("ACP_DATA_0x%d = 0x%lx\n",i,buf[i]);
 			Write_I2CV6_1(NVP6124, AHD2_FHD_D0+i, 0,buf[i],1); // Decoder compare with Encoder value
 		}
 		Write_I2CV6_1( NVP6124, AHD2_FHD_OUT, 0,0x08,1 ); // Decoder compare with Encoder value
@@ -373,7 +374,7 @@ void acp_read(nvp6124_input_videofmt *pvideoacp)
 		{
 			buf[i] = Read_I2CV6_1(NVP6124,ACP_RX_D0+i);
 			pvideoacp->getacpdata[i] = buf[i];
-			printk("ACP_Write_0x%d = 0x%x\n",i,buf[i]);
+			printk("ACP_Write_0x%d = 0x%lx\n",i,buf[i]);
 		}
 
 		printk("ACP_BANK_0x%x\n",Read_I2CV6_1(NVP6124,ACP_RX_D0+1));
@@ -391,7 +392,7 @@ void acp_read(nvp6124_input_videofmt *pvideoacp)
 		{
 			buf[i] = Read_I2CV6_1(NVP6124,ACP_RX_D0+i);
 			pvideoacp->getacpdata[i] = buf[i];
-			printk("ACP_Read_0x%d = 0x%x\n",i,buf[i]);
+			printk("ACP_Read_0x%d = 0x%lx\n",i,buf[i]);
 		}
 		printk("ACP_BANK_0x%x\n",Read_I2CV6_1(NVP6124,ACP_RX_D0+1));
 		printk("ACP_ADDR_0x%x\n",Read_I2CV6_1(NVP6124,ACP_RX_D0+2));
@@ -836,6 +837,6 @@ unsigned char samsung_coax_command(unsigned char command)
 	Write_I2CV6_1( NVP6124, SAM_OUT, 0,0x00,1 );
 	msleep( 20 );
 
-	//return 1;
+	return 0;
 }
 
