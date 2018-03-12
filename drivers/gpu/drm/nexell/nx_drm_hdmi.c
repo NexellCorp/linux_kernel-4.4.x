@@ -736,9 +736,9 @@ static int panel_hdmi_remove(struct platform_device *pdev)
 
 	component_del(dev, &panel_comp_ops);
 
+	hdmi = &ctx->hdmi;
 	switch_dev_unregister(&hdmi->swdev);
 
-	hdmi = &ctx->hdmi;
 	if (hdmi->hpd_irq != INVALID_IRQ)
 		devm_free_irq(dev, hdmi->hpd_irq, ctx);
 
