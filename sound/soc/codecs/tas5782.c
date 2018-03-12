@@ -171,7 +171,6 @@ static int _init_sequence(struct i2c_client *client,
 			case CFG_META_BURST:
 				ret = i2c_master_send(client, (unsigned char *)&r[i+1],
 						r[i].param);
-				dev_err(&client->dev, "tas 5782m ret =%d", ret);
 				i +=  (r[i].param + 1)/2;
 				break;
 			default:
