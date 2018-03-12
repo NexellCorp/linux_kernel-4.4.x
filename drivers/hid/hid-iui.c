@@ -146,7 +146,7 @@ long iuihid_ioctl(struct file *file,  unsigned int cmd, unsigned long arg)
 
 	struct iui_recv_pck {
 		int len;
-		char buf[RECV_PCK_SIZE];
+		char *buf;
 	} recv_pck;
 
 	if (iui_dev == NULL) {
@@ -180,6 +180,11 @@ long iuihid_ioctl(struct file *file,  unsigned int cmd, unsigned long arg)
 		pr_debug("IOCTL_GET_VERSION\n");
 		break;
 	case 3: /*IIF_IOCTL_GET_MESSAGE*/
+		recv_pck.buf = kmalloc(RECV_PCK_SIZE, GFP_KERNEL);
+		if (recv_pck.buf == NULL) {
+			pr_err("IUI: failed to allocate receive buf\n");
+			return -ENOMEM;
+		}
 		memset(recv_pck.buf, 0, RECV_PCK_SIZE);
 		ret = usb_interrupt_msg(dev, usb_rcvintpipe(dev, 3),
 				recv_pck.buf, RECV_PCK_SIZE,
@@ -206,6 +211,8 @@ long iuihid_ioctl(struct file *file,  unsigned int cmd, unsigned long arg)
 				pr_debug("[%x]", *recv_pck.buf++);
 #endif
 		}
+		kfree(recv_pck.buf);
+		recv_pck.buf = NULL;
 		break;
 	case 4: /* Role switch Message */
 		iuihid_set_operational_usb(iui_dev);
