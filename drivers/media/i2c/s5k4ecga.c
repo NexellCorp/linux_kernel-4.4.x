@@ -3567,8 +3567,59 @@ static int sensor_4ec_s_fmt(struct v4l2_subdev *sd,
 	return sensor_4ec_s_format(sd, mf);
 }
 
+static int sensor_4ec_enum_fsize(struct v4l2_subdev *sd,
+				 struct v4l2_subdev_pad_config *cfg,
+				 struct v4l2_subdev_frame_size_enum *fse)
+{
+	BUG_ON(!sd);
+	BUG_ON(!fse);
+
+	if (fse->index >= 23)
+		return -EINVAL;
+
+	fse->min_width = fse->max_width =
+		preview_size_list[fse->index].width;
+	fse->min_height = fse->max_height =
+		preview_size_list[fse->index].height;
+
+	return 0;
+}
+
+enum sensor_4ec_frame_rate {
+	SENSOR_4EC_15_FPS = 0,
+	SENSOR_4EC_30_FPS,
+	SENSOR_4EC_NUM_FRAMERATES,
+};
+
+static const int sensor_4ec_framerates[] = {
+	[SENSOR_4EC_15_FPS] = 15,
+	[SENSOR_4EC_30_FPS] = 30,
+};
+
+static int sensor_4ec_enum_finterval(struct v4l2_subdev *sd,
+				     struct v4l2_subdev_pad_config *cfg,
+				     struct v4l2_subdev_frame_interval_enum *fie)
+{
+	struct v4l2_fract tpf;
+
+	BUG_ON(!sd);
+	BUG_ON(!fie);
+
+	if (fie->index >= SENSOR_4EC_NUM_FRAMERATES)
+		return -EINVAL;
+
+	tpf.numerator = 1;
+	tpf.denominator = sensor_4ec_framerates[fie->index];
+
+	fie->interval = tpf;
+
+	return 0;
+}
+
 static struct v4l2_subdev_pad_ops pad_ops = {
 	.set_fmt		= sensor_4ec_s_fmt,
+	.enum_frame_size	= sensor_4ec_enum_fsize,
+	.enum_frame_interval	= sensor_4ec_enum_finterval,
 };
 
 static const struct v4l2_subdev_core_ops core_ops = {
