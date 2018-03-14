@@ -568,7 +568,6 @@ static void _enable_dpc_irq_ctx(struct nx_rearcam *);
 static void _enable_vip_irq_ctx(struct nx_rearcam *);
 
 static void _work_handler_reargear(void *devdata);
-static void _display_init(struct nx_rearcam *me);
 static void _display_worker(struct nx_rearcam *me);
 
 #ifdef DEBUG_SYNC
@@ -2150,10 +2149,10 @@ static void _vip_run(struct nx_rearcam *me)
 		WARN_ON(true);
 
 	nx_vip_set_vipenable(module, true, true, true, false);
-	/*	nx_vip_dump_register(module);	*/
+	/*nx_vip_dump_register(module);*/
 }
 
-static __attribute__((unused)) void _vip_stop(struct nx_rearcam *me)
+static void _vip_stop(struct nx_rearcam *me)
 {
 	int module = me->clipper_info.module;
 
@@ -2598,6 +2597,7 @@ static void _setup_me(struct nx_rearcam *me)
 		_enable_rot_ctx(me);
 
 	_enable_dpc_irq_ctx(me);
+	_enable_vip_irq_ctx(me);
 }
 
 static void _cleanup_me(struct nx_rearcam *me)
@@ -2649,13 +2649,11 @@ static void _turn_on(struct nx_rearcam *me)
 
 	_setup_me(me);
 
+	_set_vip_interrupt(me, true);
 	_vip_run(me);
 
 	if (me->vendor_context && me->set_enable)
 		me->set_enable(me->vendor_context, true);
-
-	if (!me->is_mlc_on)
-		_display_init(me);
 }
 
 static void _turn_off(struct nx_rearcam *me)
@@ -2663,6 +2661,8 @@ static void _turn_off(struct nx_rearcam *me)
 	_mlc_overlay_stop(me);
 
 	_mlc_video_stop(me);
+
+	_vip_stop(me);
 
 	_cleanup_me(me);
 	_reset_queue(me);
@@ -2703,7 +2703,7 @@ static void _work_handler_reargear(void * devdata)
 static irqreturn_t _irq_handler(int irq, void *devdata)
 {
 	struct nx_rearcam *me = devdata;
-	nx_soc_gpio_clr_int_pend(PAD_GPIO_ALV + 3);
+	nx_soc_gpio_clr_int_pend(me->event_gpio);
 	tasklet_schedule(&me->work);
 	return IRQ_HANDLED;
 }
@@ -3072,10 +3072,11 @@ static void _enable_gpio_irq_ctx(struct nx_rearcam *me)
 	if (!me->is_enable_gpio_irq) {
 		ret = devm_gpio_request_one(dev, me->event_gpio,
 						GPIOF_IN, dev_name(dev));
-		if (ret)
+		if (ret) {
 			dev_err(dev, "unable to request GPIO %d\n",
 			me->event_gpio);
-
+			return;
+		}
 		me->irq_event = gpio_to_irq(me->event_gpio);
 		ret = devm_request_irq(dev, me->irq_event, _irq_handler,
 				IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
@@ -3439,8 +3440,10 @@ static int _init_camera_sensor(struct nx_rearcam *me)
 			reg_val = me->init_data;
 
 			while (reg_val->reg != 0xFF && reg_val->val != 0xFF) {
-				i2c_smbus_write_byte_data(me->client, reg_val->reg,
+				ret = i2c_smbus_write_byte_data(me->client, reg_val->reg,
 					reg_val->val);
+				if (ret)
+					dev_err(dev, "Failed to write data by i2c\n");
 				pr_debug("%s - index : %d, addr : 0x%02x, val: 0x%02x\n",
 					__func__, i++, reg_val->reg, reg_val->val);
 				reg_val++;
@@ -3451,39 +3454,6 @@ static int _init_camera_sensor(struct nx_rearcam *me)
 		me->sensor_init_func(me->client);
 
 	return 0;
-}
-
-static void _display_init(struct nx_rearcam *me)
-{
-	int module = me->clipper_info.module;
-	struct device *dev = &me->pdev->dev;
-	struct queue_entry *entry = NULL;
-	struct nx_video_buf *buf = NULL;
-
-	while(!nx_vip_get_interrupt_pending(module, 2));
-
-	entry = me->frame_set.cur_entry_vip;
-	buf = (struct nx_video_buf *)(entry->data);
-	_mlc_video_set_addr(me, buf);
-	_mlc_video_run(me);
-
-	if (!me->draw_overlay_from_ioctl) {
-		_mlc_rgb_overlay_draw(me);
-		_mlc_overlay_run(me);
-	}
-	pr_debug("[%s] mlc on\n", __func__);
-	me->is_mlc_on = true;
-
-	entry =  me->q_vip_empty.dequeue(&me->q_vip_empty);
-	if (entry) {
-		buf = (struct nx_video_buf *)(entry->data);
-		_vip_hw_set_addr(module, me,
-			buf->lu_addr, buf->cb_addr, buf->cr_addr);
-		me->frame_set.cur_entry_vip = entry;
-		_set_vip_interrupt(me, true);
-		_enable_vip_irq_ctx(me);
-	} else
-		dev_err(dev, "VIP empty buffer underrun!!\n");
 }
 
 static void _display_worker(struct nx_rearcam *me)
@@ -3993,7 +3963,6 @@ static void _init_hw_display(struct nx_rearcam *me)
 		_init_hw_display_top(me);
 		_init_hw_lvds(me);
 	}
-
 	if (_is_enable_mlc(me) == false)
 		_init_hw_mlc(me);
 }
@@ -4264,8 +4233,10 @@ int nx_rearcam_enable_gpio_irq_ctx(void *priv, int gpio)
 	struct device *dev = &me->pdev->dev;
 
 	ret = devm_gpio_request_one(dev, gpio, GPIOF_IN, dev_name(dev));
-	if (ret)
+	if (ret) {
 		dev_err(dev, "unable to request GPIO %d\n", gpio);
+		return -ENODEV;
+	}
 	irq = gpio_to_irq(gpio);
 	ret = devm_request_irq(dev, irq, _irq_handler,
 			       IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
