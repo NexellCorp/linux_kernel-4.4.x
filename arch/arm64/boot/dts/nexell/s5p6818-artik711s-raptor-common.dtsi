@@ -473,8 +473,8 @@
 
 	i2c_gpio11: i2c@11 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio_b 18 0	/* sda */
-			&gpio_b 11 0	/* scl */
+		gpios = <&gpio_c 26 0	/* sda */
+			&gpio_e 30 0	/* scl */
 			>;
 
 		i2c-gpio,delay-us = <1>;
