@@ -39,7 +39,6 @@
 		   "nexell,s5p6818";
 
 	aliases {
-		i2c5 = &i2c_gpio5;
 		i2c6 = &i2c_gpio6;
 		i2c7 = &i2c_gpio7;
 		i2c8 = &i2c_gpio8;
@@ -79,6 +78,10 @@
 			pwm0:pwm0@c00ba000 {
 			      clk-input = <I_PLL2>;
 			};
+		};
+
+		rtc@c0010c00 {
+			status = "okay";
 		};
 
 		timer@c0017000 {
@@ -359,28 +362,6 @@
 		    codec {
 			sound-dai = <&spdif_out>;
 		    };
-		};
-	};
-
-	i2c_gpio5: i2c@5 {
-		compatible = "i2c-gpio";
-		gpios = <&gpio_d 31 0	/* sda */
-			&gpio_e 3 0	/* scl */
-			>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		i2c-gpio,delay-us = <100>;
-
-		rtc@68 {
-			compatible = "maxim,ds1337";
-			reg = <0x68>;
-			interrupt-parent = <&alive_0>;
-			interrupts = <0x2 IRQ_TYPE_EDGE_FALLING>;
-			/* If it's first boot, reset to 4/29/2016(Fri) UTC */
-			init_time,year = <116>;
-			init_time,mon = <3>;
-			init_time,mday = <29>;
-			init_time,wday = <5>;
 		};
 	};
 
