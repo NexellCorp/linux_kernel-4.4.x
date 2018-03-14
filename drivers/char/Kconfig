@@ -605,5 +605,10 @@ config TILE_SROM
 
 source "drivers/char/xillybus/Kconfig"
 
+config OPTION_FPART
+	bool "Option fpart driver for access"
+	default n
+	help
+	  Enable option fpart driver.
 endmenu
 
