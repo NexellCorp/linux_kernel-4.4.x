@@ -834,8 +834,10 @@ static int s3c64xx_spi_setup(struct spi_device *spi)
 
 	sdd = spi_master_get_devdata(spi->master);
 	if (spi->dev.of_node) {
-		cs = s3c64xx_get_slave_ctrldata(spi);
-		spi->controller_data = cs;
+		if (!cs) {
+			cs = s3c64xx_get_slave_ctrldata(spi);
+			spi->controller_data = cs;
+		}
 	} else if (cs) {
 		/* On non-DT platforms the SPI core will set spi->cs_gpio
 		 * to -ENOENT. The GPIO pin used to drive the chip select
