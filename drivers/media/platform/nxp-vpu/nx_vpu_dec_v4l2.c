@@ -352,6 +352,7 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 					&ctx->vq_strm, buf->flags);
 			} else {
 				ctx->codec.dec.flush = 0;
+				ctx->codec.dec.eos_tag = buf->flags;
 				return vb2_qbuf(&ctx->vq_strm, buf);
 			}
 	} else {
@@ -1112,7 +1113,7 @@ int vpu_dec_decode_slice(struct nx_vpu_ctx *ctx)
 		decArg.strmData = (unsigned long)vb2_plane_vaddr(&buf->vb, 0);
 #endif
 
-		decArg.eos = vbuf->flags;
+		decArg.eos = dec_ctx->eos_tag;
 		timestamp.tv_sec = vbuf->timestamp.tv_sec;
 		timestamp.tv_usec = vbuf->timestamp.tv_usec;
 
