@@ -58,6 +58,7 @@ static const struct platform_device_id ntc_thermistor_id[] = {
 	{ "ncp15wl333", TYPE_NCPXXWL333 },
 	{ "b57330v2103", TYPE_B57330V2103},
 	{ "ncp03wf104", TYPE_NCPXXWF104 },
+	{ "lnsk10g103", TYPE_LNSK10G103 },
 	{ },
 };
 
@@ -177,6 +178,44 @@ static const struct ntc_compensation ncpXXwf104[] = {
 	{ .temp_c	= 125, .ohm	= 2522 },
 };
 
+static const struct ntc_compensation lnsk10g103[] = {
+	{ .temp_c	= -40, .ohm	= 200800 },
+	{ .temp_c	= -35, .ohm	= 152900 },
+	{ .temp_c	= -30, .ohm	= 117200 },
+	{ .temp_c	= -25, .ohm	= 90510 },
+	{ .temp_c	= -20, .ohm	= 70400 },
+	{ .temp_c	= -15, .ohm	= 55140 },
+	{ .temp_c	= -10, .ohm	= 43510 },
+	{ .temp_c	= -5, .ohm	= 34570 },
+	{ .temp_c	= 0, .ohm	= 27660 },
+	{ .temp_c	= 5, .ohm	= 22280 },
+	{ .temp_c	= 10, .ohm	= 18070 },
+	{ .temp_c	= 15, .ohm	= 14740 },
+	{ .temp_c	= 20, .ohm	= 12110 },
+	{ .temp_c	= 25, .ohm	= 10000 },
+	{ .temp_c	= 30, .ohm	= 8307 },
+	{ .temp_c	= 35, .ohm	= 6938 },
+	{ .temp_c	= 40, .ohm	= 5824 },
+	{ .temp_c	= 45, .ohm	= 4913 },
+	{ .temp_c	= 50, .ohm	= 4164 },
+	{ .temp_c	= 55, .ohm	= 3543 },
+	{ .temp_c	= 60, .ohm	= 3028 },
+	{ .temp_c	= 65, .ohm	= 2597 },
+	{ .temp_c	= 70, .ohm	= 2235 },
+	{ .temp_c	= 75, .ohm	= 1930 },
+	{ .temp_c	= 80, .ohm	= 1671 },
+	{ .temp_c	= 85, .ohm	= 1452 },
+	{ .temp_c	= 90, .ohm	= 1264 },
+	{ .temp_c	= 95, .ohm	= 1104 },
+	{ .temp_c	= 100, .ohm	= 966 },
+	{ .temp_c	= 105, .ohm	= 848 },
+	{ .temp_c	= 110, .ohm	= 746 },
+	{ .temp_c	= 115, .ohm	= 657 },
+	{ .temp_c	= 120, .ohm	= 581 },
+};
+
+
+
 /*
  * The following compensation table is from the specification of EPCOS NTC
  * Thermistors Datasheet
@@ -276,6 +315,8 @@ static const struct of_device_id ntc_match[] = {
 		.data = &ntc_thermistor_id[3] },
 	{ .compatible = "ntc,ncp15wl333",
 		.data = &ntc_thermistor_id[4] },
+	{ .compatible = "ltr,lnsk10g103",
+		.data = &ntc_thermistor_id[7]},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, ntc_match);
@@ -582,6 +623,8 @@ static int ntc_thermistor_probe(struct platform_device *pdev)
 	else if (pdata == NULL)
 		pdata = dev_get_platdata(&pdev->dev);
 
+	dev_err(&pdev->dev, "%s: Enter +++\n", __FUNCTION__);
+
 	if (!pdata) {
 		dev_err(&pdev->dev, "No platform init data supplied.\n");
 		return -ENODEV;
@@ -638,6 +681,10 @@ static int ntc_thermistor_probe(struct platform_device *pdev)
 	case TYPE_NCPXXWF104:
 		data->comp = ncpXXwf104;
 		data->n_comp = ARRAY_SIZE(ncpXXwf104);
+		break;
+	case TYPE_LNSK10G103:
+		data->comp = lnsk10g103;
+		data->n_comp = ARRAY_SIZE(lnsk10g103);
 		break;
 	default:
 		dev_err(&pdev->dev, "Unknown device type: %lu(%s)\n",
