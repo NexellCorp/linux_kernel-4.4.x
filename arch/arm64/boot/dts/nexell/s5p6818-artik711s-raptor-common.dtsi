@@ -600,6 +600,22 @@
 				regulator-boot-on;};
 	}; /* regulators */
 
+	nexell-ion@0 {
+		compatible = "nexell,ion";
+
+		heap_sys_user@0 {
+			heap-type = "ion_system";
+		};
+
+		heap_sys_contig@0 {
+			heap-type = "ion_system_contig";
+		};
+
+		heap_dma@0 {
+			heap-type = "ion_dma";
+		};
+	};
+
 };
 
 &decimator_0 {
@@ -629,6 +645,7 @@
 	enable-gpios = <&gpio_a 21 0>;
 	status = "ok";
 	q_range = <0>;
+	skip-boot-connect;
 };
 
 &dp_drm_lvds {
