@@ -152,25 +152,25 @@
 			bt_cfg_hostwake:bt_cfg_hostwake {
 				nexell,pins = "alive-4";
 				nexell,pin-function = <NX_PIN_FUNC0>;
-				nexell,pin-pull = <NX_PIN_PULL_DOWN>;
+				nexell,pin-pull = <NX_PIN_PULL_NONE>;
 				nexell,pin-strength = <NX_PIN_STR0>;
 			};
 			bt_cfg_btwake:bt_cfg_btwake {
 				nexell,pins = "gpiod-30";
-				nexell,pin-function = <NX_PIN_FUNC1>;
+				nexell,pin-function = <NX_PIN_FUNC0>;
 				nexell,pin-pull = <NX_PIN_PULL_NONE>;
 				nexell,pin-strength = <NX_PIN_STR0>;
 			};
 			bt_cfg_en:bt_cfg_en {
 				nexell,pins = "gpiod-29";
-				nexell,pin-function = <NX_PIN_FUNC1>;
+				nexell,pin-function = <NX_PIN_FUNC0>;
 				nexell,pin-pull = <NX_PIN_PULL_NONE>;
 				nexell,pin-strength = <NX_PIN_STR0>;
 			};
 
 			cfg_wlanen: cfg-wlanen {
 				nexell,pins ="gpiod-28";
-				nexell,pin-function = <NX_PIN_FUNC1>;
+				nexell,pin-function = <NX_PIN_FUNC0>;
 				nexell,pin-pull = <NX_PIN_PULL_NONE>;
 				nexell,pin-strength = <NX_PIN_STR0>;
 			};
@@ -178,7 +178,7 @@
 			cfg_wlanhostwake: cfg-wlanhostwake {
 				nexell,pins = "alive-3";
 				nexell,pin-function = <NX_PIN_FUNC0>;
-				nexell,pin-pull = <NX_PIN_PULL_DOWN>;
+				nexell,pin-pull = <NX_PIN_PULL_NONE>;
 				nexell,pin-strength = <NX_PIN_STR0>;
 			};
 		};
