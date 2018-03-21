@@ -27,6 +27,7 @@
 #include <linux/clk.h>
 #include <linux/list.h>
 #include <linux/interrupt.h>
+#include <linux/delay.h>
 
 #include <dt-bindings/media/nexell-vip.h>
 
@@ -137,6 +138,7 @@ static void hw_child_enable(struct nx_vip *me, u32 child)
 {
 	bool clipper_enable = false;
 	bool decimator_enable = false;
+	int timeout = 0;
 
 	if (child & VIP_CLIPPER)
 		clipper_enable = true;
@@ -149,11 +151,31 @@ static void hw_child_enable(struct nx_vip *me, u32 child)
 		if (clipper_enable || decimator_enable) {
 			nx_vip_set_interrupt_enable_all(me->module, false);
 			nx_vip_clear_interrupt_pending_all(me->module);
+			nx_vip_set_vipenable(me->module, true, false, false,
+					false);
+			while(nx_vip_get_interrupt_pending(me->module, 0) == 0) {
+				udelay(1000);
+				timeout++;
+				if (timeout == 1000) {
+					pr_err("enable timeout\n");
+					break;
+				}
+			}
 			nx_vip_set_vipenable(me->module, true, true,
 					     clipper_enable, decimator_enable);
+			nx_vip_clear_interrupt_pending_all(me->module);
 			nx_vip_set_interrupt_enable(me->module,
 						    VIP_OD_INT, true);
 		} else {
+			nx_vip_clear_interrupt_pending_all(me->module);
+			while(nx_vip_get_interrupt_pending(me->module, 0) == 0) {
+				udelay(1000);
+				timeout++;
+				if (timeout == 1000) {
+					pr_err("disable timeout\n");
+					break;
+				}
+			}
 			nx_vip_set_vipenable(me->module, false, false, false,
 					     false);
 		}
@@ -232,11 +254,9 @@ int nx_vip_register_irq_entry(u32 module, struct nx_v4l2_irq_entry *e)
 		spin_unlock_irqrestore(&me->lock, flags);
 		return 0;
 	}
-
 	list_add_tail(&e->entry, &me->irq_entry_list);
 	me->irq_entry_count++;
 	spin_unlock_irqrestore(&me->lock, flags);
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nx_vip_register_irq_entry);
@@ -262,7 +282,6 @@ int nx_vip_unregister_irq_entry(u32 module, struct nx_v4l2_irq_entry *e)
 	list_del(&e->entry);
 	me->irq_entry_count--;
 	spin_unlock_irqrestore(&me->lock, flags);
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nx_vip_unregister_irq_entry);
