@@ -623,8 +623,6 @@ static int ntc_thermistor_probe(struct platform_device *pdev)
 	else if (pdata == NULL)
 		pdata = dev_get_platdata(&pdev->dev);
 
-	dev_err(&pdev->dev, "%s: Enter +++\n", __FUNCTION__);
-
 	if (!pdata) {
 		dev_err(&pdev->dev, "No platform init data supplied.\n");
 		return -ENODEV;
