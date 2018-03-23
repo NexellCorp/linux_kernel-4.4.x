@@ -227,7 +227,11 @@ DHDCFLAGS += -DUSE_WFA_CERT_CONF
 # Lollipop
 ###########
 # Definitions are filtered by Kernel version
-DHDCFLAGS += -DWL_CFG80211_P2P_DEV_IF
+ifneq ($(CONFIG_ANDROID),)
+  DHDCFLAGS += -DWL_ENABLE_P2P_IF
+else
+  DHDCFLAGS += -DWL_CFG80211_P2P_DEV_IF
+endif
 DHDCFLAGS += -DWL_SUPPORT_BACKPORTED_KPATCHES
 # Default definitions for KitKat, Lollipop
 DHDCFLAGS += -DWL_CFG80211_STA_EVENT
