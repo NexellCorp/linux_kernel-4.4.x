@@ -26,8 +26,8 @@ nx_drm-$(CONFIG_DRM_NX_MIPI_DSI)	+= nx_drm_lcd.o	\
 nx_drm-$(CONFIG_DRM_NX_HDMI) 	+= nx_drm_hdmi.o	\
 				s5pxx18/s5pxx18_hdmi_presets.o	\
 				s5pxx18/s5pxx18_hdmi.o
-nx_drm-$(CONFIG_DRM_NX_TVOUT) 	+= nx_drm_tv.o	\
-				s5pxx18/s5pxx18_tv.o
+nx_drm-$(CONFIG_DRM_NX_TVOUT_S5P4418) 	+= nx_drm_s5p4418_tv.o	\
+				s5pxx18/s5p4418_tv.o
 nx_drm-$(CONFIG_DRM_NX_CLUSTER_LCD) 	+= nx_drm_cluster_lcd.o
 
 else ifeq ($(CONFIG_DRM_NX_NXP5XXX), y)

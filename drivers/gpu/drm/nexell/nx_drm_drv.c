@@ -422,7 +422,7 @@ static struct drm_panel_driver {
 		.exit = panel_hdmi_exit,
 	},
 #endif
-#if defined(CONFIG_DRM_NX_TVOUT)
+#if defined(CONFIG_DRM_NX_TVOUT_S5P4418)
 	{
 		.name = "tv out",
 		.init = panel_tv_init,

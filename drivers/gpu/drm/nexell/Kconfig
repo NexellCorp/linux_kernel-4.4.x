@@ -84,9 +84,9 @@ config DRM_NX_HDMI
 	 If you want to enable HDMI display,
 	 you should selet this option.
 
-config DRM_NX_TVOUT
+config DRM_NX_TVOUT_S5P4418
 	bool "Tv out support"
-	depends on DRM_NX
+	depends on DRM_NX && ARCH_S5P4418
 	select DRM_PANEL
 	help
 	 This selects support for tv display out.
