@@ -1533,7 +1533,7 @@ int nx_drm_display_setup(struct nx_drm_display *display,
 	sprintf(pll, "sys-pll%d", ctrl->clk_src_lv0);
 
 	clk = clk_get(NULL, pll);
-	if (clk) {
+	if (!IS_ERR(clk)) {
 		long rate, pixclock;
 
 		rate = clk_get_rate(clk);
