@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: junghyun, kim <jhkim@nexell.co.kr>
+ * Copyright (C) 2018  Nexell Co., Ltd.
+ * Author: Sungwoo, Park <swpark@nexell.co.kr>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,12 +15,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/reset.h>
 
 #include <linux/io.h>
+
+#include <dt-bindings/tieoff/s5p6818-tieoff.h>
 
 #include "s5pxx18_drv.h"
 #include "s5pxx18_hdmi.h"
@@ -30,14 +33,11 @@ static void __iomem *hdmi_base;
 #define	hdmi_write(r, v)	writel(v, hdmi_base + r)
 #define	hdmi_read(r)		readl(hdmi_base + r)
 
-static int hdmi_clock_on_27MHz(struct nx_control_res *res);
-
 static int tvout_ops_open(struct nx_drm_display *display, int pipe)
 {
 	struct nx_tvout_dev *tvout = display->context;
 	struct nx_control_res *res = &tvout->control.res;
 
-	pr_debug("%s: dev TV\n", __func__);
 	hdmi_base = res->sub_bases[0];
 	return 0;
 }
@@ -54,19 +54,32 @@ static bool wait_for_hdmi_phy_ready(void)
 	return is_hdmi_phy_ready;
 }
 
+static int hdmi_reset(struct reset_control *rsc[], int num)
+{
+	int count = (num - 1);	/* skip hdmi phy reset */
+	int i;
+
+	pr_debug("%s: resets %d\n", __func__, num);
+	if (num <= 0) {
+		pr_err("%s: resets num (currently %d) must be bigger than 0\n",
+		       __func__, num);
+		return -EINVAL;
+	}
+
+	for (i = 0; count > i; i++)
+		reset_control_assert(rsc[i]);
+
+	mdelay(1);
+
+	for (i = 0; count > i; i++)
+		reset_control_deassert(rsc[i]);
+
+	return 0;
+}
+
 static int hdmi_clock_on_27MHz(struct nx_control_res *res)
 {
-	int err = 0;
-
 	nx_tieoff_set(res->tieoffs[0][0], res->tieoffs[0][1]);
-	nx_disp_top_clkgen_set_clock_pclk_mode(hdmi_clkgen, nx_pclkmode_always);
-
-	reset_control_assert(res->sub_resets[4]);
-	reset_control_assert(res->sub_resets[3]);
-
-	reset_control_deassert(res->sub_resets[4]);
-	reset_control_deassert(res->sub_resets[3]);
-
 	nx_disp_top_clkgen_set_clock_pclk_mode(hdmi_clkgen, nx_pclkmode_always);
 
 	hdmi_write(HDMI_PHY_REG7C, (0<<7));
@@ -138,107 +151,47 @@ static int hdmi_clock_on_27MHz(struct nx_control_res *res)
 	hdmi_write(HDMI_PHY_REG7C, 0x80);
 	hdmi_write(HDMI_PHY_REG7C, 0x80);
 	hdmi_write(HDMI_PHY_REG7C, (1<<7));
-	hdmi_write(HDMI_PHY_REG7C, (1<<7));/* MODE_SET_DONE : APB Set Done */
+	hdmi_write(HDMI_PHY_REG7C, (1<<7));
 
 	if (!wait_for_hdmi_phy_ready())
-		err = -1;
+		return -ETIMEDOUT;
 
-	return err;
+	return 0;
 }
 
-static int tvout_commit(struct nx_drm_display *display)
+static void dac_power_control(u32 enable)
+{
+	nx_tieoff_set(NX_TIEOFF_Inst_DAC_PD, enable);
+}
+
+static void dac_set_full_scale_output_voltage(int val)
+{
+	nx_tieoff_set(NX_TIEOFF_Inst_DAC_FS, val);
+}
+
+static int enable_clock_source(struct nx_drm_display *display, bool enable)
 {
 	struct nx_tvout_dev *tvout = display->context;
 	struct nx_control_res *res = &tvout->control.res;
 	struct nx_control_info *ctrl = &tvout->control.ctrl;
-	int ret = 0;
 
 	if (ctrl->clk_src_lv0 == 4) {
-		ret = hdmi_clock_on_27MHz(res);
-		if (ret != 0) {
-			pr_err("hdmi 27MHz clock set error!\n");
-			return -1;
+		int ret = 0;
+
+		ret = hdmi_reset(res->sub_resets, res->num_sub_resets);
+		if (ret < 0) {
+			pr_err("%s: failed to hdmi_reset\n", __func__);
+			return -EINVAL;
+		}
+
+		if (enable) {
+			ret = hdmi_clock_on_27MHz(res);
+			if (ret != 0) {
+				pr_err("hdmi 27MHz clock set error!\n");
+				return -1;
+			}
 		}
 	}
-	return 0;
-}
-
-static int tvout_ops_prepare(struct nx_drm_display *display)
-{
-	struct nx_tvout_dev *tvout = display->context;
-	struct nx_sync_info *sync = &tvout->control.sync;
-	struct nx_control_info *ctrl = &tvout->control.ctrl;
-	int module = tvout->control.module;
-	unsigned int out_format = ctrl->out_format;
-	int interlace = sync->interlace;
-	int invert_field = ctrl->invert_field;
-	int swap_rb = ctrl->swap_rb;
-	unsigned int yc_order = ctrl->yc_order;
-	int vclk_select = ctrl->vck_select;
-	int vclk_invert = ctrl->clk_inv_lv0 | ctrl->clk_inv_lv1;
-	int emb_sync = (out_format == DPC_FORMAT_CCIR656 ? 1 : 0);
-
-	enum nx_dpc_dither r_dither, g_dither, b_dither;
-	int rgb_mode = 0;
-
-	u32 vsp = 0, vcp = 0, even_vsp = 0, even_vcp = 0;
-
-	if (out_format != nx_dpc_format_ccir656) {
-		pr_err("tvout just support CCIR656 now!\n");
-		return -1;
-	}
-
-	tvout_commit(display);
-
-	r_dither = g_dither = b_dither = nx_dpc_dither_bypass;
-
-	/* CLKGEN0/1 */
-	nx_dpc_set_clock_source(module, 0, ctrl->clk_src_lv0);
-	nx_dpc_set_clock_divisor(module, 0, ctrl->clk_div_lv0);
-	nx_dpc_set_clock_out_delay(module, 0, ctrl->clk_delay_lv0);
-	nx_dpc_set_clock_out_inv(module, 0, ctrl->clk_inv_lv0);
-	nx_dpc_set_clock_source(module, 1, ctrl->clk_src_lv1);
-	nx_dpc_set_clock_divisor(module, 1, ctrl->clk_div_lv1);
-	nx_dpc_set_clock_out_delay(module, 1, ctrl->clk_delay_lv1);
-	nx_dpc_set_clock_out_inv(module, 1, ctrl->clk_inv_lv1);
-
-	vsp	= 0;
-	vcp	= (u32)((sync->h_sync_width + sync->h_front_porch +
-		sync->h_back_porch + sync->h_active_len) / 2);
-	even_vsp = (u32)((sync->h_sync_width + sync->h_front_porch +
-		sync->h_back_porch + sync->h_active_len) / 2);
-	even_vcp = 0;
-
-	nx_dpc_set_mode(module, out_format, interlace, invert_field,
-			rgb_mode, swap_rb, yc_order, emb_sync, emb_sync,
-			vclk_select, vclk_invert, 0);
-	nx_dpc_set_hsync(module, sync->h_active_len,
-			 sync->h_sync_width, sync->h_front_porch,
-			 sync->h_back_porch, sync->h_sync_invert);
-	nx_dpc_set_vsync(module, sync->v_active_len,
-			 sync->v_sync_width, sync->v_front_porch,
-			 sync->v_back_porch, sync->v_sync_invert,
-			 sync->v_active_len, sync->v_sync_width,
-			 sync->v_front_porch, sync->v_back_porch+1);
-
-	nx_dpc_set_vsync_offset(module, vsp, vcp, even_vsp, even_vcp);
-	nx_dpc_set_delay(module, 12, 12, 12, 12);
-	nx_dpc_set_dither(module, r_dither, g_dither, b_dither);
-
-	pr_debug("%s: %s dev.%d (x=%4d, hfp=%3d, hbp=%3d, hsw=%3d)\n",
-		 __func__, nx_panel_get_name(display->panel_type), module,
-		 sync->h_active_len, sync->h_front_porch,
-		 sync->h_back_porch, sync->h_sync_width);
-	pr_debug("%s: dev.%d (y=%4d, vfp=%3d, vbp=%3d, vsw=%3d)\n",
-		 __func__, module, sync->v_active_len, sync->v_front_porch,
-		 sync->v_back_porch, sync->v_sync_width);
-	pr_debug
-	    ("%s: dev.%d clk 0[s=%d, d=%3d], 1[s=%d, d=%3d], inv[%d:%d]\n",
-	     __func__, module, ctrl->clk_src_lv0, ctrl->clk_div_lv0,
-	     ctrl->clk_src_lv1, ctrl->clk_div_lv1, ctrl->clk_inv_lv0,
-	     ctrl->clk_inv_lv1);
-	pr_debug("%s: dev.%d vsp=%d, vcp=%d, even_vsp=%d, even_vcp=%d\n",
-		 __func__, module, vsp, vcp, even_vsp, even_vcp);
 
 	return 0;
 }
@@ -246,16 +199,65 @@ static int tvout_ops_prepare(struct nx_drm_display *display)
 static int tvout_ops_enable(struct nx_drm_display *display)
 {
 	struct nx_tvout_dev *tvout = display->context;
-	struct nx_sync_info *sync = &tvout->control.sync;
+	struct nx_control_info *ctrl = &tvout->control.ctrl;
 	int module = tvout->control.module;
+	unsigned int out_format = ctrl->out_format;
+
+	enable_clock_source(display, true);
+
+	nx_dpc_set_clock_divisor_enable(module, false);
+	nx_dpc_set_clock_out_enb(module, 0, false);
+	nx_dpc_set_clock_out_enb(module, 1, false);
+	/* nx_mlc_set_clock_bclk_mode(module, nx_bclkmode_always); */
+	nx_dpc_set_clock_divisor(module, 0, ctrl->clk_div_lv0);
+	nx_dpc_set_clock_source(module, 0, ctrl->clk_src_lv0);
+	nx_dpc_set_clock_out_inv(module, 0, ctrl->clk_inv_lv0);
+	nx_dpc_set_clock_divisor(module, 1, ctrl->clk_div_lv1);
+	nx_dpc_set_clock_source(module, 1, ctrl->clk_src_lv1);
+	nx_dpc_set_clock_out_enb(module, 1, true);
+
+	nx_dpc_set_mode(module, out_format, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0);
+	nx_dpc_set_hsync(module, 720, 32, 16, 90, 0);
+	nx_dpc_set_vsync(module, 240, 3, 4, 15, 0, 240, 3, 4, 15);
+	nx_dpc_set_luma_gain(module, 30);
+	nx_dpc_set_vsync_offset(module, 0, 0, 0, 0);
+	nx_dpc_set_delay(module, 0, 12, 12, 12);
+	nx_dpc_set_dither(module, 0, 0, 0);
+
+	nx_dpc_set_video_encoder_mode(module, 0, true);
+	nx_dpc_set_video_encoder_fscadjust(module, 0);
+	nx_dpc_set_video_encoder_bandwidth(module, 2, 2);
+	nx_dpc_set_video_encoder_color_control(module, 0, 0, 0, 0, 0);
+	nx_dpc_set_video_encoder_timing(module, 63, 1715, 0, 3);
+	nx_dpc_set_video_encoder_power_down(module, false);
+	nx_dpc_set_encoder_control_reg(module, 0x40, 0, 0);
+	nx_dpc_set_encoder_shcphase_control(module, 0x3f);
+	nx_dpc_set_encoder_timing_config_reg(module, 7);
+	nx_dpc_set_encoder_dacoutput_select(module, 1, 2, 4, 5, 0, 0);
+	nx_dpc_set_encenable(module, true);
+	nx_dpc_set_encoder_dacpower_enable(module, 0x30);
+
+	nx_mlc_set_top_control_parameter(module, 1, 1, 1, 1);
+	nx_mlc_set_screen_size(module, 720, 480);
+	nx_mlc_set_srammode(module, topmlc, sleepmode);
+	nx_mlc_set_srammode(module, topmlc, run);
+	nx_mlc_set_background(module, 0xff0000);
+	nx_mlc_set_rgb0layer_control_parameter(module, 1, 0,
+					       0, 0x0,
+					       0, 0x0,
+					       0, 0x0,
+					       rgbfmt_a8b8g8r8,
+					       locksize_16);
+	nx_mlc_set_field_enable(module, 1);
+	nx_mlc_set_layer_reg_finish(module, topmlc);
+	nx_mlc_set_layer_reg_finish(module, rgb0);
 
 	nx_dpc_set_reg_flush(module);
-
-	if (sync->interlace > 0)
-		nx_dpc_set_enable_with_interlace(module, 1, 0, 0, 0, 1);
-
 	nx_dpc_set_dpc_enable(module, 1);
 	nx_dpc_set_clock_divisor_enable(module, 1);
+
+	dac_set_full_scale_output_voltage(0); /* Ratio 60/60, 100% */
+	dac_power_control(1);
 
 	return 0;
 }
@@ -267,6 +269,9 @@ static int tvout_ops_disable(struct nx_drm_display *display)
 
 	nx_dpc_set_dpc_enable(module, 0);
 	nx_dpc_set_clock_divisor_enable(module, 0);
+	enable_clock_source(display, false);
+	dac_power_control(0);
+
 	return 0;
 }
 
@@ -285,7 +290,6 @@ static int tvout_ops_resume(struct nx_drm_display *display)
 
 static struct nx_drm_display_ops tvout_ops = {
 	.open = tvout_ops_open,
-	.prepare = tvout_ops_prepare,
 	.enable = tvout_ops_enable,
 	.disable = tvout_ops_disable,
 	.set_mode = tvout_ops_set_mode,

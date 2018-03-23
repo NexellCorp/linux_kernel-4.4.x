@@ -93,6 +93,15 @@ config DRM_NX_TVOUT_S5P4418
 	 If you want to enable tv display,
 	 you should selet this option.
 
+config DRM_NX_TVOUT_S5P6818
+	bool "Tv out support"
+	depends on DRM_NX && ARCH_S5P6818
+	select DRM_PANEL
+	help
+	 This selects support for tv display out.
+	 If you want to enable tv display,
+	 you should selet this option.
+
 config DRM_NX_CLUSTER_LCD
 	bool "Cluster LCD support"
 	depends on DRM_NX

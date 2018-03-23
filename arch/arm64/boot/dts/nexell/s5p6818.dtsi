@@ -911,6 +911,34 @@
 			};
 		};
 
+		dp_drm_tvout: display_drm_tv {
+			compatible = "nexell,s5pxx18-drm-tv";
+			reg = <0xc0101000 0x100>;
+			resets = <&nexell_reset RESET_ID_DISP_TOP>;
+			reset-names = "rsc-display-top";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+			crtc-pipe = <1>;
+			crtcs-possible-mask = <2>;
+
+			dp-resource {
+				reg_base = <0xc0000000 0x300000>;
+				clk_base = <0xc0109000 4>;
+				resets = <&nexell_reset RESET_ID_HDMI_VIDEO>,
+					<&nexell_reset RESET_ID_HDMI_SPDIF>,
+					<&nexell_reset RESET_ID_HDMI_TMDS>,
+					<&nexell_reset RESET_ID_HDMI>,
+					<&nexell_reset RESET_ID_HDMI_PHY>;
+				reset-names = "rsc-hdmi-video",
+						"rsc-hdmi-spdif",
+						"rsc-hdmi-tmds",
+						"rsc-hdmi",
+						"rsc-hdmi-phy";
+				soc,tieoff = <NX_TIEOFF_DISPLAYTOP0_i_HDMI_PHY_REFCLK_SEL 1>;
+			};
+		};
+
 		video-codec@c0080000 {
 			compatible = "nexell, nx-vpu";
 			reg = <0xc0080000 0x4000>;

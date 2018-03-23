@@ -1445,7 +1445,8 @@ struct nx_drm_display *nx_drm_display_get(struct device *dev,
 		control = nx_drm_display_hdmi_get(dev, node, display);
 		break;
 	#endif
-	#ifdef CONFIG_DRM_NX_TVOUT_S5P4418
+	#if defined(CONFIG_DRM_NX_TVOUT_S5P4418) || \
+		defined(CONFIG_DRM_NX_TVOUT_S5P6818)
 	case NX_PANEL_TYPE_TV:
 		control = nx_drm_display_tvout_get(dev, node, display);
 		break;
