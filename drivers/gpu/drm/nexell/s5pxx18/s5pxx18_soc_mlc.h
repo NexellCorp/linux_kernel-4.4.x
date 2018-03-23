@@ -430,5 +430,7 @@ void nx_mlc_get_video_layer_stride(u32 module_index, u32 *lu_stride,
 					  u32 *cb_stride, u32 *cr_stride);
 void nx_mlc_get_video_position(u32 module_index, int *left, int *top,
 				      int *right, int *bottom);
+void nx_mlc_set_top_control_parameter(u32 module_index, int field_enable,
+				      int mlc_enable, u8 priority, int layer);
 
 #endif

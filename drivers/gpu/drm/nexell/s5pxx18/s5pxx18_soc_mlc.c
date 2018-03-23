@@ -1864,3 +1864,17 @@ void nx_mlc_get_video_position(u32 module_index, int *left, int *top,
 	if (bottom)
 		*(int *)bottom = ((tb >> 0) & 0xffful);
 }
+
+void nx_mlc_set_top_control_parameter(u32 module_index, int field_enable,
+				      int mlc_enable, u8 priority, int layer)
+{
+	register u32 mlc_top_control_reg;
+	register struct nx_mlc_register_set *pregister;
+
+	pregister = __g_module_variables[module_index].pregister;
+
+	mlc_top_control_reg = readl(&pregister->mlccontrolt) & 0xfffffcfc;
+	mlc_top_control_reg |= (priority << 8) | (mlc_enable << 1) |
+		(field_enable << 1) | (layer << 12);
+	writel(mlc_top_control_reg, &pregister->mlccontrolt);
+}
