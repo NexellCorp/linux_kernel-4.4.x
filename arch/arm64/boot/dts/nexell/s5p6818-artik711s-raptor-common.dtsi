@@ -663,6 +663,38 @@
 	};
 };
 
+&dp_drm_tvout {
+	status = "ok";
+
+	display-timing {
+		clock-frequency = <27000000>;
+		hactive = <720>;
+		vactive = <480>;
+		hfront-porch = <16>;
+		hback-porch = <90>;
+		hsync-len = <33>;
+		vfront-porch = <4>;
+		vback-porch = <15>;
+		vsync-len = <3>;
+		interlaced = <1>;
+		vsync-active = <0>;
+		hsync-active = <0>;
+	};
+
+	dp_control {
+		clk_src_lv0 = <4>;
+		clk_div_lv0 = <1>;
+		clk_delay_lv0 = <0>;
+		clk_inv_lv0 = <0>;
+		clk_src_lv1 = <7>;
+		clk_div_lv1 = <2>;
+		clk_delay_lv1 = <0>;
+		clk_inv_lv1 = <0>;
+		vck_select = <1>;
+		out_format = <13>;
+	};
+};
+
 &dw_mmc_0 {
 	num-slots = <1>;
 	bus-width = <4>;
