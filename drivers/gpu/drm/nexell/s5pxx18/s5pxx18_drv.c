@@ -1571,6 +1571,8 @@ void nx_display_mode_to_sync(struct drm_display_mode *mode,
 		vm.flags & DISPLAY_FLAGS_HSYNC_HIGH ? 1 : 0;
 
 	sync->v_active_len = vm.vactive;
+	if (sync->interlace)
+		sync->v_active_len /= 2;
 	sync->v_sync_width = vm.vsync_len;
 	sync->v_back_porch = vm.vback_porch;
 	sync->v_front_porch = vm.vfront_porch;
