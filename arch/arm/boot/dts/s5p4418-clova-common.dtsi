@@ -81,8 +81,13 @@
 			/delete-node/ mpegts_cap0_data_clk_parallel;
 			/delete-node/ nand_ale;
 			/delete-node/ spdiftx_pin;
+			/delete-node/ i2s1_bus;
 			i2s1_bus:i2s1 {
-				/delete-node/ i2s1-mclk;
+				nexell,pins = "gpioa-30", "gpiob-0",
+					"gpiob-6", "gpiob-9";
+				nexell,pin-function = <NX_PIN_FUNC3>;
+				nexell,pin-pull = <NX_PIN_PULL_DOWN>;
+				nexell,pin-strength = <NX_PIN_STR0>;
 			};
 			i2c_gpio5_sda: i2c5_sda {
 				nexell,pins = "gpioa-16";
