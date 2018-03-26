@@ -50,7 +50,7 @@ static inline struct px0701c *panel_to_px0701c(struct drm_panel *panel)
 	return container_of(panel, struct px0701c, panel);
 }
 
-static int px0701c_clear_error(struct px0701c *ctx)
+static int __maybe_unused px0701c_clear_error(struct px0701c *ctx)
 {
 	int ret = ctx->error;
 
@@ -74,7 +74,8 @@ static void _dcs_write(struct px0701c *ctx, const void *data, size_t len)
 	}
 }
 
-static int _dcs_read(struct px0701c *ctx, u8 cmd, void *data, size_t len)
+static int __maybe_unused _dcs_read(struct px0701c *ctx, u8 cmd, void *data,
+				    size_t len)
 {
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
 	int ret;
