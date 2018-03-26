@@ -64,7 +64,6 @@ unsigned int is_inverted_wl_power;
 static int
 dhd_wlan_power(int onoff)
 {
-	struct pinctrl *pinctrl = NULL;
 	printk(KERN_INFO"------------------------------------------------");
 	printk(KERN_INFO"------------------------------------------------\n");
 	printk(KERN_INFO"%s Enter: power %s\n", __FUNCTION__, onoff ? "on" : "off");
@@ -79,6 +78,8 @@ dhd_wlan_power(int onoff)
 	}
 #ifdef CONFIG_MACH_A7LTE
 	if (onoff) {
+		struct pinctrl *pinctrl = NULL;
+
 		pinctrl = devm_pinctrl_get_select(mmc_dev_for_wlan, "sdio_wifi_on");
 		if (IS_ERR(pinctrl))
 			printk(KERN_INFO "%s WLAN SDIO GPIO control error\n", __FUNCTION__);
@@ -94,6 +95,8 @@ dhd_wlan_power(int onoff)
 
 #ifdef CONFIG_MACH_A7LTE
 	if (!onoff) {
+		struct pinctrl *pinctrl = NULL;
+
 		pinctrl = devm_pinctrl_get_select(mmc_dev_for_wlan, "sdio_wifi_off");
 		if (IS_ERR(pinctrl))
 			printk(KERN_INFO "%s WLAN SDIO GPIO control error\n", __FUNCTION__);
@@ -182,7 +185,7 @@ dhd_wlan_init_gpio(void)
 
 	ret = gpio_request(wlan_host_wake_up, "WLAN_HOST_WAKE");
 	if (ret < 0) {
-		printk("fail to request gpio(WLAN_REG_ON)\n", ret);
+		printk("fail to request gpio(WLAN_REG_ON)\n");
 		return -ENODEV;
 	}
 
