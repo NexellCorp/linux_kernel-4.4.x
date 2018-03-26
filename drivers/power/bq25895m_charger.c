@@ -107,7 +107,7 @@ struct bq25895m_device {
 
 	struct mutex lock; /* protect state data */
 };
-static int bq25895m_reg_read(void *context, unsigned int reg,
+static int __maybe_unused bq25895m_reg_read(void *context, unsigned int reg,
 		unsigned int *value)
 {
 	struct i2c_client *client = context;
@@ -146,11 +146,10 @@ static int bq25895m_reg_read(void *context, unsigned int reg,
 
 	return 0;
 }
-static int bq25895m_reg_write(void *context, unsigned int reg,
+static int __maybe_unused bq25895m_reg_write(void *context, unsigned int reg,
 		unsigned int value)
 {
 	struct i2c_client *client = context;
-	struct tas5782_private *priv = i2c_get_clientdata(client);
 	unsigned int i, size=1;
 	uint8_t buf[5];
 	int ret;
