@@ -1584,7 +1584,7 @@ exit:
 /*
 * Sysfs print image
 */
-static ssize_t mip4_ts_sys_image(struct device *dev,
+static ssize_t __maybe_unused mip4_ts_sys_image(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct mip4_ts_info *info = dev_get_drvdata(dev);
@@ -1629,7 +1629,7 @@ error:
 /*
 * Sysfs print debug data
 */
-static ssize_t mip4_ts_sys_debug(struct device *dev,
+static ssize_t __maybe_unused mip4_ts_sys_debug(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct mip4_ts_info *info = dev_get_drvdata(dev);
@@ -1660,7 +1660,7 @@ error:
 /*
 * Sysfs run test
 */
-static ssize_t mip4_ts_sys_test(struct device *dev,
+static ssize_t __maybe_unused mip4_ts_sys_test(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct mip4_ts_info *info = dev_get_drvdata(dev);
@@ -1723,7 +1723,7 @@ error:
 /*
 * Sysfs run short test
 */
-static ssize_t mip4_ts_sys_test_short(struct device *dev,
+static ssize_t __maybe_unused mip4_ts_sys_test_short(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct mip4_ts_info *info = dev_get_drvdata(dev);
