@@ -689,7 +689,10 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 	}
 
 	/* common property */
-	of_property_read_u32(np, "data_order", &me->bus_fmt);
+	if (of_property_read_u32(np, "data_order", &me->bus_fmt)) {
+		dev_err(dev, "failed to get dt data_order\n");
+		return -EINVAL;
+	}
 
 	me->regulator_nr = of_property_count_strings(np, "regulator_names");
 	if (me->regulator_nr > 0) {
@@ -1504,16 +1507,6 @@ static int nx_clipper_set_fmt(struct v4l2_subdev *sd,
 
 	me->buf.format = format->format.code;
 	if (pad == 0) {
-		/* set bus format */
-		u32 nx_bus_fmt;
-		int ret = nx_vip_find_nx_bus_format(format->format.code,
-						    &nx_bus_fmt);
-		if (ret) {
-			dev_err(&me->pdev->dev, "Unsupported bus format %d\n",
-			       format->format.code);
-			return ret;
-		}
-		me->bus_fmt = nx_bus_fmt;
 		me->width = format->format.width;
 		me->height = format->format.height;
 	}
