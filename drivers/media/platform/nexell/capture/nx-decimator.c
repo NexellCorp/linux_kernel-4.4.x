@@ -117,23 +117,25 @@ static irqreturn_t nx_decimator_irq_handler(void *data)
 		nx_vip_stop(me->module, VIP_DECIMATOR);
 		complete(&me->stop_done);
 	} else {
-		buf_count = nx_video_get_buffer_count(&me->vbuf_obj);
-		done = nx_video_get_next_buffer(&me->vbuf_obj, true);
-		if (buf_count > 1) {
-			update_buffer(me);
-		} else {
-			if (!me->buffer_underrun) {
-				pr_warn("[%s] under run\n", __func__);
+		if (!me->buffer_underrun) {
+			struct nx_video_buffer *done = NULL;
+			struct nx_video_buffer_object *obj = &me->vbuf_obj;
+			int buf_count;
+
+			done = nx_video_get_next_buffer(obj, true);
+			buf_count = nx_video_get_buffer_count(obj);
+			if (buf_count >= 1) {
+				update_buffer(me);
+			} else {
 				nx_vip_pause(me->module, VIP_DECIMATOR);
 				me->buffer_underrun = true;
 			}
-		}
-		if (done && done->cb_buf_done) {
-			done->consumer_index++;
-			done->cb_buf_done(done);
+			if (done && done->cb_buf_done) {
+				done->consumer_index++;
+				done->cb_buf_done(done);
+			}
 		}
 	}
-
 	return IRQ_HANDLED;
 }
 
@@ -163,7 +165,6 @@ static int decimator_buffer_queue(struct nx_video_buffer *buf, void *data)
 	nx_video_add_buffer(&me->vbuf_obj, buf);
 
 	if (me->buffer_underrun) {
-		pr_debug("%s: rerun vip\n", __func__);
 		update_buffer(me);
 		nx_vip_run(me->module, VIP_DECIMATOR);
 		me->buffer_underrun = false;
@@ -657,7 +658,7 @@ static int nx_decimator_probe(struct platform_device *pdev)
 
 	me->pdev = pdev;
 	platform_set_drvdata(pdev, me);
-
+	me->buffer_underrun = false;
 	return 0;
 }
 
