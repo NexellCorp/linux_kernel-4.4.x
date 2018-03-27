@@ -1875,6 +1875,6 @@ void nx_mlc_set_top_control_parameter(u32 module_index, int field_enable,
 
 	mlc_top_control_reg = readl(&pregister->mlccontrolt) & 0xfffffcfc;
 	mlc_top_control_reg |= (priority << 8) | (mlc_enable << 1) |
-		(field_enable << 1) | (layer << 12);
+		(field_enable << 0);
 	writel(mlc_top_control_reg, &pregister->mlccontrolt);
 }
