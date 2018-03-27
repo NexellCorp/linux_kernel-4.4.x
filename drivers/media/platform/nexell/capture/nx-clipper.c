@@ -969,25 +969,20 @@ static irqreturn_t nx_clipper_irq_handler(void *data)
 			struct nx_video_buffer_object *obj = &me->vbuf_obj;
 			int buf_count;
 
-			done_buf = nx_video_get_next_buffer(obj, true);
-			buf_count = nx_video_get_buffer_count(obj);
-			if (buf_count >= 1) {
-				update_buffer(me);
-			} else {
-				bool is_mipi = me->interface_type ==
-					NX_CAPTURE_INTERFACE_MIPI_CSI;
-
-				if (!me->buffer_underrun) {
+			if (!me->buffer_underrun) {
+				done_buf = nx_video_get_next_buffer(obj, true);
+				buf_count = nx_video_get_buffer_count(obj);
+				if (buf_count >= 1) {
+					update_buffer(me);
+				} else {
 					nx_vip_pause(me->module, VIP_CLIPPER);
-					if (is_mipi && !nx_vip_is_running(me->module, VIP_DECIMATOR))
-						nx_mipi_csi_set_enable(0, 0);
 					me->buffer_underrun = true;
 				}
-			}
 
-			if (done_buf && done_buf->cb_buf_done) {
-				done_buf->consumer_index++;
-				done_buf->cb_buf_done(done_buf);
+				if (done_buf && done_buf->cb_buf_done) {
+					done_buf->consumer_index++;
+					done_buf->cb_buf_done(done_buf);
+				}
 			}
 		}
 	}
@@ -1021,10 +1016,6 @@ static int clipper_buffer_queue(struct nx_video_buffer *buf, void *data)
 	nx_video_add_buffer(&me->vbuf_obj, buf);
 
 	if (me->buffer_underrun) {
-		bool is_mipi = me->interface_type ==
-			NX_CAPTURE_INTERFACE_MIPI_CSI;
-		if (is_mipi && !nx_vip_is_running(me->module, VIP_DECIMATOR))
-			nx_mipi_csi_set_enable(0, 1);
 		update_buffer(me);
 		nx_vip_run(me->module, VIP_CLIPPER);
 		me->buffer_underrun = false;
@@ -1982,6 +1973,7 @@ static int nx_clipper_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, me);
 
+	me->buffer_underrun = false;
 #ifdef DEBUG_SYNC
 	setup_timer(&me->timer, debug_sync, (long)me);
 #endif
