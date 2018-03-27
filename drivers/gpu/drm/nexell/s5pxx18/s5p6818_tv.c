@@ -237,7 +237,7 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 	nx_dpc_set_encenable(module, true);
 	nx_dpc_set_encoder_dacpower_enable(module, 0x30);
 
-	nx_mlc_set_top_control_parameter(module, 1, 1, 1, 1);
+	nx_mlc_set_top_control_parameter(module, 1, 1, 1, 0);
 	nx_mlc_set_screen_size(module, 720, 480);
 	nx_mlc_set_srammode(module, topmlc, sleepmode);
 	nx_mlc_set_srammode(module, topmlc, run);
@@ -248,7 +248,6 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 					       0, 0x0,
 					       rgbfmt_a8b8g8r8,
 					       locksize_16);
-	nx_mlc_set_field_enable(module, 1);
 	nx_mlc_set_layer_reg_finish(module, topmlc);
 	nx_mlc_set_layer_reg_finish(module, rgb0);
 
