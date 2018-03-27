@@ -109,19 +109,19 @@
 				use_isr;
 
 				ch12 {
-					slave_wait_flush_dma;
+//					slave_wait_flush_dma;
 				};
 
 				ch13 {
-					slave_wait_flush_dma;
+//					slave_wait_flush_dma;
 				};
 
 				ch14 {
-					slave_wait_flush_dma;
+//					slave_wait_flush_dma;
 				};
 
 				ch15 {
-					slave_wait_flush_dma;
+//					slave_wait_flush_dma;
 				};
 			};
 
@@ -129,11 +129,11 @@
 				use_isr;
 
 				ch0 {
-					slave_wait_flush_dma;
+//					slave_wait_flush_dma;
 				};
 
 				ch1 {
-					slave_wait_flush_dma;
+//					slave_wait_flush_dma;
 				};
 			};
 		};
@@ -633,7 +633,7 @@
 	};
 
 	dp_control {
-		clk_src_lv0 = <3>;
+		clk_src_lv0 = <0>;
 		clk_div_lv0 = <16>;
 		clk_src_lv1 = <7>;
 		clk_div_lv1 = <1>;
