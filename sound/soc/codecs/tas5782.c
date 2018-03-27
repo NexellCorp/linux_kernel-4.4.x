@@ -49,9 +49,9 @@ struct tas5782_private {
 	struct regulator_bulk_data	supplies[TAS5782_MAX_SUPPLIES];
 	struct clk			*mclk;
 	unsigned int			format;
-	struct gpio_desc		*reset_gpio;
-	struct gpio_desc		*mute_gpio;
-	struct gpio_desc		*fault_gpio;
+	int		reset_gpio;
+	int		mute_gpio;
+	int		fault_gpio;
 	struct snd_soc_codec_driver	codec_driver;
 };
 
@@ -182,7 +182,7 @@ static int _init_sequence(struct i2c_client *client,
 	return 0;
 }
 
-static int  tas5782_eq_adjust(struct i2c_client *client, const u8 *eq_data,
+static int  tas5782_eq_adjust(struct i2c_client *client, char *eq_data,
 								size_t eq_size)
 {
 	char *tok;
@@ -196,7 +196,7 @@ static int  tas5782_eq_adjust(struct i2c_client *client, const u8 *eq_data,
 			break;
 		}
 		ret = kstrtol(tok, 0, &lval);
-        dev_err(&client->dev, "command:%x ", lval);
+        dev_err(&client->dev, "command:%lx ", lval);
 		eq_regs[cnt].command = lval;
 
 		/*  parse param */
@@ -205,7 +205,7 @@ static int  tas5782_eq_adjust(struct i2c_client *client, const u8 *eq_data,
 			break;
 
 		ret = kstrtol(tok, 0, &lval);
-		dev_err(&client->dev, "param:%x \n", lval);
+		dev_err(&client->dev, "param:%lx \n", lval);
 		eq_regs[cnt].param = lval;
 
 		cnt++;
@@ -233,7 +233,7 @@ static int tas5782_eq_update_from_storage(struct i2c_client *client, char *path)
 
 	fp = filp_open(path, O_RDONLY, S_IRUSR);
 	if (IS_ERR(fp)) {
-		dev_err(&client->dev,"%s [ERROR] file_open - path[%s]  err value:%d \n",
+		dev_err(&client->dev,"%s [ERROR] file_open - path[%s] err value:%ld \n",
 				__func__, path, PTR_ERR(fp));
 		ret = eq_err_file_open;
 		goto error;
@@ -280,7 +280,6 @@ error:
 static ssize_t tas5782_sys_eq_update_from_storage(struct device *dev,
         struct device_attribute *attr, const char *buf, size_t count)
 {
-	int result;
 	u8 data[255];
 	int ret = 0;
 	struct i2c_client *client = to_i2c_client(dev);
@@ -316,28 +315,31 @@ static ssize_t tas5782_sys_eq_update_from_storage(struct device *dev,
 
 	dev_dbg(&client->dev, "%s [DONE]\n", __func__);
 
-	result = snprintf(buf, 255, "%s\n", data);
+	sscanf(buf, "%s\n", data);
     return count;
 
 }
-
+static DEVICE_ATTR(eq_update_storage, S_IWUSR, NULL, tas5782_sys_eq_update_from_storage);
+#if 0
 static int tas5782_mute(struct tas5782_private *priv, int mute)
 {
-    if (gpio_is_valid(priv->mute_gpio)) {
+    if (gpio_is_valid((int) priv->mute_gpio)) {
         /* Reset codec - minimum assertion time is 400ns */
-        gpio_set_value(priv->mute_gpio,  !mute);
+        gpio_set_value((int) priv->mute_gpio,  !mute);
         /* Codec needs ~15ms to wake up */
         msleep(15);
 	}
+	return 0;
 }
+#endif
 
 static void tas5782_reset(struct tas5782_private *priv)
 {
-    if (gpio_is_valid(priv->reset_gpio)) {
+    if (gpio_is_valid((int)priv->reset_gpio)) {
         /* Reset codec - minimum assertion time is 400ns */
-        gpio_direction_output(priv->reset_gpio, 0);
+        gpio_direction_output((int) priv->reset_gpio, 0);
         udelay(1);
-        gpio_set_value(priv->reset_gpio, 1);
+        gpio_set_value((int) priv->reset_gpio, 1);
 
         /* Codec needs ~15ms to wake up */
         msleep(15);
@@ -527,8 +529,6 @@ static struct snd_soc_dai_driver tas5782_dai = {
 	.ops = &tas5782_dai_ops,
 };
 
-static DEVICE_ATTR(eq_update_storage, S_IWUSR, NULL,
-		tas5782_sys_eq_update_from_storage);
 
 static const struct of_device_id tas5782_of_match[];
 
@@ -587,7 +587,7 @@ static int tas5782_i2c_probe(struct i2c_client *client,
 			 gpio_nreset = -EINVAL;
 
 	priv->reset_gpio = gpio_nreset;
-	gpio_direction_output(priv->reset_gpio, 0);
+	gpio_direction_output( (int) priv->reset_gpio, 0);
 	}
 
 
@@ -596,8 +596,8 @@ static int tas5782_i2c_probe(struct i2c_client *client,
 		if (devm_gpio_request(dev, gpio_nmute, "TAS5086 Mute"))
 			gpio_nmute = -EINVAL;
 
-		priv->mute_gpio = gpio_nmute;
-		gpio_direction_output(priv->mute_gpio, 1);
+		priv->mute_gpio = (int) gpio_nmute;
+		gpio_direction_output((int) priv->mute_gpio, 1);
 	}
 
 
@@ -631,6 +631,7 @@ static int tas5782_i2c_probe(struct i2c_client *client,
 		 "Failed to create eq_update_storage sysfs files: %d\n", ret);
 		return ret;
 	}
+
 
 	return snd_soc_register_codec(&client->dev, &priv->codec_driver,
 				      &tas5782_dai, 1);
