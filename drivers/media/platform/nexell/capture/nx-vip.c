@@ -25,7 +25,6 @@
 #include <linux/io.h>
 #include <linux/reset.h>
 #include <linux/clk.h>
-#include <linux/list.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 
@@ -50,8 +49,8 @@ struct nx_vip {
 	atomic_t running_bitmap;
 
 	spinlock_t lock;
-	struct list_head irq_entry_list;
-	int irq_entry_count;
+	struct nx_v4l2_irq_entry *clipper;
+	struct nx_v4l2_irq_entry *decimator;
 
 	bool clipper_enable;
 	bool decimator_enable;
@@ -120,15 +119,19 @@ static int nx_vip_parse_dt(struct platform_device *pdev, struct nx_vip *me)
 static irqreturn_t vip_irq_handler(int irq, void *desc)
 {
 	struct nx_vip *me = desc;
-	struct nx_v4l2_irq_entry *e;
 	unsigned long flags;
+	int clipper = 0, decimator = 0;
 
 	nx_vip_clear_interrupt_pending_all(me->module);
 
+	clipper = me->clipper_enable;
+	decimator = me->decimator_enable;
+
 	spin_lock_irqsave(&me->lock, flags);
-	if (!list_empty(&me->irq_entry_list))
-		list_for_each_entry(e, &me->irq_entry_list, entry)
-			e->handler(e->priv);
+	if (clipper && me->clipper->handler)
+		me->clipper->handler(me->clipper->priv);
+	if (decimator && me->decimator->handler)
+		me->decimator->handler(me->decimator->priv);
 	spin_unlock_irqrestore(&me->lock, flags);
 
 	return IRQ_HANDLED;
@@ -237,7 +240,7 @@ int nx_vip_clock_enable(u32 module, bool enable)
 }
 EXPORT_SYMBOL_GPL(nx_vip_clock_enable);
 
-int nx_vip_register_irq_entry(u32 module, struct nx_v4l2_irq_entry *e)
+int nx_vip_register_irq_entry(u32 module, u32 child, struct nx_v4l2_irq_entry *e)
 {
 	unsigned long flags;
 	struct nx_vip *me;
@@ -249,19 +252,16 @@ int nx_vip_register_irq_entry(u32 module, struct nx_v4l2_irq_entry *e)
 	me = _nx_vip_object[module];
 
 	spin_lock_irqsave(&me->lock, flags);
-	if (me->irq_entry_count >= 2) {
-		WARN_ON(1);
-		spin_unlock_irqrestore(&me->lock, flags);
-		return 0;
-	}
-	list_add_tail(&e->entry, &me->irq_entry_list);
-	me->irq_entry_count++;
+	if (child & VIP_CLIPPER)
+		me->clipper = e;
+	else if (child & VIP_DECIMATOR)
+		me->decimator = e;
 	spin_unlock_irqrestore(&me->lock, flags);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nx_vip_register_irq_entry);
 
-int nx_vip_unregister_irq_entry(u32 module, struct nx_v4l2_irq_entry *e)
+int nx_vip_unregister_irq_entry(u32 module, u32 child, struct nx_v4l2_irq_entry *e)
 {
 	unsigned long flags;
 	struct nx_vip *me;
@@ -273,14 +273,10 @@ int nx_vip_unregister_irq_entry(u32 module, struct nx_v4l2_irq_entry *e)
 	me = _nx_vip_object[module];
 
 	spin_lock_irqsave(&me->lock, flags);
-	if (me->irq_entry_count <= 0) {
-		WARN_ON(1);
-		spin_unlock_irqrestore(&me->lock, flags);
-		return 0;
-	}
-
-	list_del(&e->entry);
-	me->irq_entry_count--;
+	if (child & VIP_CLIPPER)
+		me->clipper = NULL;
+	else if (child & VIP_DECIMATOR)
+		me->decimator = NULL;
 	spin_unlock_irqrestore(&me->lock, flags);
 	return 0;
 }
@@ -507,7 +503,6 @@ static int nx_vip_probe(struct platform_device *pdev)
 	_nx_vip_object[me->module] = me;
 
 	nx_vip_set_base_address(me->module, me->base);
-	INIT_LIST_HEAD(&me->irq_entry_list);
 	spin_lock_init(&me->lock);
 
 	nx_vip_clock_enable(me->module, true);

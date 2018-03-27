@@ -43,6 +43,7 @@
 
 #define NX_DECIMATOR_DEV_NAME	"nx-decimator"
 
+
 enum {
 	NX_DECIMATOR_PAD_SINK,
 	NX_DECIMATOR_PAD_SOURCE_MEM,
@@ -101,7 +102,8 @@ static int update_buffer(struct nx_decimator *me)
 static void unregister_irq_handler(struct nx_decimator *me)
 {
 	if (me->irq_entry) {
-		nx_vip_unregister_irq_entry(me->module, me->irq_entry);
+		nx_vip_unregister_irq_entry(me->module, VIP_DECIMATOR,
+				me->irq_entry);
 		kfree(me->irq_entry);
 		me->irq_entry = NULL;
 	}
@@ -110,8 +112,6 @@ static void unregister_irq_handler(struct nx_decimator *me)
 static irqreturn_t nx_decimator_irq_handler(void *data)
 {
 	struct nx_decimator *me = data;
-	struct nx_video_buffer *done = NULL;
-	int buf_count;
 
 	if (NX_ATOMIC_READ(&me->state) & STATE_STOPPING) {
 		nx_vip_stop(me->module, VIP_DECIMATOR);
@@ -155,7 +155,7 @@ static int register_irq_handler(struct nx_decimator *me)
 	irq_entry->priv = me;
 	irq_entry->handler = nx_decimator_irq_handler;
 
-	return nx_vip_register_irq_entry(me->module, irq_entry);
+	return nx_vip_register_irq_entry(me->module, VIP_DECIMATOR, irq_entry);
 }
 
 static int decimator_buffer_queue(struct nx_video_buffer *buf, void *data)
@@ -657,6 +657,7 @@ static int nx_decimator_probe(struct platform_device *pdev)
 		return ret;
 
 	me->pdev = pdev;
+	me->buffer_underrun = false;
 	platform_set_drvdata(pdev, me);
 	me->buffer_underrun = false;
 	return 0;

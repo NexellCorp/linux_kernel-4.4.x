@@ -928,13 +928,12 @@ static int update_buffer(struct nx_clipper *me)
 static void unregister_irq_handler(struct nx_clipper *me)
 {
 	if (me->irq_entry) {
-		nx_vip_unregister_irq_entry(me->module, me->irq_entry);
+		nx_vip_unregister_irq_entry(me->module, VIP_CLIPPER,
+				me->irq_entry);
 		kfree(me->irq_entry);
 		me->irq_entry = NULL;
 	}
 }
-
-extern void nx_mipi_csi_set_enable(u32 module_index, int enable);
 
 static irqreturn_t nx_clipper_irq_handler(void *data)
 {
@@ -1005,8 +1004,7 @@ static int register_irq_handler(struct nx_clipper *me)
 	irq_entry->irqs = VIP_OD_INT;
 	irq_entry->priv = me;
 	irq_entry->handler = nx_clipper_irq_handler;
-
-	return nx_vip_register_irq_entry(me->module, irq_entry);
+	return nx_vip_register_irq_entry(me->module, VIP_CLIPPER, irq_entry);
 }
 
 static int clipper_buffer_queue(struct nx_video_buffer *buf, void *data)
@@ -1971,6 +1969,7 @@ static int nx_clipper_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	me->buffer_underrun = false;
 	platform_set_drvdata(pdev, me);
 
 	me->buffer_underrun = false;
