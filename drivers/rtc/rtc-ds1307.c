@@ -1203,6 +1203,9 @@ read_rtc:
 		return PTR_ERR(ds1307->rtc);
 	}
 
+	if (ds1307->type == ds_1337)
+		ds1307->rtc->uie_unsupported = 1;
+
 	if (want_irq) {
 		err = devm_request_threaded_irq(&client->dev,
 						client->irq, NULL, irq_handler,
