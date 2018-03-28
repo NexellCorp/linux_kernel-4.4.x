@@ -474,7 +474,8 @@
 
 		power {
 			label = "Power";
-			gpios = <&alive_0 0 0>;
+			interrupt-parent = <&alive_0>;
+			interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
 			linux,code = <KEY_POWER>;
 			gpio-key,wakeup;
         };
