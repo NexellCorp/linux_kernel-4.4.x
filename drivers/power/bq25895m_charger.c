@@ -96,6 +96,7 @@ struct bq25895m_device {
 	struct usb_phy *usb_phy;
 	struct notifier_block usb_nb;
 	struct work_struct usb_work;
+	struct delayed_work supply_work;
 	unsigned long usb_event;
 
 	struct regmap *rmap;
@@ -329,6 +330,11 @@ static const u32 bq25895m_boosti_tbl[] = {
 	500000, 700000, 1100000, 1300000, 1600000, 1800000, 2100000, 2400000
 };
 
+static const u32 bq25895m_capcity_tbl[2][4] = {
+	{ 3400000, 3500000, 3600000 , 3700000 }, // unpluged AC
+	{ 3600000, 3700000, 3800000 , 3900000 }, // puged AC
+};
+
 #define BQ25895M_BOOSTI_TBL_SIZE		ARRAY_SIZE(bq25895m_boosti_tbl)
 
 struct bq25895m_range {
@@ -449,8 +455,9 @@ static int bq25895m_get_capacity(struct power_supply *psy)
 	int vbatt, capacity, voltage;
 	struct bq25895m_device *bq = power_supply_get_drvdata(psy);
 
-	/* it need to delay to convert */
-	/* mdelay(1000); */
+	struct bq25895m_state state = bq->state;
+
+	int index = state.online;
 
 	vbatt = bq25895m_field_read(bq, F_BATV); /* read measured value */
 	if (vbatt < 0)
@@ -458,22 +465,23 @@ static int bq25895m_get_capacity(struct power_supply *psy)
 	/* converted_val = 2.304V + ADC_val * 20mV (table 10.3.15) */
 	voltage = 2304000 + vbatt * 20000;
 
-	if (voltage>3900000) {
+	if (voltage > bq25895m_capcity_tbl[index][3]) {
 		capacity = 100;
 	}
-	else if(voltage > 3800000) {
+	else if(voltage > bq25895m_capcity_tbl[index][2]) {
 		capacity = 75;
 	}
-	else if(voltage > 3700000) {
+	else if(voltage > bq25895m_capcity_tbl[index][1]) {
 		capacity = 50;
 	}
-	else if(voltage > 3600000) {
+	else if(voltage > bq25895m_capcity_tbl[index][0]) {
 		capacity = 25;
 	}
 	else {
 		capacity = 10;
 	}
-	dev_err(bq->dev, "vbatt = %d capacity = %d \n", vbatt, capacity);
+	dev_err(bq->dev, "vbatt = %d voltage = %d capacity = %d \n", vbatt,
+			voltage, capacity);
 
 	return capacity;
 }
@@ -632,6 +640,7 @@ static bool bq25895m_state_changed(struct bq25895m_device *bq,
 		old_state.vsys_status != new_state->vsys_status);
 }
 
+
 static void bq25895m_handle_state_change(struct bq25895m_device *bq,
 					struct bq25895m_state *new_state)
 {
@@ -641,10 +650,9 @@ static void bq25895m_handle_state_change(struct bq25895m_device *bq,
 	mutex_lock(&bq->lock);
 	old_state = bq->state;
 	mutex_unlock(&bq->lock);
-
 	if (!new_state->online) {			     /* power removed */
 		/* disable ADC */
-		ret = bq25895m_field_write(bq, F_CONV_START, 0);
+		ret = bq25895m_field_write(bq, F_CONV_START, 1);
 		if (ret < 0)
 			goto error;
 	} else if (!old_state.online) {			    /* power inserted */
@@ -653,16 +661,39 @@ static void bq25895m_handle_state_change(struct bq25895m_device *bq,
 		if (ret < 0)
 			goto error;
 	}
-
 	return;
 
 error:
 	dev_err(bq->dev, "Error communicating with the chip.\n");
 }
 
+
+static void bq25895m_supply_work(struct work_struct *data)
+{
+	struct bq25895m_device *bq =
+		container_of(data, struct bq25895m_device, supply_work.work);
+
+    struct bq25895m_state state;
+
+    bq25895m_get_chip_state(bq, &state);
+
+    bq25895m_state_changed(bq, &state);
+
+    bq25895m_handle_state_change(bq, &state);
+
+    mutex_lock(&bq->lock);
+    bq->state = state;
+    mutex_unlock(&bq->lock);
+
+    power_supply_changed(bq->charger);
+
+	return ;
+}
+
 static irqreturn_t bq25895m_irq_handler_thread(int irq, void *private)
 {
 	struct bq25895m_device *bq = private;
+# if 0
 	int ret;
 	struct bq25895m_state state;
 
@@ -682,6 +713,8 @@ static irqreturn_t bq25895m_irq_handler_thread(int irq, void *private)
 	power_supply_changed(bq->charger);
 
 handled:
+#endif
+	schedule_delayed_work(&bq->supply_work, HZ * 2);
 	return IRQ_HANDLED;
 }
 
@@ -825,7 +858,7 @@ static void bq25895m_usb_work(struct work_struct *data)
 {
 	int ret;
 	struct bq25895m_device *bq =
-			container_of(data, struct bq25895m_device, usb_work);
+		container_of(data, struct bq25895m_device, usb_work);
 
 	switch (bq->usb_event) {
 	case USB_EVENT_ID:
@@ -947,7 +980,6 @@ static int bq25895m_probe(struct i2c_client *client,
 	int ret;
 	int i;
 
-
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
 		dev_err(dev, "No support for SMBUS_BYTE_DATA\n");
 		return -ENODEV;
@@ -1050,6 +1082,18 @@ static int bq25895m_probe(struct i2c_client *client,
 		goto irq_fail;
 	}
 
+	INIT_DELAYED_WORK(&bq->supply_work, bq25895m_supply_work);
+#if 0
+	while(1) {
+		vbatt = bq25895m_field_read(bq, F_BATV);
+		/* converted_val = 2.304V + ADC_val * 20mV (table 10.3.15) */
+		voltage = 2304000 + vbatt * 20000;
+		dev_err(bq->dev, "vbatt = %d voltage = %d \n", vbatt,
+			voltage);
+		mdelay(500);
+
+	}
+#endif
 	return 0;
 
 irq_fail:
