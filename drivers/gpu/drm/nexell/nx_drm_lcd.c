@@ -82,11 +82,11 @@ static bool panel_lcd_ops_detect(struct device *dev,
 		if (drm_panel) {
 			int ret;
 
-			display->panel = drm_panel;
-			drm_panel_attach(drm_panel, connector);
-
 			if (display->check_panel)
 				return display->is_connected;
+
+			display->panel = drm_panel;
+			drm_panel_attach(drm_panel, connector);
 
 			if (ops->prepare)
 				ops->prepare(display);
@@ -125,6 +125,11 @@ static bool panel_lcd_ops_detect(struct device *dev,
 		 */
 		DRM_DEBUG_KMS("Not find panel driver for %s ...\n",
 			nx_panel_get_name(panel_type));
+
+		display->panel = NULL;
+		display->check_panel = false;
+		display->is_connected = false;
+
 		return false;
 	}
 
