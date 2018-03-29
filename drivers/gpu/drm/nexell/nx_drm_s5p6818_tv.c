@@ -281,7 +281,16 @@ static ssize_t enable_store(struct device *dev, struct device_attribute *attr,
 	return n;
 }
 
-static DEVICE_ATTR_WO(enable);
+static ssize_t enable_show(struct device *dev, struct device_attribute *attr,
+			   char *buf)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+
+	BUG_ON(!ctx);
+	return sprintf(buf, "%s\n", ctx->plugged ? "1" : "0");
+}
+
+static DEVICE_ATTR(enable, 0644, enable_show, enable_store);
 
 /**
  * platform_driver interface
