@@ -2888,7 +2888,7 @@ static int set_bst1_power(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		rt5659_micbias_output(RT5659_MICBIAS1, 1, 1);
+		rt5659_micbias_output(RT5659_MICBIAS1, 1, 1, codec);
 		snd_soc_update_bits(codec, RT5659_PWR_ANLG_2,
 			RT5659_PWR_BST1_P | RT5659_PWR_BST1,
 			RT5659_PWR_BST1_P | RT5659_PWR_BST1);
@@ -2913,7 +2913,7 @@ static int set_bst2_power(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		rt5659_micbias_output(RT5659_MICBIAS1, 1, 1);
+		rt5659_micbias_output(RT5659_MICBIAS1, 1, 1, codec);
 		snd_soc_update_bits(codec, RT5659_PWR_ANLG_2,
 			RT5659_PWR_BST2_P | RT5659_PWR_BST2,
 			RT5659_PWR_BST2_P | RT5659_PWR_BST2);
@@ -4763,11 +4763,13 @@ static int rt5659_set_bias_level(struct snd_soc_codec *codec,
 	return 0;
 }
 
-void rt5659_micbias_output(int micbias, int enable_ldo2, int on)
+void rt5659_micbias_output(int micbias, int enable_ldo2, int on,
+		struct snd_soc_codec *codec)
 {
 	unsigned int value;
+	struct rt5659_priv *rt5659 = snd_soc_codec_get_drvdata(codec);
 
-	mutex_lock(&global_rt5659->calibrate_mutex);
+	mutex_lock(&rt5659->calibrate_mutex);
 
 	if (on) {
 		regmap_update_bits(global_regmap, RT5659_PWR_ANLG_1,
@@ -4817,7 +4819,7 @@ void rt5659_micbias_output(int micbias, int enable_ldo2, int on)
 				RT5659_PWR_FV2, 0);
 		}
 	}
-	mutex_unlock(&global_rt5659->calibrate_mutex);
+	mutex_unlock(&rt5659->calibrate_mutex);
 }
 EXPORT_SYMBOL(rt5659_micbias_output);
 
