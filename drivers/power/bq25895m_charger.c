@@ -478,7 +478,7 @@ static int bq25895m_get_capacity(struct power_supply *psy)
 		capacity = 25;
 	}
 	else {
-		capacity = 10;
+		capacity = 0;
 	}
 	dev_err(bq->dev, "vbatt = %d voltage = %d capacity = %d \n", vbatt,
 			voltage, capacity);
@@ -590,6 +590,7 @@ static int bq25895m_power_supply_get_property(struct power_supply *psy,
 
 	return 0;
 }
+int g_bq25895m_online;
 
 static int bq25895m_get_chip_state(struct bq25895m_device *bq,
 				  struct bq25895m_state *state)
@@ -615,6 +616,8 @@ static int bq25895m_get_chip_state(struct bq25895m_device *bq,
 
 		*state_fields[i].data = ret;
 	}
+
+	g_bq25895m_online = state->online;
 
 	dev_dbg(bq->dev, "S:CHG/PG/VSYS=%d/%d/%d, F:CHG/BOOST/BAT=%d/%d/%d\n",
 		state->chrg_status, state->online, state->vsys_status,
