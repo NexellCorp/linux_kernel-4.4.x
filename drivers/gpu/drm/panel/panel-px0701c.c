@@ -58,6 +58,7 @@ static int __maybe_unused px0701c_clear_error(struct px0701c *ctx)
 	return ret;
 }
 
+#ifndef CONFIG_DRM_CHECK_PRE_INIT
 static void _dcs_write(struct px0701c *ctx, const void *data, size_t len)
 {
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
@@ -73,6 +74,7 @@ static void _dcs_write(struct px0701c *ctx, const void *data, size_t len)
 		ctx->error = ret;
 	}
 }
+#endif
 
 static int __maybe_unused _dcs_read(struct px0701c *ctx, u8 cmd, void *data,
 				    size_t len)
@@ -91,13 +93,13 @@ static int __maybe_unused _dcs_read(struct px0701c *ctx, u8 cmd, void *data,
 
 	return ret;
 }
+#ifndef CONFIG_DRM_CHECK_PRE_INIT
 
 #define _dcs_write_seq_static(ctx, seq...) \
 ({\
 	static const u8 d[] = { seq };\
 	_dcs_write(ctx, d, ARRAY_SIZE(d));\
 })
-
 static void _set_sequence(struct px0701c *ctx)
 {
 	//Page0
@@ -370,12 +372,12 @@ static void _set_sequence(struct px0701c *ctx)
 	/* all pixel on */
 	//_dcs_write_seq_static(ctx, 0x23);
 }
+#endif
 
 static int px0701c_power_on(struct px0701c *ctx)
 {
-	int ret;
-
 #ifndef CONFIG_DRM_CHECK_PRE_INIT
+	int ret;
 
 	if (ctx->is_power_on)
 		return 0;
@@ -501,6 +503,7 @@ static int px0701c_get_modes(struct drm_panel *panel)
 	struct drm_display_mode *mode;
 
 	mode = drm_mode_create(connector->dev);
+
 	if (!mode) {
 		DRM_ERROR("failed to create a new display mode\n");
 		return 0;
