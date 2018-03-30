@@ -626,6 +626,7 @@
 	hs_bitrate = <420>;
 	lp_bitrate = <100>;
 	status = "ok";
+	skip_panel_check = <1>;
 
 	panel@0 {
 		compatible = "px0701c";
