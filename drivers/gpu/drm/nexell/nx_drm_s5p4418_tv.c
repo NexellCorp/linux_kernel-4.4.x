@@ -69,7 +69,7 @@ struct tv_context {
 };
 
 static int register_v4l2(struct tv_context *);
-#define CONNECTION_COUNT	10 /* 500 * CONNECTION_COUNT */
+#define CONNECTION_COUNT	15 /* 500 * CONNECTION_COUNT */
 
 #define ctx_to_display(c)	\
 		((struct nx_drm_display *)(c->connector.display))
@@ -112,50 +112,10 @@ static bool panel_tv_ops_detect(struct device *dev,
 {
 	struct tv_context *ctx = dev_get_drvdata(dev);
 	struct nx_drm_display *display = ctx_to_display(ctx);
-	struct nx_drm_display_ops *ops = display->ops;
 	enum nx_panel_type panel_type = nx_panel_get_type(display);
 
 	DRM_DEBUG_KMS("panel %s\n",
 		display->panel_node ? "exist" : "not exist");
-
-	if (display->panel_node) {
-		struct drm_panel *drm_panel =
-					of_drm_find_panel(display->panel_node);
-
-		if (drm_panel) {
-			int ret;
-
-			display->panel = drm_panel;
-			drm_panel_attach(drm_panel, connector);
-
-			if (display->check_panel)
-				return display->is_connected;
-
-			if (ops->prepare)
-				ops->prepare(display);
-
-			ret = drm_panel_prepare(drm_panel);
-			if (!ret) {
-				drm_panel_unprepare(drm_panel);
-
-				if (ops->unprepare)
-					ops->unprepare(display);
-
-				display->is_connected = true;
-			} else {
-				drm_panel_detach(drm_panel);
-				display->is_connected = false;
-			}
-			display->check_panel = true;
-
-			DRM_INFO("%s: check panel %s\n",
-				nx_panel_get_name(panel_type),
-				display->is_connected ?
-					"connected" : "disconnected");
-
-			return display->is_connected;
-		}
-	}
 
 	if (!display->panel_node && !ctx->local_timing) {
 		DRM_DEBUG_DRIVER("not exist %s panel & timing %s !\n",
@@ -278,6 +238,12 @@ static void panel_tv_on(struct tv_context *ctx, struct drm_panel *panel)
 			call_set_register(ctx);
 
 		ctx->is_enable = true;
+
+		if (!ctx->is_run) {
+			ctx->connection_cnt = 0;
+			mod_delayed_work(system_wq, &ctx->work,
+					 msecs_to_jiffies(300));
+		}
 	}
 }
 
@@ -399,15 +365,17 @@ static void panel_tv_work(struct work_struct *work)
 	if (err) {
 		if (ctx->connection_cnt++ < CONNECTION_COUNT)
 			mod_delayed_work(system_wq, &ctx->work,
-				msecs_to_jiffies(500));
+				msecs_to_jiffies(300));
 		else
 			cancel_delayed_work_sync(&ctx->work);
 	} else {
 		drm_helper_hpd_irq_event(connector->dev);
 
-		if (ctx->is_enable && !ctx->is_run) {
-			call_set_register(ctx);
+		if (!ctx->is_run) {
 			ctx->is_run = true;
+
+			if (ctx->is_enable)
+				call_set_register(ctx);
 		}
 
 		cancel_delayed_work_sync(&ctx->work);

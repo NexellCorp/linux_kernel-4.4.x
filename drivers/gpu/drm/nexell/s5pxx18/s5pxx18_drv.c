@@ -327,6 +327,9 @@ static int crtc_ops_begin(struct drm_crtc *crtc)
 	crtc_w = crtc->state->mode.hdisplay;
 	crtc_h = crtc->state->mode.vdisplay;
 
+	if (crtc->state->mode.flags & DRM_MODE_FLAG_INTERLACE)
+		top->interlace = 1;
+
 	DRM_DEBUG_KMS("crtc.%d: [%d x %d] -> [%d,%d]\n",
 		top->module, fb->width, fb->height, crtc_w, crtc_h);
 	DRM_DEBUG_KMS("%s pixel:%d, back:0x%x, colorkey:0x%x\n",
@@ -366,7 +369,8 @@ static void crtc_ops_enable(struct drm_crtc *crtc)
 	struct nx_drm_crtc *nx_crtc = to_nx_crtc(crtc);
 	struct nx_top_plane *top = nx_crtc->context;
 
-	DRM_DEBUG_KMS("crtc.%d\n", top->module);
+	DRM_DEBUG_KMS("%s: crtc.%d, top->width : %d, top->height : %d\n",
+		__func__, top->module, top->width, top->height);
 
 	if (nx_crtc->suspended)
 		crtc_mlc_resume(crtc);

@@ -492,8 +492,9 @@ int nx_soc_dp_plane_top_set_enable(struct nx_top_plane *top, bool on)
 	struct nx_plane_layer *layer;
 	int module = top->module;
 
-	pr_debug("%s: crtc.%d, %s %dx%d\n",
-		__func__, module, on ? "on" : "off", top->width, top->height);
+	pr_debug("%s: crtc.%d, %s %dx%d, interlace:%s\n",
+		__func__, module, on ? "on" : "off",
+		top->width, top->height, top->interlace ? "O" : "X");
 
 	if (on) {
 		int m_lock_size = 16;
