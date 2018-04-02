@@ -208,7 +208,6 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 	nx_dpc_set_clock_divisor_enable(module, false);
 	nx_dpc_set_clock_out_enb(module, 0, false);
 	nx_dpc_set_clock_out_enb(module, 1, false);
-	/* nx_mlc_set_clock_bclk_mode(module, nx_bclkmode_always); */
 	nx_dpc_set_clock_divisor(module, 0, ctrl->clk_div_lv0);
 	nx_dpc_set_clock_source(module, 0, ctrl->clk_src_lv0);
 	nx_dpc_set_clock_out_inv(module, 0, ctrl->clk_inv_lv0);
@@ -223,19 +222,6 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 	nx_dpc_set_vsync_offset(module, 0, 0, 0, 0);
 	nx_dpc_set_delay(module, 0, 12, 12, 12);
 	nx_dpc_set_dither(module, 0, 0, 0);
-
-	nx_dpc_set_video_encoder_mode(module, 0, true);
-	nx_dpc_set_video_encoder_fscadjust(module, 0);
-	nx_dpc_set_video_encoder_bandwidth(module, 2, 2);
-	nx_dpc_set_video_encoder_color_control(module, 0, 0, 0, 0, 0);
-	nx_dpc_set_video_encoder_timing(module, 63, 1715, 0, 3);
-	nx_dpc_set_video_encoder_power_down(module, false);
-	nx_dpc_set_encoder_control_reg(module, 0x40, 0, 0);
-	nx_dpc_set_encoder_shcphase_control(module, 0x3f);
-	nx_dpc_set_encoder_timing_config_reg(module, 7);
-	nx_dpc_set_encoder_dacoutput_select(module, 1, 2, 4, 5, 0, 0);
-	nx_dpc_set_encenable(module, true);
-	nx_dpc_set_encoder_dacpower_enable(module, 0x30);
 
 	nx_mlc_set_top_control_parameter(module, 1, 1, 1, 0);
 	nx_mlc_set_screen_size(module, 720, 480);
@@ -254,6 +240,22 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 	nx_dpc_set_reg_flush(module);
 	nx_dpc_set_dpc_enable(module, 1);
 	nx_dpc_set_clock_divisor_enable(module, 1);
+
+	nx_dpc_set_video_encoder_power_down(module, false);
+	nx_dpc_set_encenable(module, true);
+	nx_dpc_set_encoder_dacpower_enable(module, 0x30);
+
+	mdelay(33);
+
+	nx_dpc_set_video_encoder_mode(module, 0, true);
+	nx_dpc_set_video_encoder_fscadjust(module, 0);
+	nx_dpc_set_video_encoder_bandwidth(module, 2, 2);
+	nx_dpc_set_video_encoder_color_control(module, 0, 0, 0, 0, 0);
+	nx_dpc_set_video_encoder_timing(module, 63, 1715, 0, 3);
+	nx_dpc_set_encoder_control_reg(module, 0x40, 0, 0);
+	nx_dpc_set_encoder_shcphase_control(module, 0x3f);
+	nx_dpc_set_encoder_timing_config_reg(module, 7);
+	nx_dpc_set_encoder_dacoutput_select(module, 1, 2, 4, 5, 0, 0);
 
 	dac_set_full_scale_output_voltage(0); /* Ratio 60/60, 100% */
 	dac_power_control(1);
