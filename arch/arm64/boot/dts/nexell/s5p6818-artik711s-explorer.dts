@@ -195,8 +195,8 @@
 			#sound-dai-cells = <1>;
 			master-mode = <1>;
 			mclk-in = <0>;
-			trans-mode = <0>;
-			frame-bit = <32>;
+			trans-mode = <1>;
+			frame-bit = <48>;
 			sample-rate = <48000>;
 			pre-supply-mclk = <1>;
 			status = "okay";
@@ -204,12 +204,12 @@
 
 		i2s_1:i2s@c0056000 {
 			#sound-dai-cells = <1>;
-			master-mode = <1>;
-			mclk-in = <0>;
-			trans-mode = <0>;
-			frame-bit = <32>;
+			master-mode = <0>;
+			mclk-in = <1>;
+			trans-mode = <1>;
+			frame-bit = <48>;
 			sample-rate = <48000>;
-			pre-supply-mclk = <1>;
+			pre-supply-mclk = <0>;
 			status = "okay";
 		};
 
@@ -347,6 +347,7 @@
 		};
 
 		simple-audio-card,dai-link@1 {
+			format = "i2s";
 			cpu {
 				sound-dai = <&i2s_1 0>;
 			};
