@@ -304,11 +304,47 @@ static const struct v4l2_ctrl_ops adv7393_ctrl_ops = {
 	.s_ctrl = adv7393_s_ctrl,
 };
 
+static int adv7393_initialize(struct v4l2_subdev *sd)
+{
+	struct adv7393_state *state = to_state(sd);
+	int err = 0;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(adv7393_init_reg_val); i += 2) {
+
+		err = adv7393_write(sd, adv7393_init_reg_val[i],
+					adv7393_init_reg_val[i+1]);
+		if (err) {
+			v4l2_err(sd, "Error initializing\n");
+			return err;
+		}
+	}
+
+	/* Configure for default video standard */
+	err = adv7393_setoutput(sd, state->output);
+	if (err < 0) {
+		v4l2_err(sd, "Error setting output during init\n");
+		return -EINVAL;
+	}
+
+	err = adv7393_setstd(sd, state->std);
+	if (err < 0) {
+		v4l2_err(sd, "Error setting std during init\n");
+		return -EINVAL;
+	}
+
+	return err;
+}
+
 int adv7393_s_register(struct v4l2_subdev *sd,
 			const struct v4l2_dbg_register *reg)
 {
 	int err = 0;
 	unsigned int addr, val;
+
+	err = adv7393_initialize(sd);
+	if (err)
+		return err;
 
 	while (1) {
 		if ((reg->reg == 0xFF) && (reg->val == 0xFF))
@@ -329,6 +365,7 @@ int adv7393_s_register(struct v4l2_subdev *sd,
 
 	return err;
 }
+
 
 static const struct v4l2_subdev_core_ops adv7393_core_ops = {
 	.log_status = adv7393_log_status,
@@ -383,37 +420,7 @@ static const struct v4l2_subdev_ops adv7393_ops = {
 	.video	= &adv7393_video_ops,
 };
 
-static int adv7393_initialize(struct v4l2_subdev *sd)
-{
-	struct adv7393_state *state = to_state(sd);
-	int err = 0;
-	int i;
 
-	for (i = 0; i < ARRAY_SIZE(adv7393_init_reg_val); i += 2) {
-
-		err = adv7393_write(sd, adv7393_init_reg_val[i],
-					adv7393_init_reg_val[i+1]);
-		if (err) {
-			v4l2_err(sd, "Error initializing\n");
-			return err;
-		}
-	}
-
-	/* Configure for default video standard */
-	err = adv7393_setoutput(sd, state->output);
-	if (err < 0) {
-		v4l2_err(sd, "Error setting output during init\n");
-		return -EINVAL;
-	}
-
-	err = adv7393_setstd(sd, state->std);
-	if (err < 0) {
-		v4l2_err(sd, "Error setting std during init\n");
-		return -EINVAL;
-	}
-
-	return err;
-}
 
 static int adv7393_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
@@ -463,11 +470,11 @@ static int adv7393_probe(struct i2c_client *client,
 		v4l2_ctrl_handler_free(&state->hdl);
 		return err;
 	}
-	v4l2_ctrl_handler_setup(&state->hdl);
 
-	err = adv7393_initialize(&state->sd);
+	err = v4l2_ctrl_handler_setup(&state->hdl);
 	if (err)
 		v4l2_ctrl_handler_free(&state->hdl);
+
 	return err;
 }
 
