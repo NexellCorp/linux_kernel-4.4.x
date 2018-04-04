@@ -11,6 +11,7 @@
 
 #include "mip4_ts.h"
 
+#define DELTA_STEP	4
 
 /*
 * Pre-run config
@@ -279,7 +280,7 @@ void mip4_ts_clear_input(struct mip4_ts_info *info)
 */
 void mip4_ts_input_event_handler(struct mip4_ts_info *info, u8 sz, u8 *buf)
 {
-	int i,j;
+	int i;
 	int type;
 	int id;
 	int direction = 0;
@@ -287,6 +288,8 @@ void mip4_ts_input_event_handler(struct mip4_ts_info *info, u8 sz, u8 *buf)
 	int x = 0;
 	int x_delta = 0;
 	int gesture = 0;
+	static int cnt_delta = 0;
+	static int old_direction = 0;
 
 	dev_dbg(&info->client->dev, "%s [START]\n", __func__);
 
@@ -330,17 +333,24 @@ void mip4_ts_input_event_handler(struct mip4_ts_info *info, u8 sz, u8 *buf)
 				continue;
 			}
 
-			dev_err(&info->client->dev,
+			dev_dbg(&info->client->dev,
 					"%s - Slider : direction[%d] x_delta[%d] x[%d]\n",
 						__func__, direction, x_delta, x);
 
 			key_value = (direction) ? KEY_VOLUMEUP : KEY_VOLUMEDOWN;
 
-			for(j=0;j<x_delta;j++) {
+			if(old_direction != direction) {
+				old_direction = direction;
+				cnt_delta = 0;
+			}
+
+			cnt_delta+=x_delta;
+
+			if(cnt_delta >= DELTA_STEP) {
 				input_report_key(info->input_dev, key_value, 1);
-				input_sync(info->input_dev);
 				input_report_key(info->input_dev, key_value, 0);
 				input_sync(info->input_dev);
+				cnt_delta -= DELTA_STEP;
 			}
 			//
 			/////////////////////////////////
@@ -369,8 +379,9 @@ void mip4_ts_input_event_handler(struct mip4_ts_info *info, u8 sz, u8 *buf)
 				input_sync(info->input_dev);
 
 			} else {
-				dev_err(&info->client->dev,
-					"%s [ERROR] Unknown key id [%d]\n", __func__, id);
+				dev_dbg(&info->client->dev,
+					"%s Released \n", __func__);
+				cnt_delta = 0;
 				continue;
 			}
 		} else {
@@ -391,7 +402,6 @@ int mip4_ts_gesture_wakeup_event_handler(struct mip4_ts_info *info,
 		int gesture_code)
 {
 
-	int i;
 	dev_dbg(&info->client->dev, "%s [START]\n", __func__);
 
 	/* Report gesture event */
@@ -409,21 +419,15 @@ int mip4_ts_gesture_wakeup_event_handler(struct mip4_ts_info *info,
 		break;
 	case 25:
 		/* Right - Single tap */
-		for(i=0;i<7;i++) {
-			input_report_key(info->input_dev, KEY_VOLUMEUP, 1);
-			input_sync(info->input_dev);
-			input_report_key(info->input_dev, KEY_VOLUMEUP, 0);
-			input_sync(info->input_dev);
-		}
+		input_report_key(info->input_dev, KEY_VOLUMEUP, 1);
+		input_report_key(info->input_dev, KEY_VOLUMEUP, 0);
+		input_sync(info->input_dev);
 		break;
 	case 26:
 		/* Left - Single tap */
-		for(i=0;i<7;i++) {
-			input_report_key(info->input_dev, KEY_VOLUMEDOWN, 1);
-			input_sync(info->input_dev);
-			input_report_key(info->input_dev, KEY_VOLUMEDOWN, 0);
-			input_sync(info->input_dev);
-		}
+		input_report_key(info->input_dev, KEY_VOLUMEDOWN, 1);
+		input_report_key(info->input_dev, KEY_VOLUMEDOWN, 0);
+		input_sync(info->input_dev);
 		break;
 	default:
 		dev_err(&info->client->dev,
