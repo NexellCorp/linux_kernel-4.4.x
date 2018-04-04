@@ -22,6 +22,27 @@
 
 #define ZN240_PAGE	0x00
 
+enum {
+	INTERVAL_MIN = 0,
+	INTERVAL_MAX,
+	INTERVAL,
+};
+
+struct nx_resolution {
+	uint32_t width;
+	uint32_t height;
+	uint32_t interval[INTERVAL];
+};
+
+static struct nx_resolution supported_resolutions[] = {
+	{
+		.width	= 1920,
+		.height = 1080,
+		.interval[INTERVAL_MIN] = 15,
+		.interval[INTERVAL_MAX] = 30,
+	}
+};
+
 struct zn240_state {
 	struct v4l2_subdev	subdev;
 	struct v4l2_mbus_framefmt fmt;
@@ -242,6 +263,37 @@ static int sensor_zn240_s_fmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int sensor_zn240_enum_fsize(struct v4l2_subdev *sd,
+		struct v4l2_subdev_pad_config *cfg,
+		struct v4l2_subdev_frame_size_enum *frame)
+{
+	if (frame->index >= ARRAY_SIZE(supported_resolutions))
+		return -ENODEV;
+
+	frame->max_width = supported_resolutions[frame->index].width;
+	frame->max_height = supported_resolutions[frame->index].height;
+
+	return 0;
+}
+
+static int sensor_zn240_enum_finterval(struct v4l2_subdev *sd,
+		struct v4l2_subdev_pad_config *cfg,
+		struct v4l2_subdev_frame_interval_enum *frame)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(supported_resolutions); i++) {
+		if ((frame->width == supported_resolutions[i].width) &&
+		    (frame->height == supported_resolutions[i].height)) {
+			frame->interval.numerator = 1;
+			frame->interval.denominator =
+				supported_resolutions[i].interval[frame->index];
+			return false;
+		}
+	}
+	return -EINVAL;
+}
+
 static int sensor_zn240_s_param(struct v4l2_subdev *sd,
 	struct v4l2_streamparm *param)
 {
@@ -249,6 +301,8 @@ static int sensor_zn240_s_param(struct v4l2_subdev *sd,
 }
 static struct v4l2_subdev_pad_ops pad_ops = {
 	.set_fmt		= sensor_zn240_s_fmt,
+	.enum_frame_size	= sensor_zn240_enum_fsize,
+	.enum_frame_interval	= sensor_zn240_enum_finterval,
 };
 
 static const struct v4l2_subdev_core_ops core_ops = {
