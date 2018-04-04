@@ -8,8 +8,13 @@ The DT definitions can be found in include/dt-bindings/media/nexell-vip.h
 Required properties:
 - compatible	: must contain "nexell,nx-clipper"
 - module	: vip module number
+- logical	: whether logical device or not (1 - logical, 0 or none - pysical)
+		  logical device is not a real camera device
+		  It's just for making a logical video device to use the clipper with another sensor.
 - interface_type	: NX_CAPTURE_INTERFACE_PARALLEL or NX_CAPTURE_INTERFACE_MIPI
 			  parallel interface is 8bit(656/601)
+- clock_source	: vip clock source number
+- clock_frequency	: vip clock frequency
 - pinctrl-names	: must contain "default"
 - pinctrl-0	: the pinctrl reference to vid
 - port		: vip input port, each vip has two input port and can use only one
@@ -38,7 +43,10 @@ Example:
 	clipper {
 		compatible = "nexell,nx-clipper";
 		module = <1>;
+		logical = <1>;
 		interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
+		clock_source = <2>;
+		clock_frequency = <300000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&vid0_data_clk &vid0_sync> ;
 		port = <0>;

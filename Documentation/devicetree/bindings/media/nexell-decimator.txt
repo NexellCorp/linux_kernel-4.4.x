@@ -7,11 +7,15 @@ Normally this function is same to pip-preview function.
 Required properties:
 - compatible	: must contain "nexell,nx-decimator"
 - module	: vip module number
+- logical	: whether logical device or not (1 - logical, 0 or none - pysical)
+		  logical device is not a real camera device
+		  It's just for making a logical video device to use the decimator with another sensor.
 - status	: to enable, must contain "okay"
 
 Example:
 	decimator {
 		compatible = "nexell,nx-decimator";
 		module = <1>;
+		logical = <1>;
 		status = "okay";
 	};

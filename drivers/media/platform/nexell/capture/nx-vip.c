@@ -36,8 +36,26 @@
 
 #define NX_VIP_DEV_NAME		"nx-vip"
 
+#define CLK_PLL3		3
+#define CLK_EXT_CLK1		4
+
+#define VIP_PCLKENB		3
+#define VIP_BCLKENB		0
+#define VIP_CLKGEN_ENB		2
+#define VIP_CLKGEN_OUTCLKINV	0
+#define VIP_CLKGEN_CLKSRC_SEL	2
+#define VIP_CLKGEN_CLKDIV	5
+#define VIP_CLKGEN_OUTCLKENB	15
+
+#define VIP_BCLKENB_ALWAYS	0x3
+
 /* if defined, when vip enabled, register of VIP are dumped */
 /*#define DUMP_REGISTER*/
+
+struct nx_vip_clk {
+	u32 vip_clk_enb;
+	u32 vip_clk_gen;
+};
 
 struct nx_vip {
 	u32 module;
@@ -45,7 +63,7 @@ struct nx_vip {
 	int irq;
 	struct reset_control *rst;
 	struct clk *clk;
-
+	struct nx_vip_clk *clk_base;
 	atomic_t running_bitmap;
 
 	spinlock_t lock;
@@ -70,6 +88,7 @@ static int nx_vip_parse_dt(struct platform_device *pdev, struct nx_vip *me)
 	struct resource res;
 	char clk_names[5] = {0, };
 	char reset_names[12] = {0, };
+	u32 clk_base;
 
 	ret = of_address_to_resource(np, 0, &res);
 	if (ret) {
@@ -105,6 +124,10 @@ static int nx_vip_parse_dt(struct platform_device *pdev, struct nx_vip *me)
 		dev_err(dev, "failed to devm_clk_get for %s\n", clk_names);
 		return -ENODEV;
 	}
+	if (of_property_read_u32(np, "clk-base", &clk_base))
+		me->clk_base = NULL;
+	else
+		me->clk_base = ioremap_nocache(clk_base, 0x1000);
 
 	snprintf(reset_names, sizeof(reset_names), "vip%d-reset", me->module);
 	me->rst = devm_reset_control_get(dev, reset_names);
@@ -222,6 +245,33 @@ int nx_vip_reset(u32 module)
 }
 EXPORT_SYMBOL_GPL(nx_vip_reset);
 
+int nx_vip_clock_config(u32 module, u32 source, u32 frequency)
+{
+	struct nx_vip *me;
+	int div = 0;
+	u32 reg_value;
+
+	if (module >= NUMBER_OF_VIP_MODULE) {
+		pr_err("[nx vip] invalid module num %d\n", module);
+		return -ENODEV;
+	}
+	me = _nx_vip_object[module];
+
+	if (me->clk_base == NULL) {
+		pr_err("[nx vip] no clk base address\n");
+		return -ENODEV;
+	}
+	reg_value = div << VIP_CLKGEN_CLKDIV;
+	reg_value |= source << VIP_CLKGEN_CLKSRC_SEL;
+	if (source == CLK_PLL3 || source == CLK_EXT_CLK1)
+		reg_value |= 1 << VIP_CLKGEN_OUTCLKENB;
+	writel(reg_value, &me->clk_base->vip_clk_gen);
+	if (frequency)
+		clk_set_rate(me->clk, frequency);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(nx_vip_clock_config);
+
 int nx_vip_clock_enable(u32 module, bool enable)
 {
 	struct nx_vip *me;
@@ -232,10 +282,21 @@ int nx_vip_clock_enable(u32 module, bool enable)
 	}
 	me = _nx_vip_object[module];
 
-	if (enable)
-		return clk_prepare_enable(me->clk);
+	if (me->clk_base) {
+		u32 reg_value;
 
-	clk_disable_unprepare(me->clk);
+		reg_value =  enable << VIP_PCLKENB;
+		reg_value |=  (enable) ? VIP_BCLKENB_ALWAYS : 0 << VIP_BCLKENB;
+		reg_value |= (enable << VIP_CLKGEN_ENB);
+		writel(reg_value, &me->clk_base->vip_clk_enb);
+		if (!enable)
+			writel(0x0000, &me->clk_base->vip_clk_gen);
+	} else {
+		if (enable)
+			return clk_prepare_enable(me->clk);
+
+		clk_disable_unprepare(me->clk);
+	}
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nx_vip_clock_enable);
@@ -505,9 +566,10 @@ static int nx_vip_probe(struct platform_device *pdev)
 	nx_vip_set_base_address(me->module, me->base);
 	spin_lock_init(&me->lock);
 
-	nx_vip_clock_enable(me->module, true);
-	nx_vip_reset(me->module);
-
+	if (me->clk_base == NULL) {
+		nx_vip_clock_enable(me->module, true);
+		nx_vip_reset(me->module);
+	}
 	snprintf(me->irq_name, sizeof(me->irq_name), "nx-vip%d", me->module);
 	ret = devm_request_irq(&pdev->dev, me->irq, &vip_irq_handler,
 			       IRQF_SHARED, me->irq_name, me);

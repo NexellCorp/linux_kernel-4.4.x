@@ -142,7 +142,10 @@ enum {
 
 struct nx_clipper {
 	u32 module;
+	u32 logical;
 	u32 interface_type;
+	s32 clk_src;
+	u32 clk_freq;
 	u32 external_sync;
 	u32 h_frontporch;
 	u32 h_syncwidth;
@@ -580,10 +583,19 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 		return -EINVAL;
 	}
 
+	if (of_property_read_u32(np, "logical", &me->logical))
+		me->logical = 0;
+
 	if (of_property_read_u32(np, "interface_type", &me->interface_type)) {
 		dev_err(dev, "failed to get dt interface_type\n");
 		return -EINVAL;
 	}
+
+	if (of_property_read_u32(np, "clock_source", &me->clk_src))
+		me->clk_src = -1;
+
+	if (of_property_read_u32(np, "clock_frequency", &me->clk_freq))
+		me->clk_freq = 0;
 
 	if (me->interface_type == NX_CAPTURE_INTERFACE_MIPI_CSI) {
 		/* mipi use always same config, so ignore user config */
@@ -1052,6 +1064,11 @@ static void set_vip(struct nx_clipper *me)
 	u32 module = me->module;
 	bool is_mipi = me->interface_type == NX_CAPTURE_INTERFACE_MIPI_CSI;
 
+	if (me->clk_src >= 0) {
+		nx_vip_clock_config(module, me->clk_src, me->clk_freq);
+		nx_vip_clock_enable(module, true);
+		nx_vip_reset(module);
+	}
 	nx_vip_set_input_port(module, me->port);
 	nx_vip_set_field_mode(module, false, nx_vip_fieldsel_bypass,
 			      me->interlace, false);
@@ -1228,6 +1245,8 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 		if (NX_ATOMIC_READ(&me->state) & STATE_CLIP_RUNNING) {
 #endif
 		if (!nx_vip_is_running(me->module, VIP_DECIMATOR)) {
+			if (me->clk_src >= 0)
+				nx_vip_clock_enable(me->module, false);
 			v4l2_subdev_call(remote, video, s_stream, 0);
 			enable_sensor_power(me, false);
 			NX_ATOMIC_CLEAR_MASK(STATE_CLIP_RUNNING, &me->state);
@@ -1575,8 +1594,8 @@ static int init_v4l2_subdev(struct nx_clipper *me)
 	struct media_entity *entity = &sd->entity;
 
 	v4l2_subdev_init(sd, &nx_clipper_subdev_ops);
-	snprintf(sd->name, sizeof(sd->name), "%s%d", NX_CLIPPER_DEV_NAME,
-		 me->module);
+	snprintf(sd->name, sizeof(sd->name), "%s%d%s", NX_CLIPPER_DEV_NAME,
+		 me->module, (me->logical) ? " logical" : "");
 	v4l2_set_subdevdata(sd, me);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
@@ -1664,19 +1683,19 @@ static int create_sysfs_for_camera_sensor(struct nx_clipper *me,
 	camera_sensor_info[me->module].is_mipi =
 		me->interface_type == NX_CAPTURE_INTERFACE_MIPI_CSI;
 
-	snprintf(kobject_name, sizeof(kobject_name), "camerasensor%d",
-		me->module);
+	snprintf(kobject_name, sizeof(kobject_name), "camerasensor%d%s",
+		me->module, (me->logical) ? " logical" : "");
 	kobj = kobject_create_and_add(kobject_name, &platform_bus.kobj);
 	if (!kobj) {
-		dev_err(&me->pdev->dev, "failed to kobject_create for module %d\n",
-			me->module);
+		dev_err(&me->pdev->dev, "failed to kobject_create for module %d-%d\n",
+			me->module, me->logical);
 		return -EINVAL;
 	}
 
 	ret = sysfs_create_file(kobj, camera_sensor_attrs[me->module]);
 	if (ret) {
-		dev_err(&me->pdev->dev, "failed to sysfs_create_file for module %d\n",
-			me->module);
+		dev_err(&me->pdev->dev, "failed to sysfs_create_file for module %d-%d\n",
+			me->module, me->logical);
 		kobject_put(kobj);
 	}
 
@@ -1819,7 +1838,8 @@ static int register_v4l2(struct nx_clipper *me)
 	}
 
 #ifdef CONFIG_VIDEO_NEXELL_CLIPPER
-	snprintf(dev_name, sizeof(dev_name), "VIDEO CLIPPER%d", me->module);
+	snprintf(dev_name, sizeof(dev_name), "VIDEO CLIPPER%d%s", me->module,
+			(me->logical) ? " LOGICAL" : "");
 	video = nx_video_create(dev_name, NX_VIDEO_TYPE_CAPTURE,
 				    nx_v4l2_get_v4l2_device(),
 				    nx_v4l2_get_alloc_ctx());

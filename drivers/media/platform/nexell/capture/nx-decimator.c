@@ -58,6 +58,7 @@ enum {
 
 struct nx_decimator {
 	u32 module;
+	u32 logical;
 
 	struct v4l2_subdev subdev;
 	struct media_pad pads[NX_DECIMATOR_PAD_MAX];
@@ -534,8 +535,8 @@ static int init_v4l2_subdev(struct nx_decimator *me)
 	struct media_entity *entity = &sd->entity;
 
 	v4l2_subdev_init(sd, &nx_decimator_subdev_ops);
-	snprintf(sd->name, sizeof(sd->name), "%s%d", NX_DECIMATOR_DEV_NAME,
-		 me->module);
+	snprintf(sd->name, sizeof(sd->name), "%s%d%s", NX_DECIMATOR_DEV_NAME,
+		 me->module, (me->logical) ? " logical" : "");
 	v4l2_set_subdevdata(sd, me);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
@@ -564,7 +565,8 @@ static int register_v4l2(struct nx_decimator *me)
 	if (ret)
 		BUG();
 
-	snprintf(dev_name, sizeof(dev_name), "VIDEO DECIMATOR%d", me->module);
+	snprintf(dev_name, sizeof(dev_name), "VIDEO DECIMATOR%d%s", me->module,
+			(me->logical) ? " LOGICAL" : "");
 	video = nx_video_create(dev_name, NX_VIDEO_TYPE_CAPTURE,
 				    nx_v4l2_get_v4l2_device(),
 				    nx_v4l2_get_alloc_ctx());
@@ -618,6 +620,8 @@ static int nx_decimator_parse_dt(struct platform_device *pdev,
 		dev_err(dev, "failed to get dt module\n");
 		return -EINVAL;
 	}
+	if (of_property_read_u32(np, "logical", &me->logical))
+		me->logical = 0;
 
 	return 0;
 }
