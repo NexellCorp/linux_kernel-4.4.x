@@ -36,6 +36,18 @@ struct tvout_context {
 	bool enabled;
 	int crtc_pipe; /* dpc num */
 	unsigned int possible_crtcs_mask; /* dpc enable mask */
+	struct tvout_control_param param;
+};
+
+static const char *type_table[TVOUT_TYPE_MAX] = {
+	"NTSC-M",
+	"NTSC-N",
+	"NTSC-4.43",
+	"PAL-M",
+	"PAL-N",
+	"PAL-BGHI",
+	"PSEUDO-PAL",
+	"PSEUDO-NTSC",
 };
 
 #define ctx_to_display(c)	((struct nx_drm_display *)(c->connector.display))
@@ -51,11 +63,89 @@ static int tvout_parse_dt(struct device *dev, struct tvout_context *ctx)
 	struct device_node *np;
 	struct display_timing timing;
 	int ret;
+	const char *type;
+	s32 sval;
+	u32 val;
+	struct tvout_control_param *param = &ctx->param;
 
 	DRM_INFO("Load TV-OUT property\n");
 
 	property_read(node, "crtc-pipe", ctx->crtc_pipe);
 	property_read(node, "crtcs-possible-mask", ctx->possible_crtcs_mask);
+
+	if (of_property_read_string(node, "type", &type) == 0) {
+		int i;
+
+		for (i = 0; i < TVOUT_TYPE_MAX; i++) {
+			if (!strncmp(type, type_table[i], strlen(type))) {
+				param->type = i;
+				break;
+			}
+		}
+		if (i == TVOUT_TYPE_MAX) {
+			DRM_ERROR("invalid type value: %s, set to NTSC-M\n",
+				  type);
+			param->type = TVOUT_TYPE_NTSC_M;
+		}
+	}
+
+	switch (param->type) {
+	case TVOUT_TYPE_NTSC_M:
+	case TVOUT_TYPE_NTSC_443:
+	case TVOUT_TYPE_PAL_M:
+	case TVOUT_TYPE_PSEUDO_PAL:
+		param->hsw = 32;
+		param->hbp = 90;
+		param->hfp = 16;
+		param->vactive = 480;
+		param->vsw = 3;
+		param->vbp = 15;
+		param->vfp = 4;
+		param->hsos = 63;
+		param->hsoe = 1715;
+		param->vsos = 0;
+		param->vsoe = 3;
+		break;
+	default:
+		param->hsw = 42;
+		param->hbp = 90;
+		param->hfp = 12;
+		param->vactive = 480;
+		param->vsw = 2;
+		param->vbp = 21;
+		param->vfp = 3;
+		param->hsos = 83;
+		param->hsoe = 1727;
+		param->vsos = 0;
+		param->vsoe = 2;
+		break;
+	}
+
+	param->pedestal = of_property_read_bool(node, "pedestal");
+
+	if (of_property_read_s32(node, "sch", &sval) == 0)
+		param->sch = sval;
+
+	if (of_property_read_s32(node, "hue", &sval) == 0)
+		param->hue = sval;
+
+	if (of_property_read_s32(node, "saturation", &sval) == 0)
+		param->saturation = sval;
+
+	if (of_property_read_s32(node, "contrast", &sval) == 0)
+		param->contrast = sval;
+
+	if (of_property_read_u32(node, "bright", &val) == 0)
+		param->bright = val;
+
+	if (of_property_read_u32(node, "fscadj", &val) == 0)
+		param->fscadj = val;
+
+	if (of_property_read_u32(node, "ybw", &val) == 0)
+		param->ybw = val;
+
+	if (of_property_read_u32(node, "cbw", &val) == 0)
+		param->cbw = val;
 
 	np = of_graph_get_remote_port_parent(node);
 	display->panel_node = np;
@@ -177,6 +267,7 @@ static void tvout_enable(struct device *dev)
 	drm_panel_prepare(display->panel);
 	drm_panel_enable(display->panel);
 
+	display->priv = &ctx->param;
 	if (ops->enable)
 		ops->enable(display);
 }
@@ -292,6 +383,405 @@ static ssize_t enable_show(struct device *dev, struct device_attribute *attr,
 
 static DEVICE_ATTR(enable, 0644, enable_show, enable_store);
 
+static ssize_t type_store(struct device *dev, struct device_attribute *attr,
+			  const char *buf, size_t n)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+	struct nx_drm_display *display = ctx_to_display(ctx);
+	int i;
+
+	for (i = 0; i < TVOUT_TYPE_MAX; i++) {
+		if (!strncmp(buf, type_table[i], strlen(type_table[i]))) {
+			param->type = i;
+			break;
+		}
+	}
+	if (i == TVOUT_TYPE_MAX) {
+		dev_err(dev, "invalid type value: %s\n", buf);
+		dev_err(dev, "valid type is as below\n");
+		for (i = 0; i < TVOUT_TYPE_MAX; i++)
+			dev_err(dev, "%s\n", type_table[i]);
+	} else {
+		switch (param->type) {
+		case TVOUT_TYPE_NTSC_M:
+		case TVOUT_TYPE_NTSC_443:
+		case TVOUT_TYPE_PAL_M:
+		case TVOUT_TYPE_PSEUDO_PAL:
+			param->hsw = 32;
+			param->hbp = 90;
+			param->hfp = 16;
+			param->vactive = 480;
+			param->vsw = 3;
+			param->vbp = 15;
+			param->vfp = 4;
+			param->hsos = 63;
+			param->hsoe = 1715;
+			param->vsos = 0;
+			param->vsoe = 3;
+			break;
+		default:
+			param->hsw = 42;
+			param->hbp = 90;
+			param->hfp = 12;
+			param->vactive = 480;
+			param->vsw = 2;
+			param->vbp = 21;
+			param->vfp = 3;
+			param->hsos = 83;
+			param->hsoe = 1727;
+			param->vsos = 0;
+			param->vsoe = 2;
+			break;
+		}
+	}
+	display->vm.vactive = param->vactive;
+
+	return n;
+}
+
+static ssize_t type_show(struct device *dev, struct device_attribute *attr,
+			   char *buf)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+
+	return sprintf(buf, "%s\n", type_table[param->type]);
+}
+
+static DEVICE_ATTR(type, 0644, type_show, type_store);
+
+static ssize_t sch_store(struct device *dev, struct device_attribute *attr,
+			 const char *buf, size_t n)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+	long val;
+	int ret;
+
+	ret = kstrtol(buf, 10, &val);
+	if (ret) {
+		dev_err(dev, "%s: failed to kstrtol(), ret %d\n", __func__,
+			ret);
+		return 0;
+	}
+
+	if (val >= -128 && val <= 127) {
+		param->sch = val;
+
+		if (ctx->plugged && param->ops != NULL)
+			param->ops->set_sch(param);
+	} else
+		dev_err(dev, "%s: -128 ~ 127 is valid value\n", __func__);
+
+	return n;
+}
+
+static ssize_t sch_show(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+
+	return sprintf(buf, "%d\n", param->sch);
+}
+
+static DEVICE_ATTR(sch, 0644, sch_show, sch_store);
+
+static ssize_t hue_store(struct device *dev, struct device_attribute *attr,
+			 const char *buf, size_t n)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+	long val;
+	int ret;
+
+	ret = kstrtol(buf, 10, &val);
+	if (ret) {
+		dev_err(dev, "%s: failed to kstrtol(), ret %d\n", __func__,
+			ret);
+		return 0;
+	}
+
+	if (val >= -128 && val <= 127) {
+		param->hue = val;
+
+		if (ctx->plugged && param->ops != NULL)
+			param->ops->set_hue(param);
+	} else
+		dev_err(dev, "%s: -128 ~ 127 is valid value\n", __func__);
+
+	return n;
+}
+
+static ssize_t hue_show(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+
+	return sprintf(buf, "%d\n", param->hue);
+}
+
+static DEVICE_ATTR(hue, 0644, hue_show, hue_store);
+
+static ssize_t saturation_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t n)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+	long val;
+	int ret;
+
+	ret = kstrtol(buf, 10, &val);
+	if (ret) {
+		dev_err(dev, "%s: failed to kstrtol(), ret %d\n", __func__,
+			ret);
+		return 0;
+	}
+
+	if (val >= -128 && val <= 127) {
+		param->saturation = val;
+
+		if (ctx->plugged && param->ops != NULL)
+			param->ops->set_saturation(param);
+	} else
+		dev_err(dev, "%s: -128 ~ 127 is valid value\n", __func__);
+
+	return n;
+}
+
+static ssize_t saturation_show(struct device *dev, struct device_attribute *attr,
+			   char *buf)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+
+	return sprintf(buf, "%d\n", param->saturation);
+}
+
+static DEVICE_ATTR(saturation, 0644, saturation_show, saturation_store);
+
+static ssize_t contrast_store(struct device *dev, struct device_attribute *attr,
+			    const char *buf, size_t n)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+	long val;
+	int ret;
+
+	ret = kstrtol(buf, 10, &val);
+	if (ret) {
+		dev_err(dev, "%s: failed to kstrtol(), ret %d\n", __func__,
+			ret);
+		return 0;
+	}
+
+	if (val >= -128 && val <= 0) {
+		param->contrast = val;
+
+		if (ctx->plugged && param->ops != NULL)
+			param->ops->set_contrast(param);
+	} else
+		dev_err(dev, "%s: -128 ~ 0 is valid value\n", __func__);
+
+	return n;
+}
+
+static ssize_t contrast_show(struct device *dev, struct device_attribute *attr,
+			   char *buf)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+
+	return sprintf(buf, "%d\n", param->contrast);
+}
+
+static DEVICE_ATTR(contrast, 0644, contrast_show, contrast_store);
+
+static ssize_t bright_store(struct device *dev, struct device_attribute *attr,
+			    const char *buf, size_t n)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+	long val;
+	int ret;
+
+	ret = kstrtol(buf, 10, &val);
+	if (ret) {
+		dev_err(dev, "%s: failed to kstrtol(), ret %d\n", __func__,
+			ret);
+		return 0;
+	}
+
+	if (val >= 0 && val <= 127) {
+		param->bright = val;
+
+		if (ctx->plugged && param->ops != NULL)
+			param->ops->set_bright(param);
+	} else
+		dev_err(dev, "%s: 0 ~ 127 is valid value\n", __func__);
+
+	return n;
+}
+
+static ssize_t bright_show(struct device *dev, struct device_attribute *attr,
+			   char *buf)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+
+	return sprintf(buf, "%d\n", param->bright);
+}
+
+static DEVICE_ATTR(bright, 0644, bright_show, bright_store);
+
+static ssize_t fscadj_store(struct device *dev, struct device_attribute *attr,
+			    const char *buf, size_t n)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+	long val;
+	int ret;
+
+	ret = kstrtol(buf, 10, &val);
+	if (ret) {
+		dev_err(dev, "%s: failed to kstrtol(), ret %d\n", __func__,
+			ret);
+		return 0;
+	}
+
+	if (val >= 0 && val <= 65535) {
+		param->bright = val;
+
+		if (ctx->plugged && param->ops != NULL)
+			param->ops->set_fscadj(param);
+	} else
+		dev_err(dev, "%s: 0 ~ 65535 is valid value\n", __func__);
+
+	return n;
+}
+
+static ssize_t fscadj_show(struct device *dev, struct device_attribute *attr,
+			   char *buf)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+
+	return sprintf(buf, "%d\n", param->fscadj);
+}
+
+static DEVICE_ATTR(fscadj, 0644, fscadj_show, fscadj_store);
+
+static ssize_t ybw_store(struct device *dev, struct device_attribute *attr,
+			 const char *buf, size_t n)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+	long val;
+	int ret;
+
+	ret = kstrtol(buf, 10, &val);
+	if (ret) {
+		dev_err(dev, "%s: failed to kstrtol(), ret %d\n", __func__,
+			ret);
+		return 0;
+	}
+
+	if (val >= 0 && val <= 2) {
+		param->ybw = val;
+
+		if (ctx->plugged && param->ops != NULL)
+			param->ops->set_ybw(param);
+	} else
+		dev_err(dev, "%s: 0 ~ 2 is valid value\n", __func__);
+
+	return n;
+}
+
+static ssize_t ybw_show(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+
+	return sprintf(buf, "%d\n", param->ybw);
+}
+
+static DEVICE_ATTR(ybw, 0644, ybw_show, ybw_store);
+
+static ssize_t cbw_store(struct device *dev, struct device_attribute *attr,
+			 const char *buf, size_t n)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+	long val;
+	int ret;
+
+	ret = kstrtol(buf, 10, &val);
+	if (ret) {
+		dev_err(dev, "%s: failed to kstrtol(), ret %d\n", __func__,
+			ret);
+		return 0;
+	}
+
+	if (val >= 0 && val <= 2) {
+		param->cbw = val;
+
+		if (ctx->plugged && param->ops != NULL)
+			param->ops->set_cbw(param);
+	} else
+		dev_err(dev, "%s: 0 ~ 2 is valid value\n", __func__);
+
+	return n;
+}
+
+static ssize_t cbw_show(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+
+	return sprintf(buf, "%d\n", param->cbw);
+}
+
+static DEVICE_ATTR(cbw, 0644, cbw_show, cbw_store);
+
+static ssize_t pedestal_store(struct device *dev, struct device_attribute *attr,
+			      const char *buf, size_t n)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+	long val;
+	int ret;
+
+	ret = kstrtol(buf, 10, &val);
+	if (ret) {
+		dev_err(dev, "%s: failed to kstrtol(), ret %d\n", __func__,
+			ret);
+		return 0;
+	}
+
+	if (val >= 0 && val <= 1)
+		param->pedestal = val;
+	else
+		dev_err(dev, "%s: 0 ~ 1 is valid value\n", __func__);
+
+	return n;
+}
+
+static ssize_t pedestal_show(struct device *dev, struct device_attribute *attr,
+			     char *buf)
+{
+	struct tvout_context *ctx = dev_get_drvdata(dev);
+	struct tvout_control_param *param = &ctx->param;
+
+	return sprintf(buf, "%d\n", param->pedestal);
+}
+
+static DEVICE_ATTR(pedestal, 0644, pedestal_show, pedestal_store);
+
 /**
  * platform_driver interface
  */
@@ -306,14 +796,85 @@ static int tvout_probe(struct platform_device *pdev)
 
 	ret = device_create_file(dev, &dev_attr_enable);
 	if (ret < 0) {
-		dev_err(dev, "%s: failed to device_create_file\n", __func__);
+		dev_err(dev, "%s: failed to device_create_file for enable\n",
+			__func__);
 		return ret;
+	}
+
+	ret = device_create_file(dev, &dev_attr_type);
+	if (ret < 0) {
+		dev_err(dev, "%s: failed to device_create_file for type\n",
+			__func__);
+		goto err_out;
+	}
+
+	ret = device_create_file(dev, &dev_attr_sch);
+	if (ret < 0) {
+		dev_err(dev, "%s: failed to device_create_file for sch\n",
+			__func__);
+		goto err_attr_type;
+	}
+
+	ret = device_create_file(dev, &dev_attr_hue);
+	if (ret < 0) {
+		dev_err(dev, "%s: failed to device_create_file for hue\n",
+			__func__);
+		goto err_attr_sch;
+	}
+
+	ret = device_create_file(dev, &dev_attr_saturation);
+	if (ret < 0) {
+		dev_err(dev, "%s: failed to device_create_file for saturation\n",
+			__func__);
+		goto err_attr_hue;
+	}
+
+	ret = device_create_file(dev, &dev_attr_contrast);
+	if (ret < 0) {
+		dev_err(dev, "%s: failed to device_create_file for contrast\n",
+			__func__);
+		goto err_attr_saturation;
+	}
+
+	ret = device_create_file(dev, &dev_attr_bright);
+	if (ret < 0) {
+		dev_err(dev, "%s: failed to device_create_file for bright\n",
+			__func__);
+		goto err_attr_contrast;
+	}
+
+	ret = device_create_file(dev, &dev_attr_fscadj);
+	if (ret < 0) {
+		dev_err(dev, "%s: failed to device_create_file for fscadj\n",
+			__func__);
+		goto err_attr_bright;
+	}
+
+	ret = device_create_file(dev, &dev_attr_ybw);
+	if (ret < 0) {
+		dev_err(dev, "%s: failed to device_create_file for ybw\n",
+			__func__);
+		goto err_attr_fscadj;
+	}
+
+	ret = device_create_file(dev, &dev_attr_cbw);
+	if (ret < 0) {
+		dev_err(dev, "%s: failed to device_create_file for cbw\n",
+			__func__);
+		goto err_attr_ybw;
+	}
+
+	ret = device_create_file(dev, &dev_attr_pedestal);
+	if (ret < 0) {
+		dev_err(dev, "%s: failed to device_create_file for pedestal\n",
+			__func__);
+		goto err_attr_cbw;
 	}
 
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
 	if (!ctx) {
 		ret = -ENOMEM;
-		goto err_out;
+		goto err_attr_pedestal;
 	}
 
 	ctx->connector.dev = dev;
@@ -327,7 +888,7 @@ static int tvout_probe(struct platform_device *pdev)
 	if (!ctx->connector.display) {
 		dev_err(dev, "failed to get display for TVOUT\n");
 		ret = -ENODEV;
-		goto err_out;
+		goto err_attr_pedestal;
 	}
 
 	ops = ctx_to_display(ctx)->ops;
@@ -335,7 +896,7 @@ static int tvout_probe(struct platform_device *pdev)
 		ret = ops->open(ctx_to_display(ctx), ctx->crtc_pipe);
 		if (ret) {
 			dev_err(dev, "failed to display_ops open\n");
-			goto err_out;
+			goto err_attr_pedestal;
 		}
 	}
 
@@ -347,6 +908,26 @@ static int tvout_probe(struct platform_device *pdev)
 	component_add(dev, &tvout_comp_ops);
 	return 0;
 
+err_attr_pedestal:
+	device_remove_file(dev, &dev_attr_pedestal);
+err_attr_cbw:
+	device_remove_file(dev, &dev_attr_cbw);
+err_attr_ybw:
+	device_remove_file(dev, &dev_attr_ybw);
+err_attr_fscadj:
+	device_remove_file(dev, &dev_attr_fscadj);
+err_attr_bright:
+	device_remove_file(dev, &dev_attr_bright);
+err_attr_contrast:
+	device_remove_file(dev, &dev_attr_contrast);
+err_attr_saturation:
+	device_remove_file(dev, &dev_attr_saturation);
+err_attr_hue:
+	device_remove_file(dev, &dev_attr_hue);
+err_attr_sch:
+	device_remove_file(dev, &dev_attr_sch);
+err_attr_type:
+	device_remove_file(dev, &dev_attr_type);
 err_out:
 	DRM_ERROR("failed to probe %s\n", dev_name(dev));
 	device_remove_file(dev, &dev_attr_enable);

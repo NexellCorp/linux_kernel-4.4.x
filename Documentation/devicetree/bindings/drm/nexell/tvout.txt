@@ -16,6 +16,31 @@ Required soc properties for tvout display :
 	- reset-names: Alias string resets options.
 	- soc,tieoff: select tieoff reference clock.
 
+Optional soc properties for tvout display :
+ - type: VBS output type, default value is "NTSC-M".
+   Available value:
+   "NTSC-M", "NTSC-N", "NTSC-4.43", "PAL-M", "PAL-N", "PAL-BGHI", "PSEUDO-PAL",
+   "PSEUDO-NTSC"
+ - sch: Color busrt phase relative to hsync. Default value is 0.
+   Available value: -128 ~ 127
+ - hue: Active video color burst phase relative to color burst, Default value is 0.
+   Available value: -128 ~ 127
+ - saturation: Active video chroma gain relative to the color burst gain.
+   Default value is 0.
+   Available value: -128 ~ 127
+ - contrast: luma gain. effective except NTSC-M, PAL-BDGI. Default value is 0.
+   Available value: -128 ~ 0
+ - bright: luma offset. effective except NTSC-M, PAL-BDGI, Default value is 0.
+   Available value: 0 ~ 127
+ - fscadj: Allows the pixel clock to be varied by up to +-200 ppm.
+   This allows dot crawl adjustment. Default value is 0.
+   Available value: 0 ~ 65535
+ - ybw: luma bandwidth control. Default value is 0.
+   Available value: 0 ~ 2
+ - cbw: chroma bandwidth control. Default value is 0.
+   Available value: 0 ~ 2
+ - pedestal: Determines whether video output has pedestal signal. bool node.
+
   ex)
    / {
 	...
@@ -30,6 +55,7 @@ Required soc properties for tvout display :
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
+			type = "NTSC-M";
 
 			dp-resource {
 				reg_base = <0xc0000000 0x300000>;

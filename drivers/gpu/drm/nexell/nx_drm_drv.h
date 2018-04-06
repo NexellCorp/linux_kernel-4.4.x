@@ -270,6 +270,9 @@ struct nx_drm_display {
 	int irq;
 	bool is_connected;
 	bool disable_output;
+	/* interface data published by panel driver, consumed by display ops
+	 * driver */
+	void *priv;
 };
 
 /* HPD events */
@@ -319,6 +322,56 @@ dma_addr_t nx_drm_framebuffer_get_dma_addr(struct drm_plane *plane);
 void nx_drm_framebuffer_set_dma_addr(struct drm_plane *plane, dma_addr_t fb);
 
 #include <media/v4l2-subdev.h>
+enum {
+	TVOUT_TYPE_NTSC_M = 0,
+	TVOUT_TYPE_NTSC_N,
+	TVOUT_TYPE_NTSC_443,
+	TVOUT_TYPE_PAL_M,
+	TVOUT_TYPE_PAL_N,
+	TVOUT_TYPE_PAL_BGHI,
+	TVOUT_TYPE_PSEUDO_PAL,
+	TVOUT_TYPE_PSEUDO_NTSC,
+	TVOUT_TYPE_MAX
+};
+
+struct tvout_control_param;
+struct tvout_control_ops {
+	int (*set_sch)(struct tvout_control_param *);
+	int (*set_hue)(struct tvout_control_param *);
+	int (*set_saturation)(struct tvout_control_param *);
+	int (*set_contrast)(struct tvout_control_param *);
+	int (*set_bright)(struct tvout_control_param *);
+	int (*set_fscadj)(struct tvout_control_param *);
+	int (*set_ybw)(struct tvout_control_param *);
+	int (*set_cbw)(struct tvout_control_param *);
+};
+
+struct tvout_control_param {
+	u32 type;
+	bool pedestal;
+	u32 hsw;
+	u32 hbp;
+	u32 hfp;
+	u32 vactive;
+	u32 vsw;
+	u32 vbp;
+	u32 vfp;
+	u32 hsos;
+	u32 hsoe;
+	u32 vsos;
+	u32 vsoe;
+	int8_t sch; /* -128 ~ 127 */
+	int8_t hue; /* -128 ~ 127 */
+	int8_t saturation; /* -128 ~ 127 */
+	int8_t contrast; /* -128 ~ 0: effective except NTSC-M, PAL-BDGI */
+	u8 bright; /* 0 ~ 127: effective except NTSC-M, PAL-BDGI */
+	u16 fscadj; /* 0 ~ 65535 */
+	u8 ybw; /* 0 ~ 2 */
+	u8 cbw; /* 0 ~ 2 */
+
+	struct tvout_control_ops *ops;
+};
+
 void *nx_drm_display_tvout_get(struct device *dev, struct device_node *node,
 			struct nx_drm_display *display);
 

@@ -196,12 +196,60 @@ static int enable_clock_source(struct nx_drm_display *display, bool enable)
 	return 0;
 }
 
+static int tvout_set_color(struct tvout_control_param *param)
+{
+	nx_dpc_set_video_encoder_color_control(1, param->sch,
+					       param->hue,
+					       param->saturation,
+					       param->contrast,
+					       param->bright);
+	return 0;
+}
+
+static int tvout_set_fscadj(struct tvout_control_param *param)
+{
+	nx_dpc_set_video_encoder_fscadjust(1, param->fscadj);
+	return 0;
+}
+
+static int tvout_set_bandwidth(struct tvout_control_param *param)
+{
+	nx_dpc_set_video_encoder_bandwidth(1, param->ybw, param->cbw);
+	return 0;
+}
+
+static struct tvout_control_ops ctrl_ops = {
+	.set_sch = tvout_set_color,
+	.set_hue = tvout_set_color,
+	.set_contrast = tvout_set_color,
+	.set_saturation = tvout_set_color,
+	.set_bright = tvout_set_color,
+	.set_fscadj = tvout_set_fscadj,
+	.set_ybw = tvout_set_bandwidth,
+	.set_cbw = tvout_set_bandwidth,
+};
+
 static int tvout_ops_enable(struct nx_drm_display *display)
 {
 	struct nx_tvout_dev *tvout = display->context;
 	struct nx_control_info *ctrl = &tvout->control.ctrl;
 	int module = tvout->control.module;
 	unsigned int out_format = ctrl->out_format;
+	struct tvout_control_param *param =
+		(struct tvout_control_param *)display->priv;
+
+	param->ops = &ctrl_ops;
+
+	DRM_DEBUG_KMS("[TVOUT] type %d\n", param->type);
+	DRM_DEBUG_KMS("[TVOUT] sch %d\n", param->sch);
+	DRM_DEBUG_KMS("[TVOUT] hue %d\n", param->hue);
+	DRM_DEBUG_KMS("[TVOUT] saturation %d\n", param->saturation);
+	DRM_DEBUG_KMS("[TVOUT] contrast %d\n", param->contrast);
+	DRM_DEBUG_KMS("[TVOUT] bright %d\n", param->bright);
+	DRM_DEBUG_KMS("[TVOUT] fscadj %d\n", param->fscadj);
+	DRM_DEBUG_KMS("[TVOUT] ybw %d\n", param->ybw);
+	DRM_DEBUG_KMS("[TVOUT] cbw %d\n", param->cbw);
+	DRM_DEBUG_KMS("[TVOUT] pedestal %d\n", param->pedestal);
 
 	enable_clock_source(display, true);
 
@@ -216,15 +264,17 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 	nx_dpc_set_clock_out_enb(module, 1, true);
 
 	nx_dpc_set_mode(module, out_format, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0);
-	nx_dpc_set_hsync(module, 720, 32, 16, 90, 0);
-	nx_dpc_set_vsync(module, 240, 3, 4, 15, 0, 240, 3, 4, 15);
+	nx_dpc_set_hsync(module, 720, param->hsw, param->hfp, param->hbp, 0);
+	nx_dpc_set_vsync(module, param->vactive/2, param->vsw, param->vfp,
+			 param->vbp, 0, param->vactive/2, param->vsw,
+			 param->vfp, param->vbp);
 	nx_dpc_set_luma_gain(module, 30);
 	nx_dpc_set_vsync_offset(module, 0, 0, 0, 0);
 	nx_dpc_set_delay(module, 0, 12, 12, 12);
 	nx_dpc_set_dither(module, 0, 0, 0);
 
 	nx_mlc_set_top_control_parameter(module, 1, 1, 1, 0);
-	nx_mlc_set_screen_size(module, 720, 480);
+	nx_mlc_set_screen_size(module, 720, param->vactive);
 	nx_mlc_set_srammode(module, topmlc, sleepmode);
 	nx_mlc_set_srammode(module, topmlc, run);
 	nx_mlc_set_background(module, 0xff0000);
@@ -247,12 +297,17 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 
 	mdelay(33);
 
-	nx_dpc_set_video_encoder_mode(module, 0, true);
-	nx_dpc_set_video_encoder_fscadjust(module, 0);
-	nx_dpc_set_video_encoder_bandwidth(module, 2, 2);
-	nx_dpc_set_video_encoder_color_control(module, 0, 0, 0, 0, 0);
-	nx_dpc_set_video_encoder_timing(module, 63, 1715, 0, 3);
-	nx_dpc_set_encoder_control_reg(module, 0x40, 0, 0);
+	nx_dpc_set_video_encoder_mode(module, param->type, param->pedestal);
+	nx_dpc_set_video_encoder_fscadjust(module, param->fscadj);
+	nx_dpc_set_video_encoder_bandwidth(module, param->ybw, param->cbw);
+	nx_dpc_set_video_encoder_color_control(module,
+					       param->sch,
+					       param->hue,
+					       param->saturation,
+					       param->contrast,
+					       param->bright);
+	nx_dpc_set_video_encoder_timing(module, param->hsos, param->hsoe,
+					param->vsos, param->vsoe);
 	nx_dpc_set_encoder_shcphase_control(module, 0x3f);
 	nx_dpc_set_encoder_timing_config_reg(module, 7);
 	nx_dpc_set_encoder_dacoutput_select(module, 1, 2, 4, 5, 0, 0);
