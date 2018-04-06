@@ -57,6 +57,7 @@
 				clk-input = <I_PLL2>;
 				clock-frequency = <10000000>;
 			};
+
 			pwm3:pwm3@c00be000 {
 				clk-input = <I_PLL2>;
 				clock-frequency = <10000000>;
@@ -215,6 +216,14 @@
 				nexell,pin-pull = <2>;
 				nexell,pin-strength = <0>;
 			};
+#if 0
+			backgear:backgear {
+				nexell,pins = "gpioc-4";
+				nexell,pin-function = <1>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+#endif
 		};
 
 		i2c_1:i2c@c00a5000 {
@@ -245,7 +254,7 @@
 		compatible = "i2c-gpio";
 		gpios = <&gpio_b 16 0 /* sda */
 		    &gpio_b 18 0 /* scl */>;
-		i2c-gpio,delay-us = <100>;
+		i2c-gpio,delay-us = <5>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 
@@ -260,7 +269,7 @@
 		compatible = "i2c-gpio";
 		gpios=<&gpio_e 2 0 /* SDA */
 				&gpio_e 3 0>;    /* SCL */
-		i2c-gpio,delay-us = <100>;
+		i2c-gpio,delay-us = <5>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 	};
@@ -270,7 +279,7 @@
 		gpios = <&gpio_c 27 0 /* sda */
 		    &gpio_c 25 0 /* scl */
 		    >;
-		i2c-gpio,delay-us = <100>;
+		i2c-gpio,delay-us = <5>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 
@@ -287,7 +296,7 @@
 		gpios = <&gpio_d 30 0 /* sda */
 		    &gpio_d 29 0 /* scl */
 		    >;
-		i2c-gpio,delay-us = <100>;
+		i2c-gpio,delay-us = <5>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 	};
@@ -297,7 +306,7 @@
 		gpios = <&gpio_b 6 0 /* sda */
 		    &gpio_b 4 0 /* scl */
 		    >;
-		i2c-gpio,delay-us = <100>;
+		i2c-gpio,delay-us = <5>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 	}; /* TVI : TP2825 */
@@ -427,7 +436,7 @@
 	draw_ioctl_overlay = <1>;
 	sensor_reg = <&sensor_tp2825>;
 	display = <&dp_drm>;
-	dp_drm_dev = <&dp_drm_lvds>;
+	dp_drm_dev = <&dp_drm_rgb>;
 	width = <1920>;
 	height = <480>;
 	status = "okay";
@@ -456,7 +465,7 @@
 			reg = <0>;
 			back_color = < 0x0 >;
 			color_key = < 0x0 >;
-			plane-names = "primary", "video", "rgb";
+			plane-names = "rgb", "primary", "video";
 		};
 		port@1 {
 			reg = <1>;
@@ -472,10 +481,10 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp_rgb_vclk &dp_rgb_vsync &dp_rgb_hsync
 	&dp_rgb_de &dp_rgb_R &dp_rgb_G &dp_rgb_B>;
-	//enable-gpios = <&gpio_c 2 0>;
-	//remote-endpoint = <&rgb_panel>;
-	panel-mpu = <0>;
-	crtcs-possible-mask = <0x2>;
+	/* enable-gpios = <&gpio_c 2 0>; */
+	/* remote-endpoint = <&rgb_panel>; */
+	/* panel-mpu = <0>; */
+	/* crtcs-possible-mask = <0x1>; */
 
 	display-timing {
 		clock-frequency = <88000000>;
@@ -506,10 +515,11 @@
 	};
 };
 
+#if 0
 &dp_drm_lvds {
 	status = "ok";
 
-	crtcs-possible-mask = <0x1>;
+	/* crtcs-possible-mask = <0x2>; */
 	voltage_level = <0x3f>;
 
 	display-timing {
@@ -542,6 +552,7 @@
 		yc_order = <0>;
 	};
 };
+#endif
 
 #if 0
 &i2c_2 {
