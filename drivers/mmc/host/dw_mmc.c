@@ -1761,16 +1761,11 @@ static int dw_mci_data_complete(struct dw_mci *host, struct mmc_data *data)
 static void dw_mci_set_drto(struct dw_mci *host)
 {
 	unsigned int drto_clks;
-	unsigned int drto_div;
 	unsigned int drto_ms;
 	unsigned long irqflags;
 
 	drto_clks = mci_readl(host, TMOUT) >> 8;
-	drto_div = (mci_readl(host, CLKDIV) & 0xff) * 2;
-	if (drto_div == 0)
-		drto_div = 1;
-	drto_ms = DIV_ROUND_UP(MSEC_PER_SEC * drto_clks * drto_div,
-			       host->bus_hz);
+	drto_ms = DIV_ROUND_UP(drto_clks, host->bus_hz / 1000);
 
 	/* add a bit spare time */
 	drto_ms += 10;
