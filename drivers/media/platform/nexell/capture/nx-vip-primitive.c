@@ -912,9 +912,6 @@ void nx_vip_set_decimator_addr(u32 module_index, u32 format,
 	writel(left + width, &p_register->deci_crright);
 	writel(top, &p_register->deci_crtop);
 	writel(top + height, &p_register->deci_crbottom);
-
-	writel(stride_y, &p_register->clip_strideh);
-	writel(stride_cb_cr, &p_register->clip_stridel);
 #endif
 }
 

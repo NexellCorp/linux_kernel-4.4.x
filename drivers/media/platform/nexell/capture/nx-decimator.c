@@ -30,6 +30,7 @@
 #include <linux/v4l2-mediabus.h>
 #include <linux/delay.h>
 
+#include <linux/dma-mapping.h>
 #include <media/media-device.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
@@ -43,7 +44,6 @@
 
 #define NX_DECIMATOR_DEV_NAME	"nx-decimator"
 
-
 enum {
 	NX_DECIMATOR_PAD_SINK,
 	NX_DECIMATOR_PAD_SOURCE_MEM,
@@ -56,12 +56,21 @@ enum {
 	STATE_STOPPING = (1 << 1),
 };
 
+struct nx_dma_buf {
+	u32 format;
+	void *addr;
+	dma_addr_t handle[3];
+	u32 size;
+};
+
 struct nx_decimator {
 	u32 module;
 	u32 logical;
 
+	struct device *dev;
 	struct v4l2_subdev subdev;
 	struct media_pad pads[NX_DECIMATOR_PAD_MAX];
+	struct nx_dma_buf buf;
 
 	u32 width;
 	u32 height;
@@ -80,6 +89,66 @@ struct nx_decimator {
 
 	bool buffer_underrun;
 };
+
+static int register_irq_handler(struct nx_decimator *me);
+
+static int alloc_dma_buffer(struct nx_decimator *me)
+{
+	int y_size, cbcr_size;
+#ifdef CONFIG_ARCH_S5P6818
+	y_size = cbcr_size = me->width;
+#else
+	struct nx_video_buffer *buf;
+
+	buf = nx_video_get_next_buffer(&me->vbuf_obj, false);
+	if (!buf) {
+		dev_err(&me->pdev->dev, "can't get next buffer\n");
+		return -ENOENT;
+	}
+	if (me->buf.format == MEDIA_BUS_FMT_YVYU12_1X24) {
+		y_size = buf->dma_addr[2] - buf->dma_addr[0];
+		cbcr_size = buf->dma_addr[1] - buf->dma_addr[2];
+	} else {
+		y_size = buf->dma_addr[1] - buf->dma_addr[0];
+		cbcr_size = buf->dma_addr[2] - buf->dma_addr[1];
+	}
+#endif
+	me->buf.size = y_size + (cbcr_size * 2);
+	if (me->buf.addr == NULL) {
+		me->buf.addr = dma_alloc_coherent(me->dev, me->buf.size,
+				&me->buf.handle[0], GFP_KERNEL);
+		if (me->buf.addr == NULL) {
+			WARN_ON(1);
+			return -ENOMEM;
+		}
+		me->buf.handle[1] = me->buf.handle[0] + y_size;
+		me->buf.handle[2] = me->buf.handle[1] + cbcr_size;
+	}
+	return 0;
+}
+
+static void free_dma_buffer(struct nx_decimator *me)
+{
+	if (me->buf.addr) {
+		dma_free_coherent(me->dev, me->buf.size,
+				me->buf.addr,
+				me->buf.handle[0]);
+		me->buf.handle[0] = me->buf.handle[1] =
+			me->buf.handle[2] = 0;
+		me->buf.addr = NULL;
+	}
+}
+
+static int handle_buffer_underrun(struct nx_decimator *me)
+{
+	if (me->buf.addr) {
+		nx_vip_set_decimator_addr(me->module, me->mem_fmt,
+					me->width, me->height,
+					me->buf.handle[0], me->buf.handle[1],
+					me->buf.handle[2], 0, 0);
+	}
+	return 0;
+}
 
 static int update_buffer(struct nx_decimator *me)
 {
@@ -128,12 +197,20 @@ static irqreturn_t nx_decimator_irq_handler(void *data)
 			if (buf_count >= 1) {
 				update_buffer(me);
 			} else {
-				nx_vip_pause(me->module, VIP_DECIMATOR);
+				handle_buffer_underrun(me);
 				me->buffer_underrun = true;
 			}
 			if (done && done->cb_buf_done) {
 				done->consumer_index++;
 				done->cb_buf_done(done);
+			}
+		} else {
+			int buf_count =
+				nx_video_get_buffer_count(&me->vbuf_obj);
+
+			if (buf_count >= 1) {
+				update_buffer(me);
+				me->buffer_underrun = false;
 			}
 		}
 	}
@@ -165,11 +242,6 @@ static int decimator_buffer_queue(struct nx_video_buffer *buf, void *data)
 
 	nx_video_add_buffer(&me->vbuf_obj, buf);
 
-	if (me->buffer_underrun) {
-		update_buffer(me);
-		nx_vip_run(me->module, VIP_DECIMATOR);
-		me->buffer_underrun = false;
-	}
 	return 0;
 }
 
@@ -279,8 +351,12 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 				WARN_ON(1);
 				goto UP_AND_OUT;
 			}
-
 			update_buffer(me);
+			ret = alloc_dma_buffer(me);
+			if (ret) {
+				WARN_ON(1);
+				goto UP_AND_OUT;
+			}
 			nx_vip_run(me->module, VIP_DECIMATOR);
 			NX_ATOMIC_SET_MASK(STATE_RUNNING, &me->state);
 		}
@@ -298,7 +374,7 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 						     &me->state);
 			} else
 				nx_vip_stop(module, VIP_DECIMATOR);
-
+			free_dma_buffer(me);
 			me->buffer_underrun = false;
 			unregister_irq_handler(me);
 			nx_video_clear_buffer(&me->vbuf_obj);
@@ -388,10 +464,10 @@ static int nx_decimator_set_fmt(struct v4l2_subdev *sd,
 		       format->format.code);
 		return ret;
 	}
+	me->buf.format = format->format.code;
 	me->mem_fmt = nx_mem_fmt;
 	me->width = format->format.width;
 	me->height = format->format.height;
-
 	format->pad = 1;
 	ret = v4l2_subdev_call(remote, pad, set_fmt, NULL, format);
 	return ret;
@@ -640,7 +716,7 @@ static int nx_decimator_probe(struct platform_device *pdev)
 		WARN_ON(1);
 		return -ENOMEM;
 	}
-
+	me->dev = dev;
 	if (!nx_vip_is_valid(me->module)) {
 		dev_err(dev, "NX VIP %d is not valid\n", me->module);
 		return -ENODEV;
@@ -661,9 +737,9 @@ static int nx_decimator_probe(struct platform_device *pdev)
 		return ret;
 
 	me->pdev = pdev;
+	me->buf.addr = NULL;
 	me->buffer_underrun = false;
 	platform_set_drvdata(pdev, me);
-	me->buffer_underrun = false;
 	return 0;
 }
 

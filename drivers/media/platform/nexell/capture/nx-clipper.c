@@ -34,6 +34,7 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
+#include <linux/dma-mapping.h>
 
 #include <media/media-device.h>
 #include <media/v4l2-device.h>
@@ -166,6 +167,7 @@ struct nx_clipper {
 	struct nx_capture_power_seq disable_seq;
 	struct nx_v4l2_i2c_board_info sensor_info;
 
+	struct device *dev;
 	struct v4l2_subdev subdev;
 	struct media_pad pads[NX_CLIPPER_PAD_MAX];
 
@@ -173,6 +175,9 @@ struct nx_clipper {
 	u32 bus_fmt; /* data_order */
 	u32 width;
 	u32 height;
+
+	void *dma_addr;
+	dma_addr_t dma_handle;
 
 	atomic_t state;
 	struct completion stop_done;
@@ -196,6 +201,8 @@ struct nx_clipper {
 	/* for suspend */
 	struct nx_video_buffer *last_buf;
 };
+
+static int register_irq_handler(struct nx_clipper *me);
 
 #ifdef DEBUG_SYNC
 /* DEBUG_SYNC */
@@ -901,6 +908,33 @@ static int enable_sensor_power(struct nx_clipper *me, bool enable)
 /**
  * buffer operations
  */
+
+static int alloc_dma_buffer(struct nx_clipper *me)
+{
+	if (me->dma_addr == NULL) {
+		me->dma_addr = dma_alloc_coherent(me->dev,
+				me->width * 3,
+				&me->dma_handle, GFP_KERNEL);
+		if (me->dma_addr == NULL) {
+			WARN_ON(1);
+			return -ENOMEM;
+		}
+	}
+
+	return 0;
+}
+
+static void free_dma_buffer(struct nx_clipper *me)
+{
+	if (me->dma_addr) {
+		dma_free_coherent(me->dev, me->width * 3,
+				me->dma_addr,
+				me->dma_handle);
+		me->dma_handle = -1;
+		me->dma_addr = NULL;
+	}
+}
+
 #ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 static int update_buffer(struct nx_clipper *me)
 {
@@ -934,6 +968,18 @@ static int update_buffer(struct nx_clipper *me)
 	mod_timer(&me->timer, jiffies +
 		msecs_to_jiffies(DEBUG_SYNC_TIMEOUT_MS));
 #endif
+	return 0;
+}
+
+static int handle_buffer_underrun(struct nx_clipper *me)
+{
+	if (me->dma_addr) {
+		nx_vip_set_clipper_addr(me->module, me->mem_fmt,
+					me->crop.width, me->crop.height,
+					me->dma_handle, me->dma_handle+(me->width),
+					me->dma_handle + (me->width*2),
+					0, 0);
+	}
 	return 0;
 }
 
@@ -976,23 +1022,31 @@ static irqreturn_t nx_clipper_irq_handler(void *data)
 			nx_vip_stop(me->module, VIP_CLIPPER);
 			complete(&me->stop_done);
 		} else {
-			struct nx_video_buffer *done_buf = NULL;
-			struct nx_video_buffer_object *obj = &me->vbuf_obj;
-			int buf_count;
-
 			if (!me->buffer_underrun) {
+				struct nx_video_buffer *done_buf = NULL;
+				struct nx_video_buffer_object *obj = &me->vbuf_obj;
+				int buf_count;
+
 				done_buf = nx_video_get_next_buffer(obj, true);
 				buf_count = nx_video_get_buffer_count(obj);
 				if (buf_count >= 1) {
 					update_buffer(me);
 				} else {
-					nx_vip_pause(me->module, VIP_CLIPPER);
+					handle_buffer_underrun(me);
 					me->buffer_underrun = true;
 				}
 
 				if (done_buf && done_buf->cb_buf_done) {
 					done_buf->consumer_index++;
 					done_buf->cb_buf_done(done_buf);
+				}
+			} else {
+				int buf_count
+					= nx_video_get_buffer_count(&me->vbuf_obj);
+
+				if (buf_count >= 1) {
+					update_buffer(me);
+					me->buffer_underrun = false;
 				}
 			}
 		}
@@ -1025,11 +1079,6 @@ static int clipper_buffer_queue(struct nx_video_buffer *buf, void *data)
 
 	nx_video_add_buffer(&me->vbuf_obj, buf);
 
-	if (me->buffer_underrun) {
-		update_buffer(me);
-		nx_vip_run(me->module, VIP_CLIPPER);
-		me->buffer_underrun = false;
-	}
 	return 0;
 }
 
@@ -1174,7 +1223,6 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 			nx_clipper_qos_update(NX_BUS_CLK_VIP_KHZ);
 			nx_clipper_qos_cpu_online_update(1);
 #endif
-
 			set_vip(me);
 			ret = enable_sensor_power(me, true);
 			if (ret) {
@@ -1198,6 +1246,11 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 				goto UP_AND_OUT;
 			}
 
+			ret = alloc_dma_buffer(me);
+			if (ret) {
+				WARN_ON(1);
+				goto UP_AND_OUT;
+			}
 			ret = update_buffer(me);
 			if (ret) {
 				WARN_ON(1);
@@ -1229,6 +1282,7 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 						     &me->state);
 			} else
 				nx_vip_stop(module, VIP_CLIPPER);
+			free_dma_buffer(me);
 			me->buffer_underrun = false;
 			unregister_irq_handler(me);
 			nx_video_clear_buffer(&me->vbuf_obj);
@@ -1967,7 +2021,6 @@ static int nx_clipper_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	me->pdev = pdev;
-
 	ret = nx_clipper_parse_dt(dev, me);
 	if (ret) {
 		dev_err(dev, "failed to parse dt\n");
@@ -1990,9 +2043,10 @@ static int nx_clipper_probe(struct platform_device *pdev)
 		return ret;
 
 	me->buffer_underrun = false;
+	me->dma_addr = NULL;
+	me->dma_handle = -1;
 	platform_set_drvdata(pdev, me);
 
-	me->buffer_underrun = false;
 #ifdef DEBUG_SYNC
 	setup_timer(&me->timer, debug_sync, (long)me);
 #endif

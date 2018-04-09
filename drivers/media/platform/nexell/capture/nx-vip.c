@@ -164,7 +164,6 @@ static void hw_child_enable(struct nx_vip *me, u32 child)
 {
 	bool clipper_enable = false;
 	bool decimator_enable = false;
-	int timeout = 0;
 
 	if (child & VIP_CLIPPER)
 		clipper_enable = true;
@@ -173,42 +172,37 @@ static void hw_child_enable(struct nx_vip *me, u32 child)
 		decimator_enable = true;
 
 	if (me->clipper_enable != clipper_enable ||
-	    me->decimator_enable != decimator_enable) {
-		if (clipper_enable || decimator_enable) {
+			me->decimator_enable != decimator_enable) {
+		if (!clipper_enable && !decimator_enable) {
+			nx_vip_clear_interrupt_pending_all(me->module);
+			nx_vip_set_vipenable(me->module, false, false, false,
+						false);
+		} else {
 			nx_vip_set_interrupt_enable_all(me->module, false);
 			nx_vip_clear_interrupt_pending_all(me->module);
-			nx_vip_set_vipenable(me->module, true, false, false,
-					false);
-			while(nx_vip_get_interrupt_pending(me->module, 0) == 0) {
-				udelay(1000);
-				timeout++;
-				if (timeout == 1000) {
-					pr_err("enable timeout\n");
-					break;
+			if (me->clipper_enable || me->decimator_enable) {
+				int timeout = 0;
+
+				while(nx_vip_get_interrupt_pending(me->module, VIP_OD_INT) == 0) {
+					udelay(1000);
+					timeout++;
+					if (timeout == 1000) {
+						pr_err("enable timeout\n");
+						break;
+					}
 				}
 			}
 			nx_vip_set_vipenable(me->module, true, true,
-					     clipper_enable, decimator_enable);
-			nx_vip_clear_interrupt_pending_all(me->module);
+						clipper_enable, decimator_enable);
+			if (me->clipper_enable || me->decimator_enable)
+				nx_vip_clear_interrupt_pending_all(me->module);
 			nx_vip_set_interrupt_enable(me->module,
-						    VIP_OD_INT, true);
-		} else {
-			nx_vip_clear_interrupt_pending_all(me->module);
-			while(nx_vip_get_interrupt_pending(me->module, 0) == 0) {
-				udelay(1000);
-				timeout++;
-				if (timeout == 1000) {
-					pr_err("disable timeout\n");
-					break;
-				}
-			}
-			nx_vip_set_vipenable(me->module, false, false, false,
-					     false);
+							VIP_OD_INT, true);
 		}
-		/* nx_vip_dump_register(me->module); */
-		me->clipper_enable = clipper_enable;
-		me->decimator_enable = decimator_enable;
 	}
+	/* nx_vip_dump_register(me->module); */
+	me->clipper_enable = clipper_enable;
+	me->decimator_enable = decimator_enable;
 }
 
 
@@ -375,22 +369,6 @@ int nx_vip_run(u32 module, u32 child)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nx_vip_run);
-
-int nx_vip_pause(u32 module, u32 child)
-{
-	struct nx_vip *me;
-	u32 status = 0;
-
-	if (module >= NUMBER_OF_VIP_MODULE) {
-		pr_err("[nx vip] invalid module num %d\n", module);
-		return -ENODEV;
-	}
-	me = _nx_vip_object[module];
-	status = (NX_ATOMIC_READ(&me->running_bitmap) & ~child);
-	hw_child_enable(me, status);
-	return 0;
-}
-EXPORT_SYMBOL_GPL(nx_vip_pause);
 
 int nx_vip_stop(u32 module, u32 child)
 {
