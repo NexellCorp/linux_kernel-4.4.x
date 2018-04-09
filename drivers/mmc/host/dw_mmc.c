@@ -367,15 +367,11 @@ static void dw_mci_wait_while_busy(struct dw_mci *host, u32 cmd_flags)
 static inline void dw_mci_set_cto(struct dw_mci *host)
 {
 	unsigned int cto_clks;
-	unsigned int cto_div;
 	unsigned int cto_ms;
 	unsigned long irqflags;
 
 	cto_clks = mci_readl(host, TMOUT) & 0xff;
-	cto_div = (mci_readl(host, CLKDIV) & 0xff) * 2;
-	if (cto_div == 0)
-		cto_div = 1;
-	cto_ms = DIV_ROUND_UP(MSEC_PER_SEC * cto_clks * cto_div, host->bus_hz);
+	cto_ms = DIV_ROUND_UP(cto_clks, host->bus_hz / 1000);
 
 	/* add a bit spare time */
 	cto_ms += 10;
