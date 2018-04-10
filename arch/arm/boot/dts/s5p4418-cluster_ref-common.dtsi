@@ -62,6 +62,8 @@
 				clk-input = <I_PLL2>;
 				clock-frequency = <10000000>;
 			};
+
+			spi2:spi@c00a7000  { clock-frequency = <20000000>; };
 		};
 
 		l2:l2-cache-controller@cf000000 {
@@ -616,5 +618,22 @@
 	nexell,sample_dly = <0x00>;
 	nexell,sample_shift = <0x01>;
 	status = "okay";
+};
+
+&spi_2 {
+	status = "okay";
+	cs-gpios = <&gpio_c 10 0>;
+	can0: can@0 {
+		compatible = "microchip,mcp2515";
+		reg = <0>;
+		clocks = <&spi2>;
+		interrupt-parent = <&gpio_b>;
+		interrupts = <24 IRQ_TYPE_EDGE_FALLING>;
+		spi-max-frequency = <24000000>;
+
+		controller-data {
+			samsung,spi-feedback-delay = <0>;
+		};
+	};
 };
 
