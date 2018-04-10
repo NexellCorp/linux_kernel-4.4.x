@@ -18,3 +18,46 @@
 
 /dts-v1/;
 #include "s5p6818-artik711s-raptor-common.dtsi"
+/ {
+	soc {
+		pinctrl@C0010000 {
+			bt_cfg_btwake:bt_cfg_btwake {
+				nexell,pins = "gpiob-18";
+				nexell,pin-function = <NX_PIN_FUNC2>;
+				nexell,pin-pull = <NX_PIN_PULL_NONE>;
+				nexell,pin-strength = <NX_PIN_STR0>;
+			};
+
+			bt_cfg_en:bt_cfg_en {
+				nexell,pins = "gpiob-11";
+				nexell,pin-function = <NX_PIN_FUNC2>;
+				nexell,pin-pull = <NX_PIN_PULL_NONE>;
+				nexell,pin-strength = <NX_PIN_STR0>;
+			};
+
+			cfg_wlanen: cfg-wlanen {
+				nexell,pins = "gpiob-14";
+				nexell,pin-function = <NX_PIN_FUNC2>;
+				nexell,pin-pull = <NX_PIN_PULL_NONE>;
+				nexell,pin-strength = <NX_PIN_STR0>;
+			};
+		};
+	};	/* soc */
+
+	artik_bt_control {
+		gpios = <&gpio_b 11 0	/* GPIOB11=BT_EN, output */
+			&gpio_b 18 0	/* GPIOB18=BT_WAKE, output */
+			&alive_0 4 1	/* AliveGPIO4=BT_HOST_WAKE, input */
+			>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&bt_cfg_hostwake &bt_cfg_btwake &bt_cfg_en>;
+		status = "okay";
+	};
+
+	wlan {
+		compatible = "samsung,brcm-wlan";
+		gpios = <&gpio_b 14 0	/* WLAN_EN */
+			&alive_0 3 1>;	/* WLAN_HOST_WAKE */
+		status = "okay";
+	};
+};
