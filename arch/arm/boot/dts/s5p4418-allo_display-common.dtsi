@@ -1,0 +1,911 @@
+/*
+ * Copyright (C) 2016  Nexell Co., Ltd.
+ * Author: Youngbok, Park <ybpark@nexell.co.kr>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include "nxp4330.dtsi"
+
+#define PMIC_PDATA_INIT(_id, _rname, _minuv,			\
+			_maxuv, _init_uv, _init_enable,		\
+			_set_init_uV, _slp_slots)		\
+			regulator-name = _rname;		\
+			regulator-min-microvolt = <_minuv>;	\
+			regulator-max-microvolt = <_maxuv>;	\
+			nx,id = <_id>;				\
+			nx,init_enable = <_init_enable>;	\
+			nx,init_uV = <_init_uv>;		\
+			nx,set_init_uV = <_set_init_uV>;	\
+			nx,sleep_slots = <_slp_slots>;
+
+/ {
+	memory {
+		device_type = "memory";
+		reg = <0x71000000 0x40000000>;
+	};
+
+	psci {
+		compatible = "arm,psci-0.2";
+		method = "smc";
+	};
+
+	aliases {
+		i2c3 = &i2c_gpio3;
+		i2c4 = &i2c_gpio4;
+		i2c5 = &i2c_gpio5;
+		i2c6 = &i2c_gpio6;
+	};
+
+	soc {
+		#include "s5p4418-pinctrl.dtsi"
+		clocks {
+			uart3:uart@c00ab000 { clock-frequency = <147500000>; };
+			uart1:uart@c00a8000 { clock-frequency = <100000000>; };
+			uart0:uart@c00a9000 { clock-frequency = <147500000>; };
+			dummy_clk: dummy_clk {
+				#clock-cells = <0>;
+				clock-output-names = "dummy_clk";
+				compatible = "fixed-clock";
+				clock-frequency = <0>;
+			};
+            pwm0:pwm0@c00ba000 {
+                clk-input = <I_PLL2>;
+                clock-frequency = <10000000>;
+            };
+
+			pwm1:pwm1@c00ba000 {
+				clk-input = <I_PLL0>;
+				clock-frequency = <80000000>;
+			};
+		};
+
+		pwm:pwm@c0018000 {
+/*
+			clocks =  <&pwm0>, <&pwm1>;
+			clock-names = "pwm-tclk0", "pwm-tclk1";
+*/
+            clock-names = "timers", "pwm-tclk0", "pwm-tclk1";
+            clocks =  <&pclk>, <&pwm0>, <&pwm1>;
+            pinctrl-names = "default";
+            pinctrl-0 = <&pwm0_pin &pwm1_pin>;
+            samsung,pwm-outputs = <0>, <1>;
+            status = "okay";
+		};
+
+		pinctrl@C0010000 {
+			/*
+			i2s1_bus:i2s1 {
+				/delete-node/ i2s1-mclk;
+			};
+
+			i2s2_bus:i2s2 {
+				/delete-node/ i2s2-mclk;
+			};
+			*/
+			/delete-node/ spdiftx_pin;
+            /delete-node/ i2s1_bus;
+			/delete-node/ dp_rgb_vclk;
+			/delete-node/ dp_rgb_vsync;
+			/delete-node/ dp_rgb_hsync;
+			/delete-node/ dp_rgb_de;
+			/delete-node/ dp_rgb_B;
+			/delete-node/ dp_rgb_G;
+			/delete-node/ dp_rgb_R;
+			/delete-node/ mpegts_cap0_data_clk_serial;
+			/delete-node/ mpegts_cap0_sync;
+			/delete-node/ mpegts_cap1_data_clk_parallel;
+			/delete-node/ mpegts_cap1_data_clk_serial;
+            i2s1_bus:i2s1 {
+                nexell,pins = "gpioa-30", "gpiob-0",
+                    "gpiob-6", "gpiob-9";
+                nexell,pin-function = <NX_PIN_FUNC3>;
+                nexell,pin-pull = <NX_PIN_PULL_DOWN>;
+                nexell,pin-strength = <NX_PIN_STR0>;
+            };
+
+			bt_cfg_en:bt_cfg_en {
+				nexell,pins = "gpioa-9";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+			cfg_wlanen: cfg-wlanen {
+				nexell,pins ="gpioa-12";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+			cfg_wlanhostwake: cfg-wlanhostwake {
+				nexell,pins = "gpioa-13";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <1>;
+				nexell,pin-strength = <0>;
+			};
+		};
+
+		l2:l2-cache-controller@cf000000 {
+			arm,prefetch-offset = <7>;
+			prefetch-data = <1>;
+			prefetch-instr = <1>;
+			arm,tag-latency = <3 4 3>;
+			arm,data-latency = <3 4 3>;
+		};
+		serial0:serial@c00a1000 {
+			status ="okay";
+		};
+
+		serial1:serial@c00a0000 {
+			dmas = <&pl08xdma0 0 0>, <&pl08xdma0 1 0>;
+			dma-names = "tx", "rx";
+			pinctrl-0 = <&serial1_pin>, <&serial1_flow_cts>,
+						<&serial1_flow_rts>;
+			status ="okay";
+		};
+
+		serial3:serial@c00a3000 {
+			status ="okay";
+		};
+
+		amba {
+			pl08xdma0:pl08xdma@c0000000 {
+				use_isr;
+			};
+
+			pl08xdma1:pl08xdma@c0001000 {
+				use_isr;
+			};
+		};
+
+		watchdog@c0019000 {
+			status = "okay";
+		};
+
+		rtc@c0010c00 {
+			status = "okay";
+		};
+
+		nexell_usbphy: nexell-usbphy@c0012000 {
+			status = "okay";
+		};
+
+		ehci@c0030000 {
+			status = "okay";
+			port@0 {
+				status = "okay";
+			};
+		};
+
+		ohci@c0020000 {
+			status = "okay";
+			port@0 {
+				status = "okay";
+			};
+		};
+
+		dwc2otg@c0040000 {
+			gpios = <&alive_0 5 0>;
+			status = "okay";
+		};
+
+		i2s_0:i2s@c0055000 {
+			#sound-dai-cells = <1>;
+			master-mode = <1>;
+			mclk-in = <0>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <1>;
+			status = "okay";
+		};
+
+		i2s_1:i2s@c0056000 {
+			#sound-dai-cells = <1>;
+			master-mode = <0>;
+			mclk-in = <1>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <0>;
+			status = "okay";
+		};
+
+		i2s_2:i2s@c0057000 {
+			#sound-dai-cells = <1>;
+			master-mode = <0>;
+			mclk-in = <1>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <0>;
+			status = "okay";
+		};
+
+		spdif_tx: spdiftx@c0059000 {
+			#sound-dai-cells = <1>;
+			pcm-bit = <16>;
+			sample_rate = <48000>;
+			status = "okay";
+		};
+
+		snd_spi_2:snd_spi@c005f000 {
+			data-bit = <16>;
+			clock-frequency = <100000000>;
+			clock-invert = <1>;
+			clock-phase = <1>;
+			status = "okay";
+		};
+
+        pinctrl@C0010000 {
+            key_volup:key_volup {
+                nexell,pins = "gpiod-29";
+                nexell,pin-function = <0>;
+                nexell,pin-pull = <1>;
+                nexell,pin-strength = <0>;
+            };
+
+            key_voldown:key_voldown {
+                nexell,pins = "gpiod-30";
+                nexell,pin-function = <0>;
+                nexell,pin-pull = <1>;
+                nexell,pin-strength = <0>;
+            };
+
+            key_func1:key_func1 {
+                nexell,pins = "gpioe-0";
+                nexell,pin-function = <0>;
+                nexell,pin-pull = <1>;
+                nexell,pin-strength = <0>;
+            };
+
+            key_func2:key_func2 {
+                nexell,pins = "gpioe-1";
+                nexell,pin-function = <0>;
+                nexell,pin-pull = <1>;
+                nexell,pin-strength = <0>;
+            };
+
+            key_mute:key_mute {
+                nexell,pins = "gpiod-31";
+                nexell,pin-function = <0>;
+                nexell,pin-pull = <1>;
+                nexell,pin-strength = <0>;
+            };
+        };
+		i2c_1:i2c@c00a5000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+        	tas5756m:tas5756m@4E {
+				#sound-dai-cells = <0>;
+            	compatible = "ti,tas5756m";
+	            status = "okay";
+            	reg = <0x4E>;
+            	tas5756m,mute_gpio = <&gpio_c 29 0>;
+				tas5756m,spk_en_gpio = <&gpio_c 30 0>;
+	        };
+		};
+        i2c_2:i2c@c00a6000 {
+            status = "okay";
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            goodix@5d {
+                compatible = "goodix,gt911";
+                reg = <0x5d>;
+                interrupt-parent = <&gpio_a>;
+                interrupts = <15 IRQ_TYPE_EDGE_FALLING>;
+                irq-gpios = <&gpio_a 15 0>;
+                reset-gpios = <&gpio_a 14 0>;
+            };
+        };
+
+		i2c_gpio3: i2c@3 {
+			compatible = "i2c-gpio";
+			gpios = <&gpio_d 3 0
+				&gpio_d 2 0
+				>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			nxe2000@32 {
+				compatible = "nexell,nxe2000";
+				reg = <0x32>;
+				interrupt-parent = <&alive_0>;
+				interrupts = <0x4 IRQ_TYPE_EDGE_FALLING>;
+
+				regulators {
+					VCC_DCDC0:
+						dcdc1	{ PMIC_PDATA_INIT( 0,
+							"nxe2000_dcdc1",
+							900000, 1500000,
+							1100000, 1, 0, 0x4)
+							regulator-always-on;
+							regulator-boot-on;};
+					VCC_DCDC1:
+						dcdc2	{ PMIC_PDATA_INIT( 1,
+							"nxe2000_dcdc2",
+							1000000, 1500000,
+							1200000, 1, 0, 0x4)
+							regulator-always-on;
+							regulator-boot-on;};
+					VCC_DCDC2:
+						dcdc3	{ PMIC_PDATA_INIT( 2,
+							"nxe2000_dcdc3",
+							1000000, 3500000,
+							3300000, 1, 1, 0x0)
+							regulator-always-on;
+							regulator-boot-on;};
+					VCC_DCDC3:
+						dcdc4	{ PMIC_PDATA_INIT( 3,
+							"nxe2000_dcdc4",
+							1000000, 2000000,
+							1500000, 1, 0, 0xF)
+							regulator-always-on;
+							regulator-boot-on;};
+                    VCC_DCDC4:
+                        dcdc5   { PMIC_PDATA_INIT( 4,
+                            "nxe2000_dcdc5",
+                            1000000, 2000000,
+                            1500000, 1, 0, 0x4)
+                            regulator-always-on;
+                            regulator-boot-on;};
+							/*
+					VCC_DCDC4:
+						dcdc5	{ PMIC_PDATA_INIT( 4,
+							"nxe2000_dcdc5",
+							1000000, 2000000,
+							1500000, 0, 0, 0x4)
+							regulator-always-on;
+							regulator-boot-on;};
+							*/
+					VCC_LDO0:
+						ldo1	{ PMIC_PDATA_INIT( 5,
+							"nxe2000_ldo1",
+							1000000, 3500000,
+							1800000, 0, 1, 0x0)
+							regulator-boot-on;};
+					VCC_LDO1:
+						ldo2	{ PMIC_PDATA_INIT( 6,
+							"nxe2000_ldo2",
+							1000000, 3500000,
+							1800000, 0, 1, 0x0)
+							regulator-boot-on;};
+					VCC_LDO2:
+						ldo3	{ PMIC_PDATA_INIT( 7,
+							"nxe2000_ldo3",
+							1000000, 3500000,
+							1800000, 1, 1, 0x2)
+							regulator-always-on;
+							regulator-boot-on;};
+					VCC_LDO3:
+						ldo4	{ PMIC_PDATA_INIT( 8,
+							"nxe2000_ldo4",
+							1000000, 3500000,
+							1800000, 1, 1, 0x2)
+							regulator-always-on;
+							regulator-boot-on;};
+					VCC_LDO4:
+						ldo5	{ PMIC_PDATA_INIT( 9,
+							"nxe2000_ldo5",
+							1000000, 3500000,
+							3300000, 0, 1, 0x0)
+							regulator-boot-on;};
+					VCC_LDO5:
+						ldo6	{ PMIC_PDATA_INIT(10,
+							"nxe2000_ldo6",
+							1000000, 3500000,
+							3300000, 1, 1, 0xF)
+							regulator-always-on;
+							regulator-boot-on;};
+					VCC_LDO6:
+						ldo7	{ PMIC_PDATA_INIT(11,
+							"nxe2000_ldo7",
+							1000000, 3500000,
+							2800000, 0, 1, 0x1)
+							regulator-always-on;
+							regulator-boot-on;};
+					VCC_LDO7:
+						ldo8	{ PMIC_PDATA_INIT(12,
+							"nxe2000_ldo8",
+							1000000, 3500000,
+							3300000, 0, 1, 0x0)
+							regulator-boot-on;};
+					VCC_LDO8:
+						ldo9	{ PMIC_PDATA_INIT(13,
+							"nxe2000_ldo9",
+							1000000, 3500000,
+							3300000, 0, 1, 0x0)
+							regulator-boot-on;};
+					VCC_LDO9:
+						ldo10	{ PMIC_PDATA_INIT(14,
+							"nxe2000_ldo10",
+							1000000, 3500000,
+							1000000, 1, 1, 0x0)
+							regulator-always-on;
+							regulator-boot-on;};
+					VCC_RTC0:
+						ldortc1	{ PMIC_PDATA_INIT(15,
+							"nxe2000_rtc1",
+							1700000, 3500000,
+							1800000, 1, 1, 0xF)
+							regulator-always-on;
+							regulator-boot-on;};
+					VCC_RTC1:
+						ldortc2	{ PMIC_PDATA_INIT(16,
+							"nxe2000_rtc2",
+							1000000, 3500000,
+							1000000, 1, 1, 0xF)
+							regulator-always-on;
+							regulator-boot-on;};
+				}; 
+			}; 
+		}; 
+        i2c_gpio4: i2c@4 {
+            compatible = "i2c-gpio";
+            gpios = <&gpio_a 26 0        /* SDA */
+                &gpio_a 27 0     /* SCL */
+                >;
+            #address-cells = <1>;
+            #size-cells = <0>;
+            status = "okay";
+
+        	led_lp55231_1@32 {
+				compatible = "ti,lp55231";
+		        reg = <0x32>;
+		        //pinctrl-names = "led_en";
+		        //pinctrl-0 = <&led_en>;
+		        enable-gpio = <&gpio_e 3 0x1>;
+	    	    clock-mode = <2>;
+		        chan0 {
+		            chan-name = "d1";
+		            led-cur = <0x14>;
+		            max-cur = <0x20>;
+		        };
+		        chan1 {
+		            chan-name = "d2";
+		            led-cur = <0x14>;
+		            max-cur = <0x20>;
+		        };
+		        chan2 {
+		            chan-name = "d3";
+		            led-cur = <0x14>;
+		            max-cur = <0x20>;
+		        };
+		        chan3 {
+		            chan-name = "d4";
+		            led-cur = <0x14>;
+		            max-cur = <0x20>;
+		        };
+		        chan4 {
+		            chan-name = "d5";
+		            led-cur = <0x14>;
+		            max-cur = <0x20>;
+		        };
+	            chan5 {
+		            chan-name = "d6";
+		            led-cur = <0x14>;
+		            max-cur = <0x20>;
+		        };
+		        chan6 {
+		            chan-name = "d7";
+		            led-cur = <0x14>;
+		            max-cur = <0x20>;
+		        };
+		        chan7 {
+		            chan-name = "d8";
+		            led-cur = <0x14>;
+		            max-cur = <0x20>;
+	    	    };
+		        chan8 {
+		            chan-name = "d9";
+		            led-cur = <0x14>;
+		            max-cur = <0x20>;
+	    	    };
+			};
+        }; /* i2c_gpio4 */
+        i2c_gpio5: i2c@5 {
+            compatible = "i2c-gpio";
+            gpios = <&gpio_e 5 0        /* SDA */
+                &gpio_e 6 0     /* SCL */
+                >;
+            #address-cells = <1>;
+            #size-cells = <0>;
+            status = "okay";
+
+            led_lp55231_1@32 {
+	            compatible = "ti,lp55231";
+	            reg = <0x33>;
+	            //pinctrl-names = "led_en";
+	            //pinctrl-0 = <&led_en>;
+	            enable-gpio = <&gpio_e 3 0x1>;
+	            clock-mode = <2>;
+
+	            chan0 {
+	                chan-name = "d10";
+	                led-cur = <0x14>;
+	                max-cur = <0x20>;
+	            };
+	            chan1 {
+	                chan-name = "d11";
+	                led-cur = <0x14>;
+	                max-cur = <0x20>;
+	            };
+	            chan2 {
+	                chan-name = "d12";
+	                led-cur = <0x14>;
+	                max-cur = <0x20>;
+	            };
+	            chan3 {
+	                chan-name = "d13";
+	                led-cur = <0x14>;
+	                max-cur = <0x20>;
+	            };
+	            chan4 {
+	                chan-name = "d14";
+	                led-cur = <0x14>;
+	                max-cur = <0x20>;
+	            };
+	            chan5 {
+	                chan-name = "d15";
+	                led-cur = <0x14>;
+	                max-cur = <0x20>;
+	            };
+	            chan6 {
+	                chan-name = "d16";
+	                led-cur = <0x14>;
+	                max-cur = <0x20>;
+	            };
+	            chan7 {
+	                chan-name = "d17";
+	                led-cur = <0x14>;
+	                max-cur = <0x20>;
+	            };
+	            chan8 {
+	                chan-name = "d18";
+	                led-cur = <0x14>;
+	                max-cur = <0x20>;
+	            };
+			};
+		};  /* i2c_gpio5 */
+	    i2c_gpio6: i2c@6 {
+	        compatible = "i2c-gpio";
+	        gpios = <&gpio_c 24 0 /* sda */
+	            &gpio_c 14 0 /* scl */
+	            >;
+	        i2c-gpio,delay-us = <100>;
+	        #address-cells = <1>;
+	        #size-cells = <0>;
+
+	        usb2514: usb2514@2c {
+	            compatible = "smsc,usb2514";
+	            reg = <0x2c>;
+	            reset-gpios = <&gpio_c 15 1>;
+	            initial-mode = <1>;
+	        };
+	    };	/* i2c_gpio6 */
+	}; /*** soc ***/
+
+    backlight: pwm-backlight {
+        compatible = "pwm-backlight";
+        pwm-names = "pwm-backlight";
+        pwms = <&pwm 0 50000 1>;
+        brightness-levels = <
+            128 128 129 129 130 130 131 131 132 132
+            133 133 134 134 135 135 136 136 137 137
+            138 138 139 139 140 140 141 141 142 142
+            143 143 144 144 145 145 146 146 147 147
+            148 148 149 149 150 150 151 151 152 152
+            153 153 154 154 155 155 156 156 157 157
+            158 158 159 159 160 160 161 161 162 162
+            163 163 164 164 165 165 166 166 167 167
+            168 168 169 169 170 170 171 171 172 172
+            173 173 174 174 175 175 176 176 177 177
+            178 178 179 179 180 180 181 181 182 182
+            183 183 184 184 185 185 186 186 187 187
+            188 188 189 189 190 190 191 191 192 192
+            193 193 194 194 195 195 196 196 197 197
+            198 198 199 199 200 200 201 201 202 202
+            203 203 204 204 205 205 206 206 207 207
+            208 208 209 209 210 210 211 211 212 212
+            213 213 214 214 215 215 216 216 217 217
+            218 218 219 219 220 220 221 221 222 222
+            223 223 224 224 225 225 226 226 227 227
+            228 228 229 229 230 230 231 231 232 232
+            233 233 234 234 235 235 236 236 237 237
+            238 238 239 239 240 240 241 241 242 242
+            243 243 244 244 245 245 246 246 247 247
+            248 248 249 249 250 250 251 251 252 252
+            253 253 254 254 255 255
+            >;
+        default-brightness-level = <1>;
+        status = "okay";
+    };
+
+	audio_en: regulator-fix@0 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "AUDIO EN";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	iov: regulator-fix@1 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "IOV";
+	};
+
+	ldoin: regulator-fix@2 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "LDOIN";
+	};
+
+	dv: regulator-fix@3 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "DV";
+	};
+
+	av: regulator-fix@4 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "AV";
+	};
+
+	snd_null: snd_null@0 {
+		#sound-dai-cells = <0>;
+		compatible = "nexell,snd-null";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0 0>;
+	};
+
+	spdif_out: spdif-out {
+		#sound-dai-cells = <0>;
+		compatible = "linux,spdif-dit";
+	};
+
+    gpio_key: gpio_keys {
+        compatible = "gpio-keys";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&key_volup &key_voldown &key_func1 &key_func2 &key_mute>;
+
+        volup {
+            label = "Volume Up";
+            gpios = <&gpio_d 29 0>;
+            linux,code = <KEY_VOLUMEUP>;
+            gpio-key,wakeup;
+
+        };
+
+        voldown {
+            label = "Volume-Down";
+            gpios = <&gpio_d 30 0>;
+            linux,code = <KEY_VOLUMEDOWN>;
+        };
+
+        func1 {
+            label = "func-1";
+            gpios = <&gpio_e 0 0>;
+            linux,code = <KEY_F1>;
+        };
+
+        func2 {
+            label = "func-2";
+            gpios = <&gpio_e 1 0>;
+            linux,code = <KEY_F2>;
+        };
+
+        mute {
+            label = "mute";
+            gpios = <&gpio_d 31 0>;
+            linux,code = <KEY_MUTE>;
+        };
+    };
+
+	snd_pcm_allo_display:snd_pcm_allo_display@1 {
+		#sound-dai-cells = <0>;
+		compatible = "nexell,snd-pcm-smart-voice";
+		status = "okay";
+	};
+
+	snd_allo_display: snd_allo_display@0 {
+		#sound-dai-cells = <0>;
+		compatible = "nexell,snd-smart-voice,i2s,pl022";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pwms = <&pwm 3 125 0>;
+		gpio_regs = < PHYS_BASE_GPIOA 0x1000
+			PHYS_BASE_GPIOB 0x1000
+			PHYS_BASE_GPIOC 0x1000
+			PHYS_BASE_GPIOD 0x1000
+			PHYS_BASE_GPIOE 0x1000
+			PHYS_BASE_ALIVE 0x200>;
+
+		cpu-dais = <2>;	/* i2s:1EA, spi:1EA */
+		pin {
+			spi-cs-gpio = <&gpio_c 16 0>;
+			pdm-isrun-gpio = <&gpio_d 20 0>;
+			pdm-lrck-gpio = <&gpio_b 26 0>;
+			i2s-lrck-gpio = <&gpio_b 4 0>;
+			pdm-nrst-gpio = <&gpio_d 16 0>;
+		};
+	};
+
+	sound {
+		compatible = "nexell,simple-audio-card";
+		simple-audio-card,name = "s5p4418 allo_display Audio";
+		simple-audio-card,widgets =
+		    "Headphone", "Out Jack";
+		simple-audio-card,routing =
+		    "Out Jack", "HPL",
+		    "Out Jack", "HPR";
+		status = "okay";
+		simple-audio-card,dai-link@0 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_0 0>;
+			};
+
+			codec {
+				sound-dai = <&tas5756m>;
+			};
+		};
+
+		simple-audio-card,dai-link@1 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_1 0>;
+			};
+
+			codec {
+				sound-dai = <&snd_null>;
+			};
+		};
+
+		simple-audio-card,dai-link@2 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_2 0>;
+			};
+
+			plat {
+				sound-dai = <&snd_pcm_allo_display>;
+			};
+
+			codec {
+				sound-dai = <&snd_allo_display>;
+			};
+		};
+
+		simple-audio-card,dai-link@3 {
+			format = "spdif";
+			mclk-fs = <256>;
+			cpu {
+				sound-dai = <&spdif_tx 0>;
+			};
+
+			codec {
+				sound-dai = <&spdif_out>;
+			};
+		};
+
+		simple-audio-card,dai-link@4 {
+			format = "spi";
+			cpu {
+				sound-dai = <&snd_spi_2 0>;
+			};
+			codec {
+				sound-dai = <&snd_allo_display>;
+			};
+		};
+	};
+	bt_control {
+		compatible = "broadcom,bcm434545bt";
+		gpios = <&gpio_e 22 0>;   
+		pinctrl-names = "default";
+		pinctrl-0 = <&bt_cfg_en>;
+		status = "okay";
+	};
+	wlan {
+		compatible = "nexell,brcm-wlan";
+		wlan_reg_on = <&gpio_a 12 0>;
+		wlan_host_wake = <&gpio_a 13 1>;
+		status = "okay";
+    };
+};
+
+
+
+&dw_mmc_0 {
+	num-slots = <1>;
+	bus-width = <4>;
+	cap-mmc-highspeed;
+	broken-cd;
+	non-removable;
+	clock-frequency = <100000000>;
+	card-detect-delay = <200>;
+	disable-wp;
+	nexell,drive_dly = <0x0>;
+	nexell,drive_shift = <0x02>;
+	nexell,sample_dly = <0x00>;
+	nexell,sample_shift = <0x01>;
+	status = "okay";
+};
+
+&dw_mmc_2 {
+	num-slots = <1>;
+	bus-width = <4>;
+	cap-sd-highspeed;
+	cd-type-external;
+	broken-cd;
+	pm-ignore-notify;
+	keep-power-in-suspend;
+	powered-resumed-nonremovable-card;
+	cd-type = <2>;
+	clock-frequency = <100000000>;
+	nexell,drive_dly = <0x0>;
+	nexell,drive_shift = <0x02>;
+	nexell,sample_dly = <0x00>;
+	nexell,sample_shift = <0x01>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&sdmmc2_cclk &sdmmc2_cmd &sdmmc2_bus4
+			&cfg_wlanen &cfg_wlanhostwake>;
+
+	status = "okay";
+};
+&dw_mmc_1 {
+	num-slots = <1>;
+	bus-width = <4>;
+	cap-sd-highspeed;
+	clock-frequency = <100000000>;
+	card-detect-delay = <200>;
+	disable-wp;
+	cd-gpios = <&gpio_c 24 0>;
+	cd-inverted;
+	nexell,drive_dly = <0x0>;
+	nexell,drive_shift = <0x02>;
+	nexell,sample_dly = <0x00>;
+	nexell,sample_shift = <0x01>;
+	status = "okay";
+};
+
+&i2s0_bus {
+	i2s0_mclk: i2s0-mclk {
+		nexell,pin-strength = <0>;
+	};
+	i2s0_bclk: i2s0-bclk {
+		nexell,pin-strength = <0>;
+	};
+};
+
+&pwm {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm0_pin &pwm1_pin>;
+	samsung,pwm-outputs = <0>, <1>;
+	status = "okay";
+};
+
