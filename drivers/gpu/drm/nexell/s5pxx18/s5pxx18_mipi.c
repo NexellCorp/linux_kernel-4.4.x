@@ -66,7 +66,11 @@
 #define	BANDCTL_80MHZ		0x0
 
 #define	MIPI_INDEX		0
-#define	MIPI_EXC_PRE_VALUE	1
+#ifdef CONFIG_DRM_PANEL_SAMSUNG_S6D7AA
+#define	MIPI_EXC_PRE_VALUE	20
+#else
+#define	MIPI_EXC_PRE_VALUE  1
+#endif
 #define MIPI_DSI_IRQ_MASK	29	/* Empties SFR payload FIFO */
 
 int nx_drm_mipi_register_notifier(struct device *dev,
@@ -524,6 +528,15 @@ static int mipi_ops_enable(struct nx_drm_display *display)
 	bool eot_enable = dsi->mode_flags & MIPI_DSI_MODE_EOT_PACKET ?
 			false : true;
 
+#ifdef CONFIG_DRM_PANEL_SAMSUNG_S6D7AA
+	HFP = 1;
+	HBP = 58;
+	HS  = 5;
+	VFP = 5;
+	VBP = 10;
+	VS  = 4;
+#endif
+
 	if (command_mode)
 		data_len = 0;
 
@@ -696,7 +709,6 @@ static int mipi_ops_set_format(struct nx_drm_display *display,
 		dsi->mode_flags & MIPI_DSI_MODE_EOT_PACKET ?
 		"eot disable" : "eot enable"
 		);
-
 	return 0;
 }
 
