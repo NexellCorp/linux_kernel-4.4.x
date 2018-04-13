@@ -673,6 +673,10 @@ config SND_SOC_TAS5782
 	tristate "Texas Instruments TAS5782 power amplifiers"
 	depends on I2C
 
+config SND_SOC_TAS5756
+    tristate "Texas Instruments TAS5756 speaker amplifier (ALLO-DISPLAY)"
+    default n
+
 config SND_SOC_TFA9879
 	tristate "NXP Semiconductors TFA9879 amplifier"
 	depends on I2C
