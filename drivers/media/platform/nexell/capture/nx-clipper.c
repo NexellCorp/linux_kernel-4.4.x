@@ -1649,7 +1649,7 @@ static int init_v4l2_subdev(struct nx_clipper *me)
 
 	v4l2_subdev_init(sd, &nx_clipper_subdev_ops);
 	snprintf(sd->name, sizeof(sd->name), "%s%d%s", NX_CLIPPER_DEV_NAME,
-		 me->module, (me->logical) ? " logical" : "");
+		 me->module, (me->logical) ? "-logical" : "");
 	v4l2_set_subdevdata(sd, me);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
@@ -1723,7 +1723,7 @@ static int create_sysfs_for_camera_sensor(struct nx_clipper *me,
 {
 	int ret;
 	struct kobject *kobj;
-	char kobject_name[16] = {0, };
+	char kobject_name[25] = {0, };
 	char sensor_name[V4L2_SUBDEV_NAME_SIZE];
 
 	memset(sensor_name, 0, V4L2_SUBDEV_NAME_SIZE);
@@ -1737,8 +1737,8 @@ static int create_sysfs_for_camera_sensor(struct nx_clipper *me,
 	camera_sensor_info[me->module].is_mipi =
 		me->interface_type == NX_CAPTURE_INTERFACE_MIPI_CSI;
 
-	snprintf(kobject_name, sizeof(kobject_name), "camerasensor%d%s",
-		me->module, (me->logical) ? " logical" : "");
+	snprintf(kobject_name, sizeof(kobject_name), "camerasensor%d",
+			(me->logical) ? (me->module + 10) : me->module);
 	kobj = kobject_create_and_add(kobject_name, &platform_bus.kobj);
 	if (!kobj) {
 		dev_err(&me->pdev->dev, "failed to kobject_create for module %d-%d\n",

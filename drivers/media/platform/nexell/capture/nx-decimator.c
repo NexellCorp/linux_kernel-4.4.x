@@ -612,7 +612,7 @@ static int init_v4l2_subdev(struct nx_decimator *me)
 
 	v4l2_subdev_init(sd, &nx_decimator_subdev_ops);
 	snprintf(sd->name, sizeof(sd->name), "%s%d%s", NX_DECIMATOR_DEV_NAME,
-		 me->module, (me->logical) ? " logical" : "");
+		 me->module, (me->logical) ? "-logical" : "");
 	v4l2_set_subdevdata(sd, me);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
