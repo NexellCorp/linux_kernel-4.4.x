@@ -27,9 +27,11 @@
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-ctrls.h>
 
-/*#define DEBUG_TP2825*/
+#include "tp2825.h"
+
+/* #define DEBUG_TP2825 */
 #ifdef DEBUG_TP2825
-#define vmsg(a...)  printk(a)
+#define vmsg(a...)  pr_err(a)
 #else
 #define vmsg(a...)
 #endif
@@ -40,6 +42,11 @@ struct tp2825_state {
 	bool first;
 
 	struct i2c_client *i2c_client;
+
+	__u32 width;
+	__u32 height;
+
+	int old_mode;
 };
 
 struct reg_val {
@@ -49,7 +56,11 @@ struct reg_val {
 
 #define END_MARKER {0xff, 0xff}
 
-static struct reg_val _sensor_init_data[] = {
+static struct tp2825_state _state;
+static int mode;
+
+/* PAL -> 1920x576i */
+static struct reg_val _sensor_init_data_1920x576i[] = {
 	/* video */
 	{0x40, 0x00},
 	{0x07, 0xc0},
@@ -61,17 +72,55 @@ static struct reg_val _sensor_init_data[] = {
 	{0xc8, 0x21},
 	{0x7e, 0x01},
 	{0xb9, 0x01},
-	/* Data set */
+	/* Data Set */
+	{0x02, 0xcf},
+	{0x15, 0x13},
+	{0x16, 0x68},
+	{0x17, 0x80},
+	{0x18, 0x17},
+	{0x19, 0x20},
+	{0x1a, 0x17},
+	{0x1c, 0x09},
+	{0x1d, 0x48},
+	{0x0c, 0x53},
+	{0x0d, 0x11},
+	{0x20, 0xb0},
+	{0x26, 0x02},
+	{0x2b, 0x70},
+	{0x2d, 0x60},
+	{0x2e, 0x5e},
+	{0x30, 0x7a},
+	{0x31, 0x4a},
+	{0x32, 0x4d},
+	{0x33, 0xf0},
+	{0x35, 0x25},
+	{0x39, 0x84},
+	END_MARKER
+};
+
+/* NTSC -> 1920x480i */
+static struct reg_val _sensor_init_data_1920x480i[] = {
+	/* video */
+	{0x40, 0x00},
+	{0x07, 0xc0},
+	{0x0b, 0xc0},
+	{0x39, 0x8c},
+	{0x4d, 0x03},
+	{0x4e, 0x17},
+	/* PTZ */
+	{0xc8, 0x21},
+	{0x7e, 0x01},
+	{0xb9, 0x01},
+	/* Data Set */
 	{0x02, 0xcf},
 	{0x15, 0x13},
 	{0x16, 0x4e},
-	{0x17, 0xd0},
-	{0x18, 0x15},
+	{0x17, 0x80},
+	{0x18, 0x13},
 	{0x19, 0xf0},
-	{0x1a, 0x02},
+	{0x1a, 0x07},
 	{0x1c, 0x09},
 	{0x1d, 0x38},
-
 	{0x0c, 0x53},
 	{0x0d, 0x10},
 	{0x20, 0xa0},
@@ -79,105 +128,867 @@ static struct reg_val _sensor_init_data[] = {
 	{0x2b, 0x70},
 	{0x2d, 0x68},
 	{0x2e, 0x5e},
-
 	{0x30, 0x62},
 	{0x31, 0xbb},
 	{0x32, 0x96},
 	{0x33, 0xc0},
 	{0x35, 0x25},
 	{0x39, 0x84},
-
 	END_MARKER
 };
 
-static struct tp2825_state _state;
+unsigned char tbl_tp2825_1080p25_raster[] = {
+	/* Start address 0x15, Size = 9B */
+	0x03, 0xD3, 0x80, 0x29, 0x38, 0x48, 0x00, 0x0A, 0x50
+};
+
+unsigned char tbl_tp2825_1080p30_raster[] = {
+	/* Start address 0x15, Size = 9B */
+	0x03, 0xD3, 0x80, 0x29, 0x38, 0x47, 0x00, 0x08, 0x98
+};
+
+unsigned char tbl_tp2825_720p25_raster[] = {
+	/* Start address 0x15, Size = 9B */
+	0x13, 0x16, 0x00, 0x19, 0xD0, 0x25, 0x00, 0x0F, 0x78
+};
+
+unsigned char tbl_tp2825_720p30_raster[] = {
+	/* Start address 0x15, Size = 9B */
+	0x13, 0x16, 0x00, 0x19, 0xD0, 0x25, 0x00, 0x0C, 0xE4
+};
+
+unsigned char tbl_tp2825_720p50_raster[] = {
+	/* Start address 0x15, Size = 9B */
+	0x13, 0x16, 0x00, 0x19, 0xD0, 0x25, 0x00, 0x07, 0xBC
+};
+
+unsigned char tbl_tp2825_720p60_raster[] = {
+	/* Start address 0x15, Size = 9B */
+	0x13, 0x16, 0x00, 0x19, 0xD0, 0x25, 0x00, 0x06, 0x72
+};
+
+unsigned char tbl_tp2825_PAL_raster[] = {
+	/* Start address 0x15, Size = 9B */
+	0x13, 0x5f, 0xbc, 0x17, 0x20, 0x17, 0x00, 0x09, 0x48
+};
+
+unsigned char tbl_tp2825_NTSC_raster[] = {
+	/* Start address 0x15, Size = 9B */
+	0x13, 0x5f, 0xbc, 0x13, 0xf0, 0x07, 0x00, 0x09, 0x38
+};
 
 /**
  * util functions
  */
-#define THINE_I2C_RETRY_CNT				3
-
-#ifdef DEBUG_TP2825
-static int _i2c_read_byte(struct i2c_client *client, u8 addr, u8 *data)
+#define I2C_RETRY_CNT 3
+static unsigned char tp28xx_byte_read(struct i2c_client *client, u8 addr)
 {
-	s8 i = 0;
-	s8 ret = 0;
-	u8 buf = 0;
-	struct i2c_msg msg[2];
+	int i;
+	int ret;
 
-	msg[0].addr = client->addr;
-	msg[0].flags = 0;
-	msg[0].len = 1;
-	msg[0].buf = &addr;
-
-	msg[1].addr = client->addr;
-	msg[1].flags = I2C_M_RD;
-	msg[1].len = 1;
-	msg[1].buf = &buf;
-
-	for (i = 0; i < THINE_I2C_RETRY_CNT; i++) {
-		ret = i2c_transfer(client->adapter, msg, 2);
-		if (likely(ret == 2))
+	for (i = 0; i < I2C_RETRY_CNT; i++) {
+		ret = i2c_smbus_read_byte_data(client, addr);
+		if (ret < 0)
+			pr_err("## %s() fail! reg:0x%x, ret:%d, i:%d\n",
+				__func__, addr, ret, i);
+		else
 			break;
 	}
 
-	if (unlikely(ret != 2)) {
-		dev_err(&client->dev, "_i2c_read_byte failed reg:0x%02x\n",
-			addr);
-		return -EIO;
-	}
-
-	*data = buf;
-	return 0;
+	return ret;
 }
-#endif
 
-static int _i2c_write_byte(struct i2c_client *client, u8 addr, u8 val)
+static void tp28xx_byte_write(struct i2c_client *client, u8 addr, u8 val)
 {
-	s8 i = 0;
-	s8 ret = 0;
-	u8 buf[2];
-	struct i2c_msg msg;
+	int i;
+	int ret;
 
-	msg.addr = client->addr;
-	msg.flags = 0;
-	msg.len = 2;
-	msg.buf = buf;
-
-	buf[0] = addr;
-	buf[1] = val;
-
-	for (i = 0; i < THINE_I2C_RETRY_CNT; i++) {
-		ret = i2c_transfer(client->adapter, &msg, 1);
-		if (likely(ret == 1))
+	for (i = 0; i < I2C_RETRY_CNT; i++) {
+		ret = i2c_smbus_write_byte_data(client, addr, val);
+		if (ret < 0)
+			pr_err("## %s() fail! reg:0x%x, val:0x%x, ret:%d, i:%d\n",
+				__func__, addr, val, ret, i);
+		else
 			break;
 	}
 
-	if (ret != 1) {
-		pr_err("%s: failed to write addr 0x%x, val 0x%x\n",
-		__func__, addr, val);
-		return -EIO;
+	return;
+}
+
+static void tp2825_write_table(struct i2c_client *client,
+	unsigned char addr,
+	unsigned char *tbl_ptr,
+	unsigned char tbl_cnt)
+{
+	unsigned char i = 0;
+
+	for (i = 0; i < tbl_cnt; i++)
+		tp28xx_byte_write(client, (addr + i), *(tbl_ptr + i));
+}
+
+static void tp2825_set_work_mode_1080p25(struct i2c_client *client)
+{
+	/* Start address 0x15, Size = 9B */
+	tp2825_write_table(client, 0x15, tbl_tp2825_1080p25_raster, 9);
+}
+
+static void tp2825_set_work_mode_1080p30(struct i2c_client *client)
+{
+	/* Start address 0x15, Size = 9B */
+	tp2825_write_table(client, 0x15, tbl_tp2825_1080p30_raster, 9);
+}
+static void tp2825_set_work_mode_720p25(struct i2c_client *client)
+{
+	/* Start address 0x15, Size = 9B */
+	tp2825_write_table(client, 0x15, tbl_tp2825_720p25_raster, 9);
+}
+
+static void tp2825_set_work_mode_720p30(struct i2c_client *client)
+{
+	/* Start address 0x15, Size = 9B */
+	tp2825_write_table(client, 0x15, tbl_tp2825_720p30_raster, 9);
+}
+
+static void tp2825_set_work_mode_720p50(struct i2c_client *client)
+{
+	/* Start address 0x15, Size = 9B */
+	tp2825_write_table(client, 0x15, tbl_tp2825_720p50_raster, 9);
+}
+
+static void tp2825_set_work_mode_720p60(struct i2c_client *client)
+{
+	/* Start address 0x15, Size = 9B */
+	tp2825_write_table(client, 0x15, tbl_tp2825_720p60_raster, 9);
+}
+
+static void tp2825_set_work_mode_PAL(struct i2c_client *client)
+{
+	/* Start address 0x15, Size = 9B */
+	tp2825_write_table(client, 0x15, tbl_tp2825_PAL_raster, 9);
+}
+
+static void tp2825_set_work_mode_NTSC(struct i2c_client *client)
+{
+	/* Start address 0x15, Size = 9B */
+	tp2825_write_table(client, 0x15, tbl_tp2825_NTSC_raster, 9);
+}
+
+
+static void TP2825_NTSC_DataSet(struct i2c_client *client)
+{
+	unsigned int tmp;
+
+	tp28xx_byte_write(client, 0x0c, 0x43);
+	tp28xx_byte_write(client, 0x0d, 0x10);
+	tp28xx_byte_write(client, 0x20, 0xa0);
+	tp28xx_byte_write(client, 0x26, 0x12);
+	tp28xx_byte_write(client, 0x2b, 0x50);
+	tp28xx_byte_write(client, 0x2d, 0x68);
+	tp28xx_byte_write(client, 0x2e, 0x5e);
+	tp28xx_byte_write(client, 0x30, 0x62);
+	tp28xx_byte_write(client, 0x31, 0xbb);
+	tp28xx_byte_write(client, 0x32, 0x96);
+	tp28xx_byte_write(client, 0x33, 0xc0);
+	tp28xx_byte_write(client, 0x35, 0x25);
+	tp28xx_byte_write(client, 0x39, 0x84);
+	tp28xx_byte_write(client, 0x2c, 0x2a);
+	tp28xx_byte_write(client, 0x27, 0x2d);
+	tp28xx_byte_write(client, 0x28, 0x00);
+	tp28xx_byte_write(client, 0x13, 0x00);
+
+	tmp = tp28xx_byte_read(client, 0x14);
+	tmp &= 0x9f;
+	tp28xx_byte_write(client, 0x14, tmp);
+}
+
+static void TP2825_PAL_DataSet(struct i2c_client *client)
+{
+	unsigned int tmp;
+
+	tp28xx_byte_write(client, 0x0c, 0x53);
+	tp28xx_byte_write(client, 0x0d, 0x11);
+	tp28xx_byte_write(client, 0x20, 0xb0);
+	tp28xx_byte_write(client, 0x26, 0x02);
+	tp28xx_byte_write(client, 0x2b, 0x50);
+	tp28xx_byte_write(client, 0x2d, 0x60);
+	tp28xx_byte_write(client, 0x2e, 0x5e);
+	tp28xx_byte_write(client, 0x30, 0x7a);
+	tp28xx_byte_write(client, 0x31, 0x4a);
+	tp28xx_byte_write(client, 0x32, 0x4d);
+	tp28xx_byte_write(client, 0x33, 0xf0);
+	tp28xx_byte_write(client, 0x35, 0x25);
+	tp28xx_byte_write(client, 0x39, 0x84);
+	tp28xx_byte_write(client, 0x2c, 0x2a);
+	tp28xx_byte_write(client, 0x27, 0x2d);
+	tp28xx_byte_write(client, 0x28, 0x00);
+	tp28xx_byte_write(client, 0x13, 0x00);
+
+	tmp = tp28xx_byte_read(client, 0x14);
+	tmp &= 0x9f;
+	tp28xx_byte_write(client, 0x14, tmp);
+}
+
+static void TP2825_V1_DataSet(struct i2c_client *client)
+{
+	unsigned int tmp;
+
+	tp28xx_byte_write(client, 0x0c, 0x03);
+	tp28xx_byte_write(client, 0x0d, 0x10);
+	tp28xx_byte_write(client, 0x20, 0x60);
+	tp28xx_byte_write(client, 0x26, 0x02);
+	tp28xx_byte_write(client, 0x2b, 0x58);
+	tp28xx_byte_write(client, 0x2d, 0x30);
+	tp28xx_byte_write(client, 0x2e, 0x70);
+	tp28xx_byte_write(client, 0x30, 0x48);
+	tp28xx_byte_write(client, 0x31, 0xbb);
+	tp28xx_byte_write(client, 0x32, 0x2e);
+	tp28xx_byte_write(client, 0x33, 0x90);
+	tp28xx_byte_write(client, 0x35, 0x05);
+	tp28xx_byte_write(client, 0x39, 0x8C);
+	tp28xx_byte_write(client, 0x2c, 0x0a);
+	tp28xx_byte_write(client, 0x27, 0x2d);
+	tp28xx_byte_write(client, 0x28, 0x00);
+	tp28xx_byte_write(client, 0x13, 0x00);
+
+	tmp = tp28xx_byte_read(client, 0x14);
+	tmp &= 0x9f;
+	tp28xx_byte_write(client, 0x14, tmp);
+}
+
+static void TP2825_V2_DataSet(struct i2c_client *client)
+{
+	unsigned int tmp;
+
+	tp28xx_byte_write(client, 0x0c, 0x03);
+	tp28xx_byte_write(client, 0x0d, 0x10);
+	tp28xx_byte_write(client, 0x20, 0x60);
+	tp28xx_byte_write(client, 0x26, 0x02);
+	tp28xx_byte_write(client, 0x2b, 0x58);
+	tp28xx_byte_write(client, 0x2d, 0x30);
+	tp28xx_byte_write(client, 0x2e, 0x70);
+	tp28xx_byte_write(client, 0x30, 0x48);
+	tp28xx_byte_write(client, 0x31, 0xbb);
+	tp28xx_byte_write(client, 0x32, 0x2e);
+	tp28xx_byte_write(client, 0x33, 0x90);
+	tp28xx_byte_write(client, 0x35, 0x25);
+	tp28xx_byte_write(client, 0x39, 0x88);
+	tp28xx_byte_write(client, 0x2c, 0x0a);
+	tp28xx_byte_write(client, 0x27, 0x2d);
+	tp28xx_byte_write(client, 0x28, 0x00);
+	tp28xx_byte_write(client, 0x13, 0x00);
+
+	tmp = tp28xx_byte_read(client, 0x14);
+	tmp &= 0x9f;
+	tp28xx_byte_write(client, 0x14, tmp);
+}
+
+static void TP2825_A720P30_DataSet(struct i2c_client *client)
+{
+	unsigned char tmp;
+
+	tmp = tp28xx_byte_read(client, 0x14);
+	tmp |= 0x40;
+	tp28xx_byte_write(client, 0x14, tmp);
+	tp28xx_byte_write(client, 0x2d, 0x48);
+	tp28xx_byte_write(client, 0x2e, 0x5e);
+	tp28xx_byte_write(client, 0x30, 0x27);
+	tp28xx_byte_write(client, 0x31, 0x72);
+	tp28xx_byte_write(client, 0x32, 0x80);
+	tp28xx_byte_write(client, 0x33, 0x77);
+	tp28xx_byte_write(client, 0x07, 0x80);
+}
+
+static void TP2825_A720P25_DataSet(struct i2c_client *client)
+{
+	unsigned char tmp;
+
+	tmp = tp28xx_byte_read(client, 0x14);
+	tmp |= 0x40;
+	tp28xx_byte_write(client, 0x14, tmp);
+	tp28xx_byte_write(client, 0x2d, 0x48);
+	tp28xx_byte_write(client, 0x2e, 0x5e);
+	tp28xx_byte_write(client, 0x30, 0x27);
+	tp28xx_byte_write(client, 0x31, 0x88);
+	tp28xx_byte_write(client, 0x32, 0x04);
+	tp28xx_byte_write(client, 0x33, 0x23);
+	tp28xx_byte_write(client, 0x07, 0x80);
+}
+
+static void TP2825_A1080P30_DataSet(struct i2c_client *client)
+{
+	unsigned char tmp;
+
+	tmp = tp28xx_byte_read(client, 0x14);
+	tmp |= 0x60;
+	tp28xx_byte_write(client, 0x14, tmp);
+	tp28xx_byte_write(client, 0x2d, 0x45);
+	tp28xx_byte_write(client, 0x2e, 0x50);
+	tp28xx_byte_write(client, 0x30, 0x29);
+	tp28xx_byte_write(client, 0x31, 0x65);
+	tp28xx_byte_write(client, 0x32, 0x78);
+	tp28xx_byte_write(client, 0x33, 0x16);
+	tp28xx_byte_write(client, 0x07, 0x80);
+}
+
+static void TP2825_A1080P25_DataSet(struct i2c_client *client)
+{
+	unsigned char tmp;
+
+	tmp = tp28xx_byte_read(client, 0x14);
+	tmp |= 0x60;
+	tp28xx_byte_write(client, 0x14, tmp);
+	tp28xx_byte_write(client, 0x2d, 0x45);
+	tp28xx_byte_write(client, 0x2e, 0x40);
+	tp28xx_byte_write(client, 0x30, 0x29);
+	tp28xx_byte_write(client, 0x31, 0x61);
+	tp28xx_byte_write(client, 0x32, 0x78);
+	tp28xx_byte_write(client, 0x33, 0x16);
+	tp28xx_byte_write(client, 0x07, 0x80);
+}
+
+static void TP2825_C1080P25_DataSet(struct i2c_client *client)
+{
+	tp28xx_byte_write(client, 0x13, 0x40);
+	tp28xx_byte_write(client, 0x20, 0xa0);
+	tp28xx_byte_write(client, 0x2b, 0x60);
+	tp28xx_byte_write(client, 0x2d, 0x54);
+	tp28xx_byte_write(client, 0x2e, 0x40);
+	tp28xx_byte_write(client, 0x30, 0x41);
+	tp28xx_byte_write(client, 0x31, 0x82);
+	tp28xx_byte_write(client, 0x32, 0x27);
+	tp28xx_byte_write(client, 0x33, 0xa6);
+	tp28xx_byte_write(client, 0x28, 0x04);
+	tp28xx_byte_write(client, 0x07, 0x80);
+	tp28xx_byte_write(client, 0x27, 0x5a);
+}
+
+static void TP2825_C720P25_DataSet(struct i2c_client *client)
+{
+	tp28xx_byte_write(client, 0x13, 0x40);
+	tp28xx_byte_write(client, 0x20, 0x74);
+	tp28xx_byte_write(client, 0x2b, 0x60);
+	tp28xx_byte_write(client, 0x2d, 0x42);
+	tp28xx_byte_write(client, 0x2e, 0x40);
+	tp28xx_byte_write(client, 0x30, 0x48);
+	tp28xx_byte_write(client, 0x31, 0x67);
+	tp28xx_byte_write(client, 0x32, 0x6f);
+	tp28xx_byte_write(client, 0x33, 0x31);
+	tp28xx_byte_write(client, 0x28, 0x04);
+	tp28xx_byte_write(client, 0x07, 0x80);
+	tp28xx_byte_write(client, 0x27, 0x5a);
+}
+
+static void TP2825_C1080P30_DataSet(struct i2c_client *client)
+{
+	tp28xx_byte_write(client, 0x13, 0x40);
+	tp28xx_byte_write(client, 0x20, 0x80);
+	tp28xx_byte_write(client, 0x2b, 0x60);
+	tp28xx_byte_write(client, 0x2d, 0x47);
+	tp28xx_byte_write(client, 0x2e, 0x40);
+	tp28xx_byte_write(client, 0x30, 0x41);
+	tp28xx_byte_write(client, 0x31, 0x82);
+	tp28xx_byte_write(client, 0x32, 0x27);
+	tp28xx_byte_write(client, 0x33, 0xa6);
+	tp28xx_byte_write(client, 0x28, 0x04);
+	tp28xx_byte_write(client, 0x07, 0x80);
+	tp28xx_byte_write(client, 0x27, 0x5a);
+}
+
+static void TP2825_C720P30_DataSet(struct i2c_client *client)
+{
+	tp28xx_byte_write(client, 0x13, 0x40);
+	tp28xx_byte_write(client, 0x20, 0x60);
+	tp28xx_byte_write(client, 0x2b, 0x60);
+	tp28xx_byte_write(client, 0x2d, 0x37);
+	tp28xx_byte_write(client, 0x2e, 0x40);
+	tp28xx_byte_write(client, 0x30, 0x48);
+	tp28xx_byte_write(client, 0x31, 0x67);
+	tp28xx_byte_write(client, 0x32, 0x6f);
+	tp28xx_byte_write(client, 0x33, 0x31);
+	tp28xx_byte_write(client, 0x28, 0x04);
+	tp28xx_byte_write(client, 0x07, 0x80);
+	tp28xx_byte_write(client, 0x27, 0x5a);
+}
+
+static void TP2825_C720P50_DataSet(struct i2c_client *client)
+{
+	tp28xx_byte_write(client, 0x13, 0x40);
+	tp28xx_byte_write(client, 0x20, 0x74);
+	tp28xx_byte_write(client, 0x2b, 0x60);
+	tp28xx_byte_write(client, 0x2d, 0x42);
+	tp28xx_byte_write(client, 0x2e, 0x40);
+	tp28xx_byte_write(client, 0x30, 0x41);
+	tp28xx_byte_write(client, 0x31, 0x82);
+	tp28xx_byte_write(client, 0x32, 0x27);
+	tp28xx_byte_write(client, 0x33, 0xa6);
+	tp28xx_byte_write(client, 0x28, 0x04);
+	tp28xx_byte_write(client, 0x07, 0x80);
+	tp28xx_byte_write(client, 0x27, 0x5a);
+}
+
+static void TP2825_C720P60_DataSet(struct i2c_client *client)
+{
+	tp28xx_byte_write(client, 0x13, 0x40);
+	tp28xx_byte_write(client, 0x20, 0x60);
+	tp28xx_byte_write(client, 0x2b, 0x60);
+	tp28xx_byte_write(client, 0x2d, 0x37);
+	tp28xx_byte_write(client, 0x2e, 0x40);
+	tp28xx_byte_write(client, 0x30, 0x41);
+	tp28xx_byte_write(client, 0x31, 0x82);
+	tp28xx_byte_write(client, 0x32, 0x27);
+	tp28xx_byte_write(client, 0x33, 0xa6);
+	tp28xx_byte_write(client, 0x28, 0x04);
+	tp28xx_byte_write(client, 0x07, 0x80);
+	tp28xx_byte_write(client, 0x27, 0x5a);
+}
+
+static void TP2825_PTZ_init(struct i2c_client *client)
+{
+	tp28xx_byte_write(client, 0x40, 0x00);
+	tp28xx_byte_write(client, 0xc9, 0x00);
+	tp28xx_byte_write(client, 0xca, 0x00);
+	tp28xx_byte_write(client, 0xcb, 0x05);
+	tp28xx_byte_write(client, 0xcc, 0x06);
+	tp28xx_byte_write(client, 0xcd, 0x08);
+	tp28xx_byte_write(client, 0xce, 0x09);
+	tp28xx_byte_write(client, 0xcf, 0x03);
+	tp28xx_byte_write(client, 0xd0, 0x48);
+	tp28xx_byte_write(client, 0xd1, 0x34);
+	tp28xx_byte_write(client, 0xd2, 0x60);
+	tp28xx_byte_write(client, 0xd3, 0x10);
+	tp28xx_byte_write(client, 0xd4, 0x04);
+	tp28xx_byte_write(client, 0xd5, 0xf0);
+	tp28xx_byte_write(client, 0xd6, 0xd8);
+	tp28xx_byte_write(client, 0xd7, 0x17);
+	tp28xx_byte_write(client, 0x7E, 0x01);
+}
+
+static void TP2825_output(struct i2c_client *client)
+{
+	tp28xx_byte_write(client, 0x4C, 0x00);
+	tp28xx_byte_write(client, 0x4D, 0x03); /* both port enable */
+
+	if (mode == TP2825_720P25V2
+		|| mode == TP2825_720P30V2
+		|| mode == TP2825_PAL
+		|| mode == TP2825_NTSC)
+		tp28xx_byte_write(client, 0x4E, 0x15);
+	else
+		tp28xx_byte_write(client, 0x4E, 0x01);
+}
+
+static int tp2825_set_video_mode(struct i2c_client *client,
+	unsigned char mode,
+	unsigned char std
+)
+{
+	int err = 0;
+	unsigned int tmp;
+
+	if (std == STD_HDA_DEFAULT)
+		std = STD_HDA;
+
+	switch (mode) {
+	case TP2825_HALF1080P25:
+	case TP2825_1080P25:
+		tp2825_set_work_mode_1080p25(client);
+		tp28xx_byte_write(client, 0x02, 0xC8);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp &= 0xFB;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_V1_DataSet(client);
+
+		if (std == STD_HDA) {
+			TP2825_A1080P25_DataSet(client);
+		} else if (std == STD_HDC || std == STD_HDC_DEFAULT) {
+			TP2825_C1080P25_DataSet(client);
+			if (std == STD_HDC) { /* HDC 1080p25 position adjust */
+				tp28xx_byte_write(client, 0x15, 0x13);
+				tp28xx_byte_write(client, 0x16, 0x84);
+			}
+		}
+		break;
+
+	case TP2825_HALF1080P30:
+	case TP2825_1080P30:
+		tp2825_set_work_mode_1080p30(client);
+		tp28xx_byte_write(client, 0x02, 0xC8);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp &= 0xFB;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_V1_DataSet(client);
+
+		if (std == STD_HDA) {
+			TP2825_A1080P30_DataSet(client);
+		} else if (std == STD_HDC || std == STD_HDC_DEFAULT) {
+			TP2825_C1080P30_DataSet(client);
+			if (std == STD_HDC) { /* HDC 1080p30 position adjust */
+				tp28xx_byte_write(client, 0x15, 0x13);
+				tp28xx_byte_write(client, 0x16, 0x44);
+			}
+		}
+		break;
+
+	case TP2825_HALF720P25:
+	case TP2825_720P25:
+		tp2825_set_work_mode_720p25(client);
+		tp28xx_byte_write(client, 0x02, 0xCA);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp &= 0xFB;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_V1_DataSet(client);
+		break;
+
+	case TP2825_HALF720P30:
+	case TP2825_720P30:
+		tp2825_set_work_mode_720p30(client);
+		tp28xx_byte_write(client, 0x02, 0xCA);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp &= 0xFB;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_V1_DataSet(client);
+		break;
+
+	case TP2825_HALF720P50:
+	case TP2825_720P50:
+		tp2825_set_work_mode_720p50(client);
+		tp28xx_byte_write(client, 0x02, 0xCA);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp &= 0xFB;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_V1_DataSet(client);
+
+		if (std == STD_HDA) {
+			;
+		} else if (std == STD_HDC || std == STD_HDC_DEFAULT) {
+			TP2825_C720P50_DataSet(client);
+			if (std == STD_HDC) /* HDC 720p50 position adjust */
+				tp28xx_byte_write(client, 0x16, 0x40);
+		}
+		break;
+
+	case TP2825_HALF720P60:
+	case TP2825_720P60:
+		tp2825_set_work_mode_720p60(client);
+		tp28xx_byte_write(client, 0x02, 0xCA);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp &= 0xFB;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_V1_DataSet(client);
+
+		if (std == STD_HDA) {
+			;
+		} else if (std == STD_HDC || std == STD_HDC_DEFAULT) {
+			TP2825_C720P60_DataSet(client);
+			if (std == STD_HDC) /* HDC 720p60 position adjust */
+				tp28xx_byte_write(client, 0x16, 0x02);
+		}
+		break;
+
+	case TP2825_720P30V2:
+		tp2825_set_work_mode_720p60(client);
+		tp28xx_byte_write(client, 0x02, 0xCA);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp |= 0x04;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_V2_DataSet(client);
+		if (std == STD_HDA) {
+			TP2825_A720P30_DataSet(client);
+		} else if (std == STD_HDC || std == STD_HDC_DEFAULT) {
+			TP2825_C720P30_DataSet(client);
+			if (std == STD_HDC) /* HDC 720p30 position adjust */
+				tp28xx_byte_write(client, 0x16, 0x02);
+		}
+		break;
+
+	case TP2825_720P25V2:
+		tp2825_set_work_mode_720p50(client);
+		tp28xx_byte_write(client, 0x02, 0xCA);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp |= 0x04;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_V2_DataSet(client);
+		if (std == STD_HDA) {
+			TP2825_A720P25_DataSet(client);
+		} else if (std == STD_HDC || std == STD_HDC_DEFAULT) {
+			TP2825_C720P25_DataSet(client);
+			if (std == STD_HDC) /* HDC 720p25 position adjust */
+				tp28xx_byte_write(client, 0x16, 0x40);
+		}
+		break;
+
+	case TP2825_PAL:
+		tp2825_set_work_mode_PAL(client);
+		tp28xx_byte_write(client, 0x02, 0xCF);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp |= 0x04;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_PAL_DataSet(client);
+		break;
+
+	case TP2825_NTSC:
+		tp2825_set_work_mode_NTSC(client);
+		tp28xx_byte_write(client, 0x02, 0xCF);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp |= 0x04;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_NTSC_DataSet(client);
+		break;
+
+	default:
+		err = -1;
+		break;
 	}
 
-	return 0;
+	return err;
+}
+
+static void tp2825_reset_default(struct i2c_client *client)
+{
+	unsigned int tmp;
+
+	tp28xx_byte_write(client, 0x26, 0x01);
+	tp28xx_byte_write(client, 0x07, 0xC0);
+	tp28xx_byte_write(client, 0x0B, 0xC0);
+	tp28xx_byte_write(client, 0x22, 0x35);
+
+	tmp = tp28xx_byte_read(client, 0x06);
+	tmp &= 0xfb;
+	tp28xx_byte_write(client, 0x06, tmp);
+}
+
+static void tp2825_comm_init(struct i2c_client *client, int chip)
+{
+	unsigned int val;
+
+	if (chip == TP2825) {
+		tp2825_reset_default(client);
+		tp2825_set_video_mode(client, mode, STD_TVI);
+
+		/* MUX output */
+		TP2825_output(client);
+		TP2825_PTZ_init(client);
+
+		/* soft reset */
+		val = tp28xx_byte_read(client, 0x06);
+		tp28xx_byte_write(client, 0x06, 0x80|val);
+	}
+}
+
+static void tp2825_info_print(struct tp2825_state *me)
+{
+	int val;
+	int val1;
+
+	vmsg("#### Video Input Status Register ########\n");
+	val = tp28xx_byte_read(me->i2c_client, 0x01);
+	if (val & 1<<7)
+		vmsg("## Video loss\n");
+	else
+		vmsg("## Video present\n");
+
+	if (val & 1<<6)
+		vmsg("## Vertical PLL Lock\n");
+	else
+		vmsg("## Vertical PLL Not Lock\n");
+
+	if (val & 1<<5)
+		vmsg("## Horizontal PLL Lock\n");
+	else
+		vmsg("## Horizontal PLL Not Lock\n");
+
+	if (val & 1<<4)
+		vmsg("## Carrier PLL Lock\n");
+	else
+		vmsg("## Carrier PLL Not Lock\n");
+
+	if (val & 1<<3)
+		vmsg("## Video detected\n");
+	else
+		vmsg("## No Video\n");
+
+	if (val & 1<<2)
+		vmsg("## Detected or 50Hz(SD)\n");
+	else
+		vmsg("## None(EQ or 50Hz Detect)\n");
+
+	if (val & 1<<1)
+		vmsg("## Progessive video\n");
+	else
+		vmsg("## Interlaced video\n");
+
+	if (val & 1<<0)
+		vmsg("## No carrier detected\n");
+	else
+		vmsg("## carrier detected\n");
+
+
+	vmsg("#### Decoding Control Register ########\n");
+	val = tp28xx_byte_read(me->i2c_client, 0x02);
+	if (val & 1<<7)
+		vmsg("## Output mode : 8bit\n");
+	else
+		vmsg("## Output mode : 16bit\n");
+
+	if (val & 1<<6)
+		vmsg("## Y/C order : C first\n");
+	else
+		vmsg("## Y/C order : Y first\n");
+
+	if (val & 1<<5)
+		vmsg("## Output limit : Y=16-235, Cb/Cr=16-240\n");
+	else
+		vmsg("## Output limit : 1-254\n");
+
+	if (val & 1<<3)
+		vmsg("## MD656 : BT.656 format\n");
+	else
+		vmsg("## MD656 : BT.1120 format\n");
+
+	if (val & 1<<2)
+		vmsg("## SD mode : SD mode only\n");
+	else
+		vmsg("## SD mode : HD mode\n");
+
+	if (val & 1<<1)
+		vmsg("## 720p decoding\n");
+	else
+		vmsg("## 1080p decoding\n");
+
+	if (val & 1<<0)
+		vmsg("## Interlace mode decoding\n");
+	else
+		vmsg("## Progressive mode decoding\n");
+
+	vmsg("#### Detection Status Register ########\n");
+	val = tp28xx_byte_read(me->i2c_client, 0x03);
+	if (val & 1<<3)
+		vmsg("## TVI v2.0\n");
+	else
+		vmsg("## TVI v1.0\n");
+
+	switch (val & 0x07) {
+	case 0:
+		vmsg("## 720p/60\n");
+		break;
+	case 1:
+		vmsg("## 720p/50\n");
+		break;
+	case 2:
+		vmsg("## 1080p/30\n");
+		break;
+	case 3:
+		vmsg("## 1080p/25\n");
+		break;
+	case 4:
+		vmsg("## 720p/30\n");
+		break;
+	case 5:
+		vmsg("## 720p/25\n");
+		break;
+	case 6:
+		vmsg("## SD\n");
+		break;
+	}
+
+	vmsg("#### Comb Filter and SD Format control Register ########\n");
+	val = tp28xx_byte_read(me->i2c_client, 0x0D);
+	switch (val & 0x07) {
+	case 0:
+		vmsg("## NTSC-M\n");
+		break;
+	case 1:
+		vmsg("## PAL-B\n");
+		break;
+	case 2:
+		vmsg("## PAL-M\n");
+		break;
+	case 3:
+		vmsg("## PAL-N\n");
+		break;
+	case 4:
+		vmsg("## PAL-60\n");
+		break;
+	case 5:
+		vmsg("## NTSC 4.43\n");
+		break;
+
+	default:
+		vmsg("## Not supported\n");
+		break;
+	}
+
+	vmsg("#### Output H/V Control Register ########\n");
+	val = tp28xx_byte_read(me->i2c_client, 0x15);
+	val1 = tp28xx_byte_read(me->i2c_client, 0x16);
+	vmsg("## H-Delay : %d\n", ((val&0x30)<<4 | val1));
+
+	val = tp28xx_byte_read(me->i2c_client, 0x1a);
+	val1 = tp28xx_byte_read(me->i2c_client, 0x17);
+	vmsg("## H-Active : %d\n", ((val&0x0f)<<8 | val1));
+
+	val1 = tp28xx_byte_read(me->i2c_client, 0x18);
+	vmsg("## V-Delay : %d\n", (val1));
+
+	val = tp28xx_byte_read(me->i2c_client, 0x1a);
+	val1 = tp28xx_byte_read(me->i2c_client, 0x19);
+	vmsg("## V-Active : %d\n", ((val&0xf0)<<4 | val1));
+
+
+	vmsg("#### H length Register ########\n");
+	val = tp28xx_byte_read(me->i2c_client, 0x1c);
+	val1 = tp28xx_byte_read(me->i2c_client, 0x1d);
+	vmsg("## Number of Pixels per line : %d\n",
+			((val&0x1f)<<8 | val1));
+
+	vmsg("#### Clamping Control Register ########\n");
+	val = tp28xx_byte_read(me->i2c_client, 0x26);
+	if (val & 1<<7)
+		vmsg("## Clamp : Disable\n");
+	else
+		vmsg("## Clamp : Enable\n");
+
+	if (val & 1<<6)
+		vmsg("## Clamp Current : 2X\n");
+	else
+		vmsg("## Clamp Current : 1X\n");
 }
 
 static int tp2825_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	if (enable) {
-		if (_state.first) {
-			int  i = 0;
-			struct tp2825_state *me = &_state;
-			struct reg_val *reg_val = _sensor_init_data;
+	struct tp2825_state *me = &_state;
+	struct reg_val *reg_val;
 
-			while (reg_val->reg != 0xff) {
-				_i2c_write_byte(me->i2c_client, reg_val->reg,
-					reg_val->val);
-				mdelay(10);
-				i++;
-				reg_val++;
+	if (enable) {
+		if (me->first) {
+
+			vmsg("## [%s():%s:%d\t] width:%d, height:%d\n",
+				__func__, strrchr(__FILE__, '/')+1, __LINE__,
+				me->width, me->height);
+
+			if (mode == TP2825_NTSC) {
+				reg_val = _sensor_init_data_1920x480i;
+				while (reg_val->reg != 0xff) {
+					tp28xx_byte_write(me->i2c_client,
+						reg_val->reg, reg_val->val);
+					reg_val++;
+				}
+			} else if (mode == TP2825_PAL) {
+				reg_val = _sensor_init_data_1920x576i;
+				while (reg_val->reg != 0xff) {
+					tp28xx_byte_write(me->i2c_client,
+						reg_val->reg, reg_val->val);
+					reg_val++;
+				}
+			} else if (mode == TP2825_NONE) {
+				;
+			} else {
+				tp2825_comm_init(me->i2c_client, 0x2825);
 			}
-			_state.first = false;
+
+			me->old_mode = mode;
+
+			tp2825_info_print(me);
 		}
 	}
 
@@ -188,7 +999,35 @@ static int tp2825_s_fmt(struct v4l2_subdev *sd,
 		struct v4l2_subdev_pad_config *cfg,
 		struct v4l2_subdev_format *fmt)
 {
+	struct v4l2_mbus_framefmt *mf = &fmt->format;
+	struct tp2825_state *me = &_state;
+
 	vmsg("%s\n", __func__);
+
+	me->width = mf->width;
+	me->height = mf->height;
+
+	/* NTSC -> 1920x480i */
+	if (me->width == 1920 && me->height == 480)
+		mode = TP2825_NTSC;
+	/* PAL -> 1920x576i */
+	else if (me->width == 1920 && me->height == 576)
+		mode = TP2825_PAL;
+	/* TVI(FHD) -> 1920x1080p */
+	else if (me->width == 1920 && me->height == 1080)
+		mode = TP2825_1080P30;
+	/* TVI(HD) -> 1280x720p */
+	else if (me->width == 1280 && me->height == 720)
+		mode = TP2825_720P30V2;
+	else
+		mode = TP2825_NONE;
+
+	if (mode == me->old_mode
+		|| mode == TP2825_NONE)
+		me->first = false;
+	else
+		me->first = true;
+
 	return 0;
 }
 
