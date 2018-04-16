@@ -865,6 +865,8 @@ static int nx_i2c_remove(struct platform_device *pdev)
 	reset_control_assert(rst);
 	reset_control_put(rst);
 #endif
+	nx_i2c_unregister_freq_notifier(par);
+
 	clk_disable_unprepare(par->clk);
 
 	i2c_del_adapter(&par->adapter);
