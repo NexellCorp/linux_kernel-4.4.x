@@ -398,8 +398,54 @@
 	};
 };
 
+&vip_0 {
+	status = "okay";
+};
+
 &vip_1 {
 	status = "okay";
+};
+
+&mipi_csi {
+	data_lane = <4>;
+	pllval = <750>;
+	hssettle = <12>;
+	interrupts = <IRQ_MIPI>;
+	status = "okay";
+};
+
+&clipper_0 {
+	interface_type = <NX_CAPTURE_INTERFACE_MIPI_CSI>;
+	gpios = <&gpio_b 9 0 &gpio_c 13 0>;
+	data_order = <NX_VIN_CBY0CRY1>;	
+	interlace = <0>;
+	status = "okay";
+	external_sync = <1>;
+	h_frontporch = <7>;
+	h_syncwidth = <0>;
+	h_backporch = <7>;
+	v_frontporch = <0>;
+	v_syncwidth = <0>;
+	v_backporch = <1>;
+
+	sensor {
+		type = <NX_CAPTURE_SENSOR_I2C>;
+		i2c_name = "max9286";
+		i2c_adapter = <4>;
+		addr = <0x48>;
+	};
+
+	power {
+		enable_seq = <
+		NX_ACTION_START NX_ACTION_TYPE_GPIO 0 1 20 NX_ACTION_END
+		NX_ACTION_START NX_ACTION_TYPE_GPIO 1 1 10 NX_ACTION_END
+		>;
+
+		disable_seq = <
+		NX_ACTION_START NX_ACTION_TYPE_GPIO 1 0 2 NX_ACTION_END
+		NX_ACTION_START NX_ACTION_TYPE_GPIO 0 0 15 NX_ACTION_END
+		>;
+	};
 };
 
 &clipper_1 {
