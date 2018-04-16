@@ -173,7 +173,6 @@ void *nx_rearcam_alloc_vendor_context(void *priv,
 	ctx->event_gpio = of_get_named_gpio(gpio_node, "event-gpio", 0);
 	if( !gpio_is_valid(ctx->event_gpio) ){
 		dev_err(dev, "failed to get vendor-event_gpio\n");
-		return NULL;
 	}
 
 	if( of_property_read_u32(gpio_node, "active_high", &ctx->active_high) ){
@@ -186,6 +185,10 @@ void *nx_rearcam_alloc_vendor_context(void *priv,
 		return NULL;
 	}
 
+	if( !gpio_is_valid(ctx->event_gpio) ) {
+		return ctx;
+	}
+	
 	ctx->irq_event = nx_rearcam_enable_gpio_irq_ctx(ctx->priv, ctx->event_gpio);
 
 	if( ctx->irq_event < 0 ){
@@ -229,7 +232,7 @@ void nx_rearcam_post_turn_off(void *ctx)
 	pr_debug("+++ %s ---\n", __func__);
 	if (!_ctx)
 		return;
-        gpio_set_value(_ctx->power_gpio, 0);
+	gpio_set_value(_ctx->power_gpio, 0);
 }
 
 void nx_rearcam_free_vendor_context(void *ctx)
@@ -239,8 +242,12 @@ void nx_rearcam_free_vendor_context(void *ctx)
 	pr_debug("+++ %s ---\n", __func__);
 	if (!_ctx)
 		return;
-	nx_rearcam_disable_gpio_irq_ctx((void *)_ctx->priv,
-					_ctx->irq_event, _ctx->event_gpio);
+
+	if( gpio_is_valid(_ctx->event_gpio) ) {	
+		nx_rearcam_disable_gpio_irq_ctx((void *)_ctx->priv,
+						_ctx->irq_event, _ctx->event_gpio);
+	}
+
 	if (_ctx)
 		kfree(_ctx);
 }
@@ -254,7 +261,10 @@ bool nx_rearcam_decide(void *ctx)
 	if (!_ctx)
 		return is_on;
 
-	is_on = gpio_get_value(_ctx->event_gpio);
+	if( gpio_is_valid(_ctx->event_gpio) ) {
+		is_on = gpio_get_value(_ctx->event_gpio);
+	}
+
 	if( !_ctx->active_high )
 		is_on ^= 1;
 	return is_on;
