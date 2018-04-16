@@ -152,6 +152,14 @@
 		};
 
 		pinctrl@C0010000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&initial>;
+
+			initial: initial-state {
+				/* Turn-Off USB-OTG OUTPUT */
+				PIN_OUT(gpioa-19, HIGH, FUNC0, NONE, STR0);
+			};
+
 			pmic_irq:pmic_irq{
 				nexell,pins = "alive-5";
 				nexell,pin-function = <NX_PIN_FUNC0>;
