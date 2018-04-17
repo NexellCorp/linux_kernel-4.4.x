@@ -1813,7 +1813,7 @@ static int max9286_init(struct v4l2_subdev *sd, u32 val)
 
 	pr_info("## [%s():%s:%d\t]  \n", __FUNCTION__, strrchr(__FILE__, '/')+1, __LINE__);
 
-	if (state->initialized) {
+	if (0/*state->initialized*/) {
 		state->runmode = MAX9286_RUNMODE_RUNNING;
 //		state->initialized = true;
 	    dev_err(&client->dev, "%s: start\n", __func__);
@@ -2369,17 +2369,16 @@ static int max9286_probe(struct i2c_client *client,
         return ret;
     }
     state->i2c_client = client;
-
+#if 0
 	printk("%s: max9286_hardware_init_booting start >>>> \n", __func__);
 	ret = max9286_hardware_init_booting(client);
 	if (ret < 0) {
         printk(KERN_ERR "%s: failed to max9286 initialize \n", __func__);
-        return ret;
     }
 	if (ret == 0)
 		state->initialized = true;
 	printk("%s: max9286_hardware_init_booting end <<<< \n", __func__);
-
+#endif
 	state->monitor_wqueue = create_singlethread_workqueue("max9286_monitor_wqueue");
 	INIT_DELAYED_WORK(&state->monitor_work, max9286_monitor_work);
 
