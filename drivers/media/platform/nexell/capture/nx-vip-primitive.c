@@ -942,6 +942,15 @@ void nx_vip_get_deci_source(u32 module_index, u32 *p_src_width,
 		*p_src_height = deci_src_height[module_index];
 }
 
+void nx_vip_clear_input_fifo(u32 module_index)
+{
+	register struct nx_vip_register_set *p_register;
+
+	p_register = __g_p_register[module_index];
+	writel(0xffff, &p_register->vip_infifoclr);
+	writel(0x4, &p_register->vip_infifoclr);
+}
+
 void nx_vip_dump_register(u32 module)
 {
 	struct nx_vip_register_set *p_reg =
@@ -1004,6 +1013,7 @@ void nx_vip_dump_register(u32 module)
 	pr_info(" VIP_FIFOCTRL	 = 0x%04x\r\n", p_reg->vip_fifoctrl);
 	pr_info(" VIP_HCOUNT	 = 0x%04x\r\n", p_reg->vip_hcount);
 	pr_info(" VIP_VCOUNT	 = 0x%04x\r\n", p_reg->vip_vcount);
+	pr_info(" VIP_INFIFOCLR  = 0x%04x\r\n", p_reg->vip_infifoclr);
 	pr_info(" VIP_CDENB	 = 0x%04x\r\n", p_reg->vip_cdenb);
 	pr_info(" VIP_ODINT	 = 0x%04x\r\n", p_reg->vip_odint);
 	pr_info(" VIP_IMGWIDTH	 = 0x%04x\r\n", p_reg->vip_imgwidth);

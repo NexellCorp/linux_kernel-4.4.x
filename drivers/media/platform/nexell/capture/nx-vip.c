@@ -225,6 +225,7 @@ EXPORT_SYMBOL_GPL(nx_vip_is_valid);
 int nx_vip_reset(u32 module)
 {
 	struct nx_vip *me;
+	int ret = 0;
 
 	if (module >= NUMBER_OF_VIP_MODULE) {
 		pr_err("[nx vip] invalid module num %d\n", module);
@@ -233,9 +234,10 @@ int nx_vip_reset(u32 module)
 	me = _nx_vip_object[module];
 
 	if (reset_control_status(me->rst))
-		return reset_control_reset(me->rst);
+		ret = reset_control_reset(me->rst);
+	nx_vip_clear_input_fifo(module);
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(nx_vip_reset);
 

@@ -104,7 +104,9 @@ struct nx_vip_register_set {
 	u32 vip_fifoctrl;
 	u32 vip_hcount;
 	u32 vip_vcount;
-	u8  __reserved00[0x200-0x2c];
+	u32 __reserved;
+	u32 vip_infifoclr;
+	u8 __reserved00[0x200 - 0x34];
 	u32 vip_cdenb;
 	u32 vip_odint;
 	u32 vip_imgwidth;
@@ -312,6 +314,7 @@ void nx_vip_set_decimator_addr(u32 module_index, u32 format,
 void nx_vip_get_deci_source(u32 module_index, u32 *p_src_width,
 			    u32 *p_src_height);
 int nx_vip_smoke_test(u32 module_index);
+void nx_vip_clear_input_fifo(u32 module_index);
 void nx_vip_dump_register(u32 module_index);
 
 #endif
