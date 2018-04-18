@@ -330,6 +330,12 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 		}
 		if (!(NX_ATOMIC_READ(&me->state) & STATE_RUNNING)) {
 			struct v4l2_crop crop;
+
+			if (nx_vip_is_running(me->module, VIP_DECIMATOR)) {
+				pr_err("VIP%d Decimator is already running\n",
+						me->module);
+				goto UP_AND_OUT;
+			}
 			hostdata_back = v4l2_get_subdev_hostdata(remote);
 			v4l2_set_subdev_hostdata(remote, NX_DECIMATOR_DEV_NAME);
 			ret = v4l2_subdev_call(remote, video, s_stream, 1);

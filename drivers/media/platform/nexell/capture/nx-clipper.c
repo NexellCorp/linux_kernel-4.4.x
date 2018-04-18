@@ -1212,6 +1212,11 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 #endif
 		if (!(NX_ATOMIC_READ(&me->state) &
 		      (STATE_MEM_RUNNING | STATE_CLIP_RUNNING))) {
+			if (nx_vip_is_running(me->module, VIP_CLIPPER)) {
+				pr_err("VIP%d Clipper is already running\n",
+						me->module);
+				goto UP_AND_OUT;
+			}
 			if (me->crop.width == 0 || me->crop.height == 0) {
 				me->crop.left = 0;
 				me->crop.top = 0;
