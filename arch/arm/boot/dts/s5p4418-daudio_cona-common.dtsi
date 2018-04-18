@@ -601,7 +601,6 @@
 		>;
 	};
 };
-
 #include "tw9900_rearcam_regset_cona.dtsi"
 &rearcam {
 	pinctrl-names = "rear_cam_clk";
@@ -665,6 +664,8 @@
 
 &dp_drm_lvds {
 	status = "ok";
+	crtc-pipe= <0>;
+	crtcs-possible-mask = <2>;
 
 	display-timing {
 		clock-frequency = <51200000>;
@@ -687,10 +688,45 @@
 	};
 };
 
-&dp_drm_hdmi {
-	ddc-i2c-bus = <&i2c_gpio6>;
-	status = "disabled";
+&dp_drm_tvout {
+       pinctrl-names = "default";
+       pinctrl-0 = <&dp_rgb_vclk &dp_rgb_G>;
+       status = "ok";
+	   crtc-pipe= <1>;
+	   crtcs-possible-mask = <1>;
+
+
+       display-timing {
+            clock-frequency = <74250000>;
+            hactive = <1280>;
+            vactive = <720>;
+            hfront-porch = <110>;
+            hback-porch = <220>;
+            hsync-len = <40>;
+            vfront-porch = <5>;
+            vback-porch = <20>;
+            vsync-len = <5>;
+       };
+        dp_control {
+            clk_src_lv0 = <0>;
+            clk_div_lv0 = <10>;   //720p30
+            clk_delay_lv0 = <0>;
+            clk_inv_lv0 = <1>;
+            clk_src_lv1 = <7>;
+            clk_div_lv1 = <2>;
+            clk_delay_lv1 = <0>;
+            clk_inv_lv1 = <1>;
+            clk_sel_div1 = <0>;
+            vck_select = <1>;
+            out_format = <10>;
+        };
+        sensor {
+            i2c_name = "tp2912";
+            i2c_adapter = <3>;
+            addr = <0x45>;
+        };
 };
+
 &i2c_1 {
 	fc8300: fc8300@58 {
 	      status = "disabled";
@@ -773,6 +809,7 @@
     status = "okay";
 };
 
+#if 0
 &mpegts_1 {
 	status = "ok";
 	pinctrl-names = "default";
@@ -794,3 +831,4 @@
 		>;
 	};
 };
+#endif
