@@ -478,6 +478,17 @@ config VIDEO_ADV7393
 	  To compile this driver as a module, choose M here: the
 	  module will be called adv7393.
 
+config VIDEO_TP2912
+	tristate "TP2912 HD-TVI encoder"
+	depends on I2C
+	select VIDEO_ADV_DEBUG
+	help
+	  Support for Techpoint I2C bus based TP2912 HD-TVI Encoder
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called TP2912.
+
+
 config VIDEO_ADV7511
 	tristate "Analog Devices ADV7511 encoder"
 	depends on VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API

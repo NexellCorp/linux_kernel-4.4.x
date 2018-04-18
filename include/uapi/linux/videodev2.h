@@ -1100,6 +1100,23 @@ typedef __u64 v4l2_std_id;
 #define V4L2_STD_ATSC_8_VSB     ((v4l2_std_id)0x01000000)
 #define V4L2_STD_ATSC_16_VSB    ((v4l2_std_id)0x02000000)
 
+
+#if 1
+/* Nexell / HDTV */
+#define V4L2_STD_525P_60        ((v4l2_std_id)(0x0001000000000000ULL))
+#define V4L2_STD_625P_50        ((v4l2_std_id)(0x0002000000000000ULL))
+#define V4L2_STD_720P_60        ((v4l2_std_id)(0x0004000000000000ULL))
+#define V4L2_STD_720P_50        ((v4l2_std_id)(0x0008000000000000ULL))
+#define V4L2_STD_1080I_60       ((v4l2_std_id)(0x0010000000000000ULL))
+#define V4L2_STD_1080I_50       ((v4l2_std_id)(0x0020000000000000ULL))
+#define V4L2_STD_1080P_60       ((v4l2_std_id)(0x0040000000000000ULL))
+#define V4L2_STD_1080P_50       ((v4l2_std_id)(0x0080000000000000ULL))
+#define V4L2_STD_720P_30        ((v4l2_std_id)(0x0100000000000000ULL))
+#define V4L2_STD_1080I_30       ((v4l2_std_id)(0x0200000000000000ULL))
+#define V4L2_STD_1080P_30       ((v4l2_std_id)(0x0400000000000000ULL))
+#endif
+
+
 /* FIXME:
    Although std_id is 64 bits, there is an issue on PPC32 architecture that
    makes switch(__u64) to break. So, there's a hack on v4l2-common.c rounding
