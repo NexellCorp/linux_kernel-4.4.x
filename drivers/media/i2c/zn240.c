@@ -58,6 +58,9 @@ struct reg_value {
 };
 
 static const struct reg_value zn240_init_setting[] = {
+	{0x00, 0x01, 0}, /* Set Page 1 */
+	{0x77, 0xcf, 0}, /* Set Drive strength of D9-D0 PAD to Max value */
+	{0x78, 0xcf, 0}, /* Set Drive strength of PIXCLK PAD to Max value */
 };
 
 static const struct reg_value zn240_test_pattern_on[] = {
