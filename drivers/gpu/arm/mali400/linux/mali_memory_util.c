@@ -115,6 +115,9 @@ static u32 _mali_free_allocation_mem(mali_mem_allocation *mali_alloc)
 		break;
 	}
 
+	if ((NULL != mali_alloc->cpu_mapping.vma) && (mali_alloc == (mali_alloc->cpu_mapping.vma)->vm_private_data))
+		(mali_alloc->cpu_mapping.vma)->vm_private_data = NULL;
+
 	/*Remove backend memory idex */
 	mutex_lock(&mali_idr_mutex);
 	idr_remove(&mali_backend_idr, mali_alloc->backend_handle);

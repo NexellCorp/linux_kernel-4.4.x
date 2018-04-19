@@ -53,26 +53,69 @@ static void mali_mem_vma_close(struct vm_area_struct *vma)
 	/* If need to share the allocation, unref ref_count here */
 	mali_mem_allocation *alloc = (mali_mem_allocation *)vma->vm_private_data;
 
-	mali_allocation_unref(&alloc);
-	vma->vm_private_data = NULL;
+	if (NULL        != alloc) {
+		struct file *filp = NULL;
+		struct mali_session_data *session = NULL;
+
+		filp = vma->vm_file;
+		MALI_DEBUG_ASSERT(filp);
+		session = (struct mali_session_data *)filp->private_data;
+		MALI_DEBUG_ASSERT(session);
+
+		mali_session_memory_lock(session);
+		vma->vm_private_data = NULL;
+		mali_session_memory_unlock(session);
+
+		mali_allocation_unref(&alloc);
+	}
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+static int mali_mem_vma_fault(struct vm_fault *vmf)
+#else
 static int mali_mem_vma_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+#endif
 {
-	mali_mem_allocation *alloc = (mali_mem_allocation *)vma->vm_private_data;
+	struct file *filp = NULL;
+	struct mali_session_data *session = NULL;
+	mali_mem_allocation *alloc = NULL;
 	mali_mem_backend *mem_bkend = NULL;
 	int ret;
 	int prefetch_num = MALI_VM_NUM_FAULT_PREFETCH;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+	struct vm_area_struct *vma = vmf->vma;
+#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	unsigned long address = (unsigned long)vmf->address;
+#else
 	unsigned long address = (unsigned long)vmf->virtual_address;
-	MALI_DEBUG_ASSERT(alloc->backend_handle);
-	MALI_DEBUG_ASSERT((unsigned long)alloc->cpu_mapping.addr <= address);
+#endif
+	filp = vma->vm_file;
+	MALI_DEBUG_ASSERT(filp);
+	session = (struct mali_session_data *)filp->private_data;
+	MALI_DEBUG_ASSERT(session);
+	mali_session_memory_lock(session);
+	if (NULL == vma->vm_private_data) {
+		MALI_DEBUG_PRINT(1, ("mali_vma_fault: The memory has been freed!\n"));
+		mali_session_memory_unlock(session);
+		return VM_FAULT_SIGBUS;
+	} else {
+		alloc = (mali_mem_allocation *)vma->vm_private_data;
+		MALI_DEBUG_ASSERT(alloc->backend_handle);
+		MALI_DEBUG_ASSERT(alloc->cpu_mapping.vma == vma);
+		MALI_DEBUG_ASSERT((unsigned long)alloc->cpu_mapping.addr <= address);
+		mali_allocation_ref(alloc);
+	}
+	mali_session_memory_unlock(session);
+
 
 	/* Get backend memory & Map on CPU */
 	mutex_lock(&mali_idr_mutex);
 	if (!(mem_bkend = idr_find(&mali_backend_idr, alloc->backend_handle))) {
 		MALI_DEBUG_PRINT(1, ("Can't find memory backend in mmap!\n"));
 		mutex_unlock(&mali_idr_mutex);
+		mali_allocation_unref(&alloc);
 		return VM_FAULT_SIGBUS;
 	}
 	mutex_unlock(&mali_idr_mutex);
@@ -89,6 +132,7 @@ static int mali_mem_vma_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		mutex_unlock(&mem_bkend->mutex);
 
 		if (ret != _MALI_OSK_ERR_OK) {
+			mali_allocation_unref(&alloc);
 			return VM_FAULT_OOM;
 		}
 		prefetch_num = 1;
@@ -101,6 +145,7 @@ static int mali_mem_vma_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		mutex_unlock(&mem_bkend->mutex);
 
 		if (unlikely(ret != _MALI_OSK_ERR_OK)) {
+			mali_allocation_unref(&alloc);
 			return VM_FAULT_SIGBUS;
 		}
 	} else if ((mem_bkend->type == MALI_MEM_SWAP) ||
@@ -118,15 +163,20 @@ static int mali_mem_vma_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 
 		if (ret != _MALI_OSK_ERR_OK) {
 			MALI_DEBUG_PRINT(2, ("Mali swap memory page fault process failed, address=0x%x\n", address));
+			mali_allocation_unref(&alloc);
 			return VM_FAULT_OOM;
 		} else {
+			mali_allocation_unref(&alloc);
 			return VM_FAULT_LOCKED;
 		}
 	} else {
 		MALI_PRINT_ERROR(("Mali vma fault! It never happen, indicating some logic errors in caller.\n"));
+		mali_allocation_unref(&alloc);
 		/*NOT support yet or OOM*/
 		return VM_FAULT_OOM;
 	}
+
+	mali_allocation_unref(&alloc);
 	return VM_FAULT_NOPAGE;
 }
 
@@ -200,6 +250,11 @@ int mali_mmap(struct file *filp, struct vm_area_struct *vma)
 		return -EFAULT;
 	}
 	mutex_unlock(&mali_idr_mutex);
+
+	if ((vma->vm_start + mem_bkend->size) > vma->vm_end) {
+		MALI_PRINT_ERROR(("mali_mmap: out of memory mapping map_size %d, physical_size %d\n",  vma->vm_end - vma->vm_start, mem_bkend->size));
+		return -EFAULT;
+	}
 
 	if (!(MALI_MEM_SWAP == mali_alloc->type ||
 	      (MALI_MEM_COW == mali_alloc->type && (mem_bkend->flags & MALI_MEM_BACKEND_FLAG_SWAP_COWED)))) {

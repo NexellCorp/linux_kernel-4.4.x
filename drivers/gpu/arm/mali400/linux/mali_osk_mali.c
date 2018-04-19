@@ -13,7 +13,12 @@
  * Implementation of the OS abstraction layer which is specific for the Mali kernel device driver
  */
 #include <linux/kernel.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#include <linux/uaccess.h>
+#else
 #include <asm/uaccess.h>
+#endif
 #include <linux/platform_device.h>
 #include <linux/mali/mali_utgard.h>
 #include <linux/of.h>
@@ -339,6 +344,10 @@ u32 _mali_osk_get_pmu_switch_delay(void)
 }
 #endif /* CONFIG_MALI_DT */
 
+#if !defined( CONFIG_MALI_DT )  /* nexell add */	
+#include <linux/fb.h> 
+#endif
+
 _mali_osk_errcode_t _mali_osk_device_data_get(_mali_osk_device_data *data)
 {
 	MALI_DEBUG_ASSERT_POINTER(data);
@@ -351,6 +360,65 @@ _mali_osk_errcode_t _mali_osk_device_data_get(_mali_osk_device_data *data)
 			/* Copy data from OS dependant struct to Mali neutral struct (identical!) */
 			BUILD_BUG_ON(sizeof(*os_data) != sizeof(*data));
 			_mali_osk_memcpy(data, os_data, sizeof(*os_data));
+
+			#if !defined( CONFIG_MALI_DT )	/* nexell add */	
+			{				
+				/* NEXELL_FEATURE_PORTING */
+				unsigned long temp_fb_start[2] = {0,};
+				unsigned long temp_fb_size[2] = {0,};
+				unsigned char is_fb_used[2] = {0,};
+				data->fb_start = 0;
+				data->fb_size = 0;
+				int fb_num;
+				for(fb_num = 0 ; fb_num < 2 ; fb_num++)
+				{
+					struct fb_info *info = registered_fb[fb_num];
+					if(info)
+					{
+						if(info->fix.smem_start && info->var.yres_virtual && info->var.yres && info->fix.smem_len)
+						{
+							is_fb_used[fb_num] = 1;
+							temp_fb_start[fb_num] = info->fix.smem_start;
+							temp_fb_size[fb_num] = (info->var.yres_virtual/info->var.yres) * info->fix.smem_len;
+						}	
+					}
+				}
+				if(is_fb_used[0] && !is_fb_used[1])
+				{
+					data->fb_start = temp_fb_start[0];
+					data->fb_size = temp_fb_size[0];
+				}
+				else if(!is_fb_used[0] && is_fb_used[1])
+				{
+					data->fb_start = temp_fb_start[1];
+					data->fb_size = temp_fb_size[1];
+				}
+				else if(is_fb_used[0] && is_fb_used[1])
+				{
+					if(temp_fb_start[0] < temp_fb_start[1])
+					{
+						data->fb_start = temp_fb_start[0]; 
+						data->fb_size = temp_fb_start[1] - temp_fb_start[0] + temp_fb_size[1];
+					}
+					else
+					{
+						data->fb_start = temp_fb_start[1];
+						data->fb_size = temp_fb_start[0] - temp_fb_start[1] + temp_fb_size[0];
+					}						
+				}	
+				else
+				{
+					printk("################ ERROR! There is no available FB ###############\n");
+					return _MALI_OSK_ERR_ITEM_NOT_FOUND;
+				}	
+				
+				if(!data->fb_start || !data->fb_size)	
+				{
+					printk("################ ERROR! wrong FB%d start(0x%x), size(0x%x)###############\n", is_fb_used[0]? 0 : 1, data->fb_start, data->fb_size);
+					return _MALI_OSK_ERR_ITEM_NOT_FOUND;
+				}	
+			}
+			#endif
 
 			return _MALI_OSK_ERR_OK;
 		}

@@ -48,6 +48,9 @@ int timeline_wait_wrapper(struct mali_session_data *session, _mali_uk_timeline_w
 int timeline_create_sync_fence_wrapper(struct mali_session_data *session, _mali_uk_timeline_create_sync_fence_s __user *uargs);
 int soft_job_start_wrapper(struct mali_session_data *session, _mali_uk_soft_job_start_s __user *uargs);
 int soft_job_signal_wrapper(struct mali_session_data *session, _mali_uk_soft_job_signal_s __user *uargs);
+#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
+int test_job_get_time(struct mali_session_data *session, _mali_uk_test_job_get_time_s __user *uargs);
+#endif
 int pp_start_job_wrapper(struct mali_session_data *session_data, _mali_uk_pp_start_job_s __user *uargs);
 int pp_and_gp_start_job_wrapper(struct mali_session_data *session_data, _mali_uk_pp_and_gp_start_job_s __user *uargs);
 int pp_get_number_of_cores_wrapper(struct mali_session_data *session_data, _mali_uk_get_pp_number_of_cores_s __user *uargs);

@@ -229,6 +229,10 @@ void mali_gp_job_start(struct mali_gp_core *core, struct mali_gp_job *job)
 	/* Barrier to make sure the previous register write is finished */
 	_mali_osk_write_mem_barrier();
 
+#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
+	TestIntTimeStartGP();
+#endif
+
 	/* This is the command that starts the core.
 	 *
 	 * Don't actually run the job if PROFILING_SKIP_PP_JOBS are set, just

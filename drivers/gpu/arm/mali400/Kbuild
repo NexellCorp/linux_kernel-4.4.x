@@ -47,6 +47,7 @@ ifeq ($(USING_GPU_UTILIZATION), 1)
     endif
 endif
 
+# NEXELL_FEATURE_PORTING
 ifeq ($(CONFIG_MALI_PLATFORM_S5P4418),y)
 export MALI_PLATFORM=nexell
 endif
@@ -164,8 +165,12 @@ ccflags-$(CONFIG_MALI400_INTERNAL_PROFILING) += -I$(srctree)/$(src)/timestamp-$(
 mali-$(CONFIG_DMA_SHARED_BUFFER) += linux/mali_memory_dma_buf.o
 mali-$(CONFIG_DMA_SHARED_BUFFER) += linux/mali_memory_secure.o
 mali-$(CONFIG_SYNC) += linux/mali_sync.o
+mali-$(CONFIG_SYNC) += linux/mali_internal_sync.o
+mali-$(CONFIG_SYNC_FILE) += linux/mali_sync.o
+mali-$(CONFIG_SYNC_FILE) += linux/mali_internal_sync.o
 mali-$(CONFIG_MALI_DMA_BUF_FENCE) += linux/mali_dma_fence.o
 ccflags-$(CONFIG_SYNC) += -Idrivers/staging/android
+ccflags-$(CONFIG_SYNC_FILE) += -Idrivers/staging/android
 
 mali-$(CONFIG_MALI400_UMP) += linux/mali_memory_ump.o
 

@@ -45,6 +45,7 @@ struct mali_pp_job *mali_pp_job_create(struct mali_session_data *session,
 
 	job = _mali_osk_calloc(1, sizeof(struct mali_pp_job));
 	if (NULL != job) {
+
 		_mali_osk_list_init(&job->list);
 		_mali_osk_list_init(&job->session_fb_lookup_list);
 		_mali_osk_atomic_inc(&session->number_of_pp_jobs);

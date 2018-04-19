@@ -107,6 +107,9 @@
  */
 #define MALI_IGNORE(x) x=x
 
+/* NEXELL_FEATURE_DEBUG_EN */
+#define NX_DBG_POINT() MALI_PRINTF((" --- called at %s(%d)\n", __FUNCTION__, __LINE__))
+
 #if defined(CONFIG_MALI_QUIET)
 #define MALI_PRINTF(args)
 #else

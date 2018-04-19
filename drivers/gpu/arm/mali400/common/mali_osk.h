@@ -21,6 +21,24 @@
 #include "mali_osk_specific.h"           /* include any per-os specifics */
 #include "mali_osk_locks.h"
 
+
+/*----------------------------------------*/
+#if 0
+#define NEXELL_FEATURE_IOCTL_PERFORMANCE
+#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
+void TestIntTimeEn(int enable);
+unsigned int TestGetTimeTotalValGP(void);
+void TestIntTimeStartGP(void);
+void TestIntStateUpadteGP(void);
+void TestClearTimeTotalValGP(void);
+unsigned int TestGetTimeTotalValPP(void);
+void TestIntTimeStartPP(void);
+void TestIntStateUpadtePP(void);
+void TestClearTimeTotalValPP(void);
+#endif
+#endif
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif

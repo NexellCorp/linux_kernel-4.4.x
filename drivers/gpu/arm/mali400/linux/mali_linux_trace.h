@@ -16,6 +16,11 @@
 #include <linux/stringify.h>
 #include <linux/tracepoint.h>
 
+#undef  TRACE_SYSTEM
+#define TRACE_SYSTEM mali
+#ifndef TRACEPOINTS_ENABLED
+#define TRACE_SYSTEM_STRING __stringfy(TRACE_SYSTEM)
+#endif
 #define TRACE_INCLUDE_PATH .
 #define TRACE_INCLUDE_FILE mali_linux_trace
 

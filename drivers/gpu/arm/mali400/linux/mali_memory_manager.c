@@ -409,6 +409,17 @@ _mali_osk_errcode_t _mali_ukk_mem_allocate(_mali_uk_alloc_mem_s *args)
 
 	MALI_DEBUG_PRINT(4, (" _mali_ukk_mem_allocate, vaddr=0x%x, size =0x%x! \n", args->gpu_vaddr, args->psize));
 
+	if (args->vsize < args->psize) {
+		MALI_PRINT_ERROR(("_mali_ukk_mem_allocate: vsize %d  shouldn't be less than psize %d\n", args->vsize, args->psize));
+		return _MALI_OSK_ERR_INVALID_ARGS;
+	} else if ((args->vsize % _MALI_OSK_MALI_PAGE_SIZE) || (args->psize % _MALI_OSK_MALI_PAGE_SIZE)) {
+		MALI_PRINT_ERROR(("_mali_ukk_mem_allocate: not supported non page aligned size-->pszie %d, vsize %d\n",  args->psize, args->vsize));
+		return _MALI_OSK_ERR_INVALID_ARGS;
+	} else if ((args->vsize != args->psize) && ((args->flags & _MALI_MEMORY_ALLOCATE_SWAPPABLE) || (args->flags & _MALI_MEMORY_ALLOCATE_SECURE))) {
+		MALI_PRINT_ERROR(("_mali_ukk_mem_allocate: not supported mem resizeable for mem flag %d\n",  args->flags));
+		return _MALI_OSK_ERR_INVALID_ARGS;
+	}
+
 	/* Check if the address is allocated
 	*/
 	mali_vma_node = mali_vma_offset_search(&session->allocation_mgr, args->gpu_vaddr, 0);
@@ -613,13 +624,18 @@ _mali_osk_errcode_t _mali_ukk_mem_free(_mali_uk_free_mem_s *args)
 		MALI_DEBUG_PRINT(1, ("_mali_ukk_mem_free: invalid addr: 0x%x\n", vaddr));
 		return _MALI_OSK_ERR_INVALID_ARGS;
 	}
-	MALI_DEBUG_ASSERT(NULL != mali_vma_node);
+
 	mali_alloc = container_of(mali_vma_node, struct mali_mem_allocation, mali_vma_node);
 
-	if (mali_alloc)
+	if (mali_alloc) {
+		if ((MALI_MEM_UMP == mali_alloc->type) || (MALI_MEM_DMA_BUF == mali_alloc->type)
+		    || (MALI_MEM_EXTERNAL == mali_alloc->type)) {
+			MALI_PRINT_ERROR(("_mali_ukk_mem_free: not supported for memory type %d\n",  mali_alloc->type));
+			return _MALI_OSK_ERR_UNSUPPORTED;
+		}
 		/* check ref_count */
 		args->free_pages_nr = mali_allocation_unref(&mali_alloc);
-
+	}
 	return _MALI_OSK_ERR_OK;
 }
 
@@ -771,9 +787,17 @@ _mali_osk_errcode_t _mali_ukk_mem_unbind(_mali_uk_unbind_mem_s *args)
 		return _MALI_OSK_ERR_INVALID_ARGS;
 	}
 
-	if (NULL != mali_allocation)
+	if (NULL != mali_allocation) {
+
+		if ((MALI_MEM_UMP != mali_allocation->type) && (MALI_MEM_DMA_BUF != mali_allocation->type)
+		    && (MALI_MEM_EXTERNAL != mali_allocation->type)) {
+			MALI_PRINT_ERROR(("_mali_ukk_mem_unbind not supported for memory type %d\n",  mali_allocation->type));
+			return _MALI_OSK_ERR_UNSUPPORTED;
+		}
+
 		/* check ref_count */
 		mali_allocation_unref(&mali_allocation);
+	}
 	return _MALI_OSK_ERR_OK;
 }
 
@@ -926,7 +950,10 @@ _mali_osk_errcode_t _mali_ukk_mem_cow_modify_range(_mali_uk_cow_modify_range_s *
 		return ret;
 	}
 
-	MALI_DEBUG_ASSERT(MALI_MEM_COW  == mem_backend->type);
+	if (MALI_MEM_COW  != mem_backend->type) {
+		MALI_PRINT_ERROR(("_mali_ukk_mem_cow_modify_range: not supported for memory type %d !\n", mem_backend->type));
+		return _MALI_OSK_ERR_FAULT;
+	}
 
 	ret =  mali_memory_cow_modify_range(mem_backend, args->range_start, args->size);
 	args->change_pages_nr = mem_backend->cow_mem.change_pages_nr;

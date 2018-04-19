@@ -44,7 +44,11 @@
 #include <linux/sched.h>
 #include <linux/atomic.h>
 #if defined(CONFIG_MALI_DMA_BUF_FENCE)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+#include <linux/dma-fence.h>
+#else
 #include <linux/fence.h>
+#endif
 #endif
 
 #define MALI_SHARED_MEMORY_DEFAULT_SIZE 0xffffffff
@@ -752,7 +756,11 @@ _mali_osk_errcode_t mali_initialize_subsystems(void)
 
 	mali_pp_job_initialize();
 
-	mali_timeline_initialize();
+	err = mali_timeline_initialize();
+	if (_MALI_OSK_ERR_OK != err) {
+		mali_terminate_subsystems();
+		return err;
+	}
 
 	err = mali_session_initialize();
 	if (_MALI_OSK_ERR_OK != err) {
@@ -1161,7 +1169,9 @@ _mali_osk_errcode_t _mali_ukk_open(void **context)
 
 	/* Initialize the dma fence context.*/
 #if defined(CONFIG_MALI_DMA_BUF_FENCE)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	session->fence_context = dma_fence_context_alloc(1);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
 	session->fence_context = fence_context_alloc(1);
 	_mali_osk_atomic_init(&session->fence_seqno, 0);
 #else

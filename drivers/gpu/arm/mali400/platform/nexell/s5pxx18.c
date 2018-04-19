@@ -14,6 +14,7 @@
  * - Nexell s5p6818 platforms with ARM CortexA53 8 cores.
  * - Nexell s5p4418 platforms with ARM CortexA9 4 cores.
  */
+ 
 #include <linux/platform_device.h>
 #include <linux/version.h>
 #include <linux/pm.h>
@@ -26,11 +27,16 @@
 #include "mali_kernel_common.h"
 #include <linux/dma-mapping.h>
 #include <linux/moduleparam.h>
+#ifdef CONFIG_MALI_DT /* org */
 #include <linux/reset.h>
+#else 
+#endif
 #include <linux/clk.h>
-#include <linux/clk-provider.h>
 
+#ifdef CONFIG_MALI_DT /* org */
 #include <linux/soc/nexell/cpufreq.h>
+#else
+#endif
 #include <linux/pm_qos.h>
 #include "s5pxx18_core_scaling.h"
 #include "mali_executor.h"
@@ -40,9 +46,73 @@
 #include <linux/thermal.h>
 #endif
 
+#ifdef CONFIG_MALI_DT
 #ifdef CONFIG_MALI_PLATFORM_S5P6818
 #include <dt-bindings/tieoff/s5p6818-tieoff.h>
 #include <soc/nexell/tieoff.h>
+#endif
+#endif
+
+#ifndef CONFIG_MALI_DT
+static void mali_platform_device_release(struct device *device);
+
+#if defined(CONFIG_ARCH_VEXPRESS)
+
+#if defined(CONFIG_ARM64)
+/* Juno + Mali-450 MP6 in V7 FPGA */
+static struct resource mali_gpu_resources_m450_mp6[] = {
+	MALI_GPU_RESOURCES_MALI450_MP6_PMU(0x6F040000, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200)
+};
+
+static struct resource mali_gpu_resources_m470_mp4[] = {
+	MALI_GPU_RESOURCES_MALI470_MP4_PMU(0x6F040000, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200)
+};
+
+static struct resource mali_gpu_resources_m470_mp3[] = {
+	MALI_GPU_RESOURCES_MALI470_MP3_PMU(0x6F040000, 200, 200, 200, 200, 200, 200, 200, 200, 200)
+};
+
+static struct resource mali_gpu_resources_m470_mp2[] = {
+	MALI_GPU_RESOURCES_MALI470_MP2_PMU(0x6F040000, 200, 200, 200, 200, 200, 200, 200)
+};
+
+static struct resource mali_gpu_resources_m470_mp1[] = {
+	MALI_GPU_RESOURCES_MALI470_MP1_PMU(0x6F040000, 200, 200, 200, 200, 200)
+};
+
+#else
+static struct resource mali_gpu_resources_m450_mp8[] = {
+	MALI_GPU_RESOURCES_MALI450_MP8_PMU(0xFC040000, -1, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 68)
+};
+
+static struct resource mali_gpu_resources_m450_mp6[] = {
+	MALI_GPU_RESOURCES_MALI450_MP6_PMU(0xFC040000, -1, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 68)
+};
+
+static struct resource mali_gpu_resources_m450_mp4[] = {
+	MALI_GPU_RESOURCES_MALI450_MP4_PMU(0xFC040000, -1, 70, 70, 70, 70, 70, 70, 70, 70, 70, 68)
+};
+
+static struct resource mali_gpu_resources_m470_mp4[] = {
+	MALI_GPU_RESOURCES_MALI470_MP4_PMU(0xFC040000, -1, 70, 70, 70, 70, 70, 70, 70, 70, 70, 68)
+};
+#endif /* CONFIG_ARM64 */
+
+#elif defined(CONFIG_ARCH_REALVIEW)
+
+static struct resource mali_gpu_resources_m300[] = {
+	MALI_GPU_RESOURCES_MALI300_PMU(0xC0000000, -1, -1, -1, -1)
+};
+
+static struct resource mali_gpu_resources_m400_mp1[] = {
+	MALI_GPU_RESOURCES_MALI400_MP1_PMU(0xC0000000, -1, -1, -1, -1)
+};
+
+static struct resource mali_gpu_resources_m400_mp2[] = {
+	MALI_GPU_RESOURCES_MALI400_MP2_PMU(0xC0000000, -1, -1, -1, -1, -1, -1)
+};
+
+#endif
 #endif
 
 static int mali_core_scaling_enable = 0;
@@ -54,11 +124,10 @@ static struct pm_qos_request nexell_gpu_qos;
 static int bus_clk_step;
 static struct delayed_work qos_work;
 #endif
-static void mali_clk_enable(void);
-static void mali_clk_disable(void);
 
 void mali_gpu_utilization_callback(struct mali_gpu_utilization_data *data);
 
+#ifdef CONFIG_MALI_DT
 #ifdef CONFIG_MALI_PLATFORM_S5P6818
 static void s5p6818_mali_axibus_lpi_exit(void)
 {
@@ -78,30 +147,632 @@ static void s5p6818_mali_axibus_lpi_enter(void)
 	nx_tieoff_set(NX_TIEOFF_Inst_VR_MBUS_AXILPI_S0_CSYSREQ, 0);
 }
 #endif
+#endif
 
-static void mali_clk_enable(void)
+#if !defined(CONFIG_MALI_DT)
+#ifdef CONFIG_MALI_PLATFORM_S5P4418
+/* NEXELL_FEATURE_PORTING */
+//added by nexell
+#include <asm/io.h>
+#include <linux/clk.h>
+#include <linux/delay.h>	/* mdelay */
+
+#define PHY_BASEADDR_VR_PMU					(0xC0070000 + 0x2000) //~ + 0x10
+#define PHY_BASEADDR_VR_PMU_REG_SIZE		0x10
+#define PHY_BASEADDR_PMU_ISOLATE			(0xC0010D00) //~ + 0x10
+#define PHY_BASEADDR_PMU_ISOLATE_REG_SIZE	0x10
+#define PHY_BASEADDR_POWER_GATE				(0xC0010800) //~ + 0x4
+#define PHY_BASEADDR_POWER_GATE_REG_SIZE	0x4
+#define PHY_BASEADDR_CLOCK_GATE				(0xC00C3000) //~ + 0x4
+#define PHY_BASEADDR_CLOCK_GATE_REG_SIZE	0x4
+#define PHY_BASEADDR_RESET  				(0xC0012000) //~ + 0xC
+#define PHY_BASEADDR_RESET_REG_SIZE  		0xC
+#ifdef CONFIG_MALI_PLATFORM_S5P6818
+#define PHY_BASEADDR_LPI_ACTIVE				0xC001120C
+#define PHY_BASEADDR_LPI_ACTIVE_REG_SIZE	0x4
+#define PHY_BASEADDR_LPI_REQ				0xC0011114
+#define PHY_BASEADDR_LPI_REQ_REG_SIZE		0x4
+#endif
+
+enum
 {
-	if (clk_mali &&  !__clk_is_enabled(clk_mali))
-		clk_prepare_enable(clk_mali);
+	PHY_BASEADDR_VR_PMU_IDX,
+	PHY_BASEADDR_PMU_ISOLATE_IDX,
+	PHY_BASEADDR_POWER_GATE_IDX,
+	PHY_BASEADDR_CLOCK_GATE_IDX,
+	PHY_BASEADDR_RESET_IDX,
+#ifdef CONFIG_MALI_PLATFORM_S5P6818
+	PHY_BASEADDR_LPI_ACTIVE_IDX,
+	PHY_BASEADDR_LPI_REQ_IDX,
+#endif	
+	PHY_BASEADDR_IDX_MAX
+};
+typedef struct
+{
+	unsigned int reg_addr;
+	unsigned int reg_size;
+}VR_REG_MAPS;
+
+static VR_REG_MAPS __g_VRRegPhysMaps[PHY_BASEADDR_IDX_MAX] = {
+	{PHY_BASEADDR_VR_PMU, 		PHY_BASEADDR_VR_PMU_REG_SIZE},
+	{PHY_BASEADDR_PMU_ISOLATE, 	PHY_BASEADDR_PMU_ISOLATE_REG_SIZE},
+	{PHY_BASEADDR_POWER_GATE, 	PHY_BASEADDR_POWER_GATE_REG_SIZE},
+	{PHY_BASEADDR_CLOCK_GATE, 	PHY_BASEADDR_CLOCK_GATE_REG_SIZE},
+	{PHY_BASEADDR_RESET, 		PHY_BASEADDR_RESET_REG_SIZE},
+#ifdef CONFIG_MALI_PLATFORM_S5P6818
+	{PHY_BASEADDR_LPI_ACTIVE,	PHY_BASEADDR_LPI_ACTIVE_REG_SIZE},
+	{PHY_BASEADDR_LPI_REQ,		PHY_BASEADDR_LPI_REQ_REG_SIZE},
+#endif	
+};
+static void* __gp_VRRegVirtMaps[PHY_BASEADDR_IDX_MAX];
+
+#define POWER_DELAY_MS	100
+#if 0
+#define VR_DBG printk
+#define VR_PM_DBG printk
+#define VR_IOCTL_DBG printk
+#else
+#define VR_DBG
+#define VR_PM_DBG //PM_DBGOUT
+#define VR_IOCTL_DBG
+#endif
+
+void nx_vr_make_reg_virt_maps(void)
+{
+	int i;
+	if(!__gp_VRRegVirtMaps[i])
+	{
+		for(i = 0 ; i < PHY_BASEADDR_IDX_MAX ; i++)
+		{
+			__gp_VRRegVirtMaps[i] = ioremap_nocache(__g_VRRegPhysMaps[i].reg_addr, __g_VRRegPhysMaps[i].reg_size);
+			if(!__gp_VRRegVirtMaps[i])
+			{
+				MALI_PRINT(("ERROR! can't run 'ioremap_nocache()'\n"));
+				break;
+			}
+		}
+	}
 }
 
-static void mali_clk_disable(void)
+void nx_vr_release_reg_virt_maps(void)
 {
-	if (clk_mali && __clk_is_enabled(clk_mali))
-		clk_disable_unprepare(clk_mali);
+	int i;
+	for(i = 0 ; i < PHY_BASEADDR_IDX_MAX ; i++)
+	{
+		iounmap(__gp_VRRegVirtMaps[i]);
+	}
 }
 
-static void nexell_platform_resume(struct device *dev)
+#if defined( CONFIG_MALI_PLATFORM_S5P4418 )
+void nx_vr_power_down_all_s5p4418(void)
 {
-	mali_clk_enable();
+	void* virt_addr_page;
+	u32 offset;
 
+	//reset
+	offset = 8;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_RESET_IDX];
+	{
+		unsigned int temp32 = ioread32(((u8*)virt_addr_page + offset));
+		unsigned int bit_mask = 1<<1; //65th
+		VR_DBG("setting Reset VR addr(0x%x)\n", (u8*)virt_addr_page + offset);
+
+		temp32 &= ~bit_mask;
+		iowrite32(temp32, ((u8*)virt_addr_page + offset));
+	}
+
+	//clk disalbe
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_CLOCK_GATE_IDX];
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting ClockGen, set 0\n");
+		iowrite32(read_val & ~0x3, ((u8*)virt_addr_page + offset));
+	}
+
+	//ready
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_POWER_GATE_IDX];
+	{
+		VR_DBG("setting PHY_BASEADDR_POWER_GATE, set 1\n");
+		iowrite32(0x1, ((u8*)virt_addr_page + offset));
+	}
+
+	//enable ISolate
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE, set 0\n");
+		iowrite32(read_val & ~1, ((u8*)virt_addr_page + offset));
+	}
+
+	//pre charge down
+	offset = 4;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE+4, set 1\n");
+		iowrite32(read_val | 1, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//powerdown
+	offset = 8;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE+8, set 1\n");
+		iowrite32(read_val | 1, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//wait ack
+	VR_DBG("read PHY_BASEADDR_PMU_ISOLATE + 0xC\n");
+	offset = 0xC;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	do{
+		unsigned int powerUpAck = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("Wait Power Down Ack(powerUpAck=0x%08x)\n", powerUpAck);
+		if( (powerUpAck & 0x1) )
+			break;
+		VR_DBG("Wait Power Down Ack(powerUpAck=0x%08x)\n", powerUpAck);
+	}while(1);
+}
+
+void nx_vr_power_up_all_s5p4418(void)
+{
+	void* virt_addr_page;
+	u32 offset;
+
+	//ready
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_POWER_GATE_IDX];
+	{
+		VR_DBG("setting PHY_BASEADDR_POWER_GATE, set 1\n");
+		iowrite32(0x1, ((u8*)virt_addr_page + offset));
+	}
+
+	//pre charge up
+	offset = 4;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE+4, set 0\n");
+		iowrite32(read_val & ~0x1, ((u8*)virt_addr_page + offset));
+	}
+
+	//power up
+	offset = 8;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE+8, set 0\n");
+		iowrite32(read_val & ~0x1, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//disable ISolate
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE, set 1\n");
+		iowrite32(read_val | 1, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//wait ack
+	VR_DBG("read PHY_BASEADDR_PMU_ISOLATE + 0xC\n");
+	offset = 0xC;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	do{
+		unsigned int powerUpAck = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("Wait Power UP Ack(powerUpAck=0x%08x)\n", powerUpAck);
+		if( !(powerUpAck & 0x1) )
+			break;
+		VR_DBG("Wait Power UP Ack(powerUpAck=0x%08x)\n", powerUpAck);
+	}while(1);
+
+	//clk enable
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_CLOCK_GATE_IDX];
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting ClockGen, set 1\n");
+		iowrite32(0x3 | read_val, ((u8*)virt_addr_page + offset));
+	}
+
+	//reset release
+	offset = 8;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_RESET_IDX];
+	{
+		unsigned int temp32 = ioread32(((u8*)virt_addr_page + offset));
+		unsigned int bit_mask = 1<<1; //65th
+		VR_DBG("setting Reset VR addr(0x%x)\n", (u8*)virt_addr_page + offset);
+		temp32 |= bit_mask;
+		iowrite32(temp32, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//mask vr400 PMU interrupt
+	offset = 0xC;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_VR_PMU_IDX];
+	{
+		VR_PM_DBG("mask PMU INT, addr(0x%x)\n", (u8*)virt_addr_page + offset);
+		iowrite32(0x0, ((u8*)virt_addr_page + offset));
+	}
+
+	//power up vr400
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_VR_PMU_IDX];
+	{
+		VR_DBG("setting PHY_BASEADDR_VR_PMU addr(0x%x)\n", (u8*)virt_addr_page + offset);
+		iowrite32(0xF/*GP, L2C, PP0, PP1*/, ((u8*)virt_addr_page + offset));
+	}
+}
+#endif
+#if defined(CONFIG_MALI_PLATFORM_S5P6818)
+static void nx_vr_power_down_enter_reset_s5p6818(void)
+{
+	void* virt_addr_page;
+	u32 read32;
+	u32 offset;
+
+	//=========================
+	// [ mali PBUS ]
+	//=========================
+	// wait until LPI ACTIVE HIGH
+	//=========================
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_LPI_ACTIVE_IDX];
+	//printk("LPI ACTIVE HIGH waitting start...\n");
+	do{
+		read32 = ioread32((u8*)virt_addr_page + offset);
+		if( (read32>>12) & 0x01 )
+			break;
+	}while(1);
+	//printk("LPI ACTIVE HIGH waitting done\n");
+
+	//==========================
+	// LPI REQ, Set LOW
+	//==========================
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_LPI_REQ_IDX];
+	read32 = ioread32((u8*)virt_addr_page + offset);
+	read32 = read32 & (~(1<<2)); // CSYSREQ LOW
+	iowrite32(read32, ((u8*)virt_addr_page + offset));
+
+	//==========================
+	// wait until LPI ACK LOW
+	//==========================
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_LPI_ACTIVE_IDX];
+	//printk("LPI ACK LOW waitting start...\n");
+	do{
+		read32 = ioread32((u8*)virt_addr_page + offset);
+		if( !((read32>>13) & 0x01) )
+			break;
+	}while(1);
+	//printk("LPI ACK LOW waitting done\n");
+
+	//=========================
+	// [ mali MBUS ]
+	//=========================
+	// wait until LPI ACTIVE HIGH
+	//=========================
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_LPI_ACTIVE_IDX];
+	//printk("LPI ACTIVE HIGH waitting start...\n");
+	do{
+		read32 = ioread32((u8*)virt_addr_page + offset);
+		if( (read32>>20) & 0x01 )
+			break;
+	}while(1);
+	//printk("LPI ACTIVE HIGH waitting done\n");
+
+	//==========================
+	// LPI REQ, Set LOW
+	//==========================
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_LPI_REQ_IDX];
+	read32 = ioread32((u8*)virt_addr_page + offset);
+	read32 = read32 & (~(1<<1)); // CSYSREQ LOW
+	iowrite32(read32, ((u8*)virt_addr_page + offset));
+
+	//==========================
+	// wait until LPI ACK LOW
+	//==========================
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_LPI_ACTIVE_IDX];
+	//printk("LPI ACTIVE LOW waitting start...\n");
+	do{
+		read32 = ioread32((u8*)virt_addr_page + offset);
+		if( !((read32>>21) & 0x01) )
+			break;
+	}while(1);
+	//printk("LPI ACTIVE LOW waitting done\n");
+}
+
+static void nx_vr_power_up_leave_reset_s5p6818(void)
+{
+	void* virt_addr_page;
+	u32 read32;
+	u32 offset;
+
+	//==========================
+	// [ mali PBUS ]
+	//==========================
+	// LPI REQ, Set HIGH
+	//==========================
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_LPI_REQ_IDX];
+	read32 = ioread32((u8*)virt_addr_page + offset);
+	read32 = read32 | (1<<2); // CSYSREQ HIGH
+	iowrite32(read32, ((u8*)virt_addr_page + offset));
+
+	//==========================
+	// wait until LPI ACK HIGH
+	//==========================
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_LPI_ACTIVE_IDX];
+	//printk("LPI ACK HIGH waitting start...\n");
+	do{
+		read32 = ioread32((u8*)virt_addr_page + offset);
+		if( (read32>>13) & 0x01 )
+			break;
+	}while(1);
+	//printk("LPI ACK HIGH waitting done\n");
+
+	//==========================
+	// [ mali MBUS ]
+	//==========================
+	// LPI REQ, Set HIGH
+	//==========================
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_LPI_REQ_IDX];
+	read32 = ioread32((u8*)virt_addr_page + offset);
+	read32 = read32 | (1<<1); // CSYSREQ HIGH
+	iowrite32(read32, ((u8*)virt_addr_page + offset));
+
+	//==========================
+	// wait until LPI ACK HIGH
+	//==========================
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_LPI_ACTIVE_IDX];
+	//printk("LPI ACK ACK waitting start...\n");
+	do{
+		read32 = ioread32((u8*)virt_addr_page + offset);
+		if( (read32>>21) & 0x01 )
+			break;
+	}while(1);
+	//printk("LPI ACK ACK waitting done\n");
+
+}
+
+void nx_vr_power_down_all_s5p6818(void)
+{
+	void* virt_addr_page;
+	u32 map_size;
+	u32 offset;
+
+	//reset
+	nx_vr_power_down_enter_reset_s5p6818();
+	offset = 8;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_RESET_IDX];
+	if (NULL != virt_addr_page)
+	{
+		unsigned int temp32 = ioread32(((u8*)virt_addr_page + offset));
+		unsigned int bit_mask = 1<<1; //65th
+		VR_DBG("setting Reset VR addr(0x%x)\n", (u8*)virt_addr_page + offset);
+		temp32 &= ~bit_mask;
+		iowrite32(temp32, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//clk disalbe
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_CLOCK_GATE_IDX];
+	if (NULL != virt_addr_page)
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting ClockGen, set 0\n");
+		iowrite32(read_val & ~0x3, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//ready
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_POWER_GATE_IDX];
+	if (NULL != virt_addr_page)
+	{
+		VR_DBG("setting PHY_BASEADDR_POWER_GATE, set 1\n");
+		iowrite32(0x1, ((u8*)virt_addr_page + offset));
+	}
+
+	//enable ISolate
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	if (NULL != virt_addr_page)
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE, set 0\n");
+		iowrite32(read_val & ~1, ((u8*)virt_addr_page + offset));
+	}
+
+	//pre charge down
+	offset = 4;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	if (NULL != virt_addr_page)
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE+4, set 1\n");
+		iowrite32(read_val | 1, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//powerdown
+	offset = 8;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	if (NULL != virt_addr_page)
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE+8, set 1\n");
+		iowrite32(read_val | 1, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//wait ack
+	VR_DBG("read PHY_BASEADDR_PMU_ISOLATE + 0xC\n");
+	offset = 0xC;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	do{
+		unsigned int powerUpAck = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("Wait Power Down Ack(powerUpAck=0x%08x)\n", powerUpAck);
+		if( (powerUpAck & 0x1) )
+			break;
+		VR_DBG("Wait Power Down Ack(powerUpAck=0x%08x)\n", powerUpAck);
+	}while(1);
+}
+
+void nx_vr_power_up_all_s5p6818(void)
+{
+	void* virt_addr_page;
+	u32 offset;
+
+	//ready
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_POWER_GATE_IDX];
+	if (NULL != virt_addr_page)
+	{
+		VR_DBG("setting PHY_BASEADDR_POWER_GATE, set 1\n");
+		iowrite32(0x1, ((u8*)virt_addr_page + offset));
+	}
+
+	//pre charge up
+	offset = 4;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	if (NULL != virt_addr_page)
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE+4, set 0\n");
+		iowrite32(read_val & ~0x1, ((u8*)virt_addr_page + offset));
+	}
+
+	//power up
+	offset = 8;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	if (NULL != virt_addr_page)
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE+8, set 0\n");
+		iowrite32(read_val & ~0x1, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//disable ISolate
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	if (NULL != virt_addr_page)
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting PHY_BASEADDR_PMU_ISOLATE, set 1\n");
+		iowrite32(read_val | 1, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//wait ack
+	VR_DBG("read PHY_BASEADDR_PMU_ISOLATE + 0xC\n");
+	offset = 0xC;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_PMU_ISOLATE_IDX];
+	do{
+		unsigned int powerUpAck = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("Wait Power UP Ack(powerUpAck=0x%08x)\n", powerUpAck);
+		if( !(powerUpAck & 0x1) )
+			break;
+		VR_DBG("Wait Power UP Ack(powerUpAck=0x%08x)\n", powerUpAck);
+	}while(1);
+
+	//clk enable
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_CLOCK_GATE_IDX];
+	if (NULL != virt_addr_page)
+	{
+		unsigned int read_val = ioread32((u8*)virt_addr_page + offset);
+		VR_DBG("setting ClockGen, set 1\n");
+		iowrite32(0x3 | read_val, ((u8*)virt_addr_page + offset));
+	}
+
+	//reset
+	offset = 8;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_RESET_IDX];
+	if (NULL != virt_addr_page)
+	{
+		unsigned int temp32 = ioread32(((u8*)virt_addr_page + offset));
+		unsigned int bit_mask = 1<<1; //65th
+		VR_DBG("setting Reset VR addr(0x%x)\n", (u8*)virt_addr_page + offset);
+
+		//reset leave
+		nx_vr_power_up_leave_reset_s5p6818();
+		temp32 |= bit_mask;
+		iowrite32(temp32, ((u8*)virt_addr_page + offset));
+	}
+	mdelay(1);
+
+	//mask vr400 PMU interrupt
+	offset = 0xC;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_VR_PMU_IDX];
+	if (NULL != virt_addr_page)
+	{
+		VR_PM_DBG("mask PMU INT, addr(0x%x)\n", (u8*)virt_addr_page + offset);
+		iowrite32(0x0, ((u8*)virt_addr_page + offset));
+	}
+
+	//power up vr400
+	offset = 0;
+	virt_addr_page = __gp_VRRegVirtMaps[PHY_BASEADDR_VR_PMU_IDX];
+	if (NULL != virt_addr_page)
+	{
+		VR_DBG("setting PHY_BASEADDR_VR_PMU addr(0x%x)\n", (u8*)virt_addr_page + offset);
+		iowrite32(0x3F/*GP, L2C, PP0, PP1, PP2, PP3*/, ((u8*)virt_addr_page + offset));
+	}
+}
+#endif
+
+
+void nexell_platform_resume(struct device *dev)
+{
+	nx_vr_make_reg_virt_maps();
+	#if defined(CONFIG_MALI_PLATFORM_S5P4418) 
+	nx_vr_power_up_all_s5p4418();
+	#elif defined(CONFIG_MALI_PLATFORM_S5P6818) 
+	nx_vr_power_up_all_s5p6818();
+	#endif
+}
+
+void nexell_platform_suspend(struct device *dev)
+{
+	#if defined(CONFIG_MALI_PLATFORM_S5P4418) 
+	nx_vr_power_down_all_s5p4418();
+	#elif defined(CONFIG_MALI_PLATFORM_S5P6818) 
+	nx_vr_power_down_all_s5p6818();
+	#endif
+	nx_vr_release_reg_virt_maps();
+}
+#endif
+
+#else /* org */ /* !CONFIG_MALI_DT */
+
+void nexell_platform_resume(struct device *dev)
+{
+	clk_prepare_enable(clk_mali);
 	reset_control_reset(rst_mali);
 #ifdef CONFIG_MALI_PLATFORM_S5P6818
 	s5p6818_mali_axibus_lpi_exit();
 #endif
 }
 
-static void nexell_platform_suspend(struct device *dev)
+void nexell_platform_suspend(struct device *dev)
 {
 	if (rst_mali) {
 #ifdef CONFIG_MALI_PLATFORM_S5P6818
@@ -110,8 +781,10 @@ static void nexell_platform_suspend(struct device *dev)
 		reset_control_assert(rst_mali);
 	}
 
-	mali_clk_disable();
+	if (clk_mali)
+		clk_disable_unprepare(clk_mali);
 }
+#endif /* !CONFIG_MALI_DT */
 
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
 static struct mali_gpu_clk_item gpu_clocks[] = {
@@ -194,6 +867,68 @@ static struct mali_gpu_device_data mali_gpu_data = {
 	.platform_resume = nexell_platform_resume,
 };
 
+#ifndef CONFIG_MALI_DT
+static struct platform_device mali_gpu_device = {
+	.name = MALI_GPU_NAME_UTGARD,
+	.id = 0,
+	.dev.release = mali_platform_device_release,
+	.dev.dma_mask = &mali_gpu_device.dev.coherent_dma_mask,
+	.dev.coherent_dma_mask = DMA_BIT_MASK(32),
+
+	.dev.platform_data = &mali_gpu_data,
+};
+
+int mali_platform_device_register(void)
+{
+	int err = -1;
+	int num_pp_cores = 0;
+
+	MALI_DEBUG_PRINT(4, ("mali_platform_device_register() called\n"));
+
+	/* Detect present Mali GPU and connect the correct resources to the device */
+
+	/* Register the platform device */
+	err = platform_device_register(&mali_gpu_device);
+	if (0 == err) {
+#ifdef CONFIG_PM_RUNTIME
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
+		pm_runtime_set_autosuspend_delay(&(mali_gpu_device.dev), 1000);
+		pm_runtime_use_autosuspend(&(mali_gpu_device.dev));
+#endif
+		pm_runtime_enable(&(mali_gpu_device.dev));
+#endif
+		MALI_DEBUG_ASSERT(0 < num_pp_cores);
+		mali_core_scaling_init(num_pp_cores);
+
+		return 0;
+	}
+
+	return err;
+}
+
+void mali_platform_device_unregister(void)
+{
+	MALI_DEBUG_PRINT(4, ("mali_platform_device_unregister() called\n"));
+
+	mali_core_scaling_term();
+#ifdef CONFIG_PM_RUNTIME
+	pm_runtime_disable(&(mali_gpu_device.dev));
+#endif
+	platform_device_unregister(&mali_gpu_device);
+
+	platform_device_put(&mali_gpu_device);
+
+#if defined(CONFIG_ARCH_REALVIEW)
+	mali_write_phys(0xC0010020, 0x9); /* Restore default (legacy) memory mapping */
+#endif
+}
+
+static void mali_platform_device_release(struct device *device)
+{
+	MALI_DEBUG_PRINT(4, ("mali_platform_device_release() called\n"));
+}
+
+#else /* CONFIG_MALI_DT */
 int mali_platform_device_init(struct platform_device *device)
 {
 	int num_pp_cores = 2;
@@ -206,7 +941,7 @@ int mali_platform_device_init(struct platform_device *device)
 		return -ENODEV;
 	}
 
-	mali_clk_enable();
+	clk_prepare_enable(clk_mali);
 
 	rst_mali = devm_reset_control_get(dev, "vr-reset");
 
@@ -288,7 +1023,8 @@ int mali_platform_device_deinit(struct platform_device *device)
 		reset_control_assert(rst_mali);
 	}
 
-	mali_clk_disable();
+	if (clk_mali)
+		clk_disable_unprepare(clk_mali);
 
 #ifdef CONFIG_PM_RUNTIME
 	pm_runtime_disable(&(device->dev));
@@ -296,6 +1032,7 @@ int mali_platform_device_deinit(struct platform_device *device)
 
 	return 0;
 }
+#endif /* CONFIG_MALI_DT */
 
 static int param_set_core_scaling(const char *val, const struct kernel_param *kp)
 {

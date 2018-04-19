@@ -198,6 +198,11 @@ extern int mali_platform_device_deinit(struct platform_device *device);
 extern int mali_platform_device_register(void);
 extern int mali_platform_device_unregister(void);
 #endif
+#else /* NEXELL_FEATURE_PORTING */
+#if defined(CONFIG_MALI_DT)
+extern int mali_platform_device_init(struct platform_device *device);
+extern int mali_platform_device_deinit(struct platform_device *device);
+#endif
 #endif
 
 /* Linux power management operations provided by the Mali device driver */
@@ -391,9 +396,30 @@ void mali_init_cpu_time_counters_on_all_cpus(int print_only)
 }
 #endif
 
+#ifndef CONFIG_MALI_DT /* NEXELL_FEATURE_PORTING */
+extern void nx_vr_make_reg_virt_maps(void);
+#if defined(CONFIG_MALI_PLATFORM_S5P4418) 
+extern void nx_vr_power_up_all_s5p4418(void);
+extern void nx_vr_power_down_all_s5p4418(void);
+#elif defined(CONFIG_MALI_PLATFORM_S5P6818) 
+extern void nx_vr_power_up_all_s5p6818(void);
+extern void nx_vr_power_down_all_s5p6818(void);
+#endif
+extern void nx_vr_release_reg_virt_maps(void);
+#endif
+
 int mali_module_init(void)
 {
 	int err = 0;
+
+#ifndef CONFIG_MALI_DT /* NEXELL_FEATURE_PORTING */
+	nx_vr_make_reg_virt_maps();
+	#if defined(CONFIG_MALI_PLATFORM_S5P4418) 
+	nx_vr_power_up_all_s5p4418();
+	#elif defined(CONFIG_MALI_PLATFORM_S5P6818) 
+	nx_vr_power_up_all_s5p6818();
+	#endif
+#endif
 
 	MALI_DEBUG_PRINT(2, ("Inserting Mali v%d device driver. \n", _MALI_API_VERSION));
 	MALI_DEBUG_PRINT(2, ("Compiled: %s, time: %s.\n", __DATE__, __TIME__));
@@ -452,7 +478,13 @@ int mali_module_init(void)
 				      0, 0, 0);
 #endif
 
-	MALI_PRINT(("Mali device driver loaded\n"));
+#if defined(CONFIG_MALI_PLATFORM_S5P4418) 
+	MALI_PRINT(("Mali device driver loaded for S5P4418\n"));
+#elif defined(CONFIG_MALI_PLATFORM_S5P6818)
+	MALI_PRINT(("Mali device driver loaded for S5P6818\n"));
+#else
+	#error "complete make rule about CONFIG_MALI_PLATFORM_S5P4418 and CONFIG_MALI_PLATFORM_S5P6818"
+#endif
 
 	return 0; /* Success */
 }
@@ -482,6 +514,15 @@ void mali_module_exit(void)
 
 #if defined(CONFIG_MALI400_INTERNAL_PROFILING)
 	_mali_internal_profiling_term();
+#endif
+
+#ifndef CONFIG_MALI_DT /* NEXELL_FEATURE_PORTING */
+	#if defined(CONFIG_MALI_PLATFORM_S5P4418) 
+	nx_vr_power_down_all_s5p4418();
+	#elif defined(CONFIG_MALI_PLATFORM_S5P6818)
+	nx_vr_power_down_all_s5p6818();
+	#endif
+	nx_vr_release_reg_virt_maps();
 #endif
 
 	MALI_PRINT(("Mali device driver unloaded\n"));
@@ -700,8 +741,10 @@ static void mali_miscdevice_unregister(void)
 
 static int mali_driver_suspend_scheduler(struct device *dev)
 {
+#if 1 /* NEXELL_FEATURE_PORTING */
 	struct mali_gpu_device_data *device_data =
 		mali_platform_device->dev.platform_data;
+#endif
 #ifdef CONFIG_MALI_DEVFREQ
 	struct mali_device *mdev = dev_get_drvdata(dev);
 	if (!mdev)
@@ -721,25 +764,27 @@ static int mali_driver_suspend_scheduler(struct device *dev)
 				      0,
 				      0,
 				      0, 0, 0);
-
+#if 1 /* NEXELL_FEATURE_PORTING */
 	if (device_data->platform_suspend)
 		device_data->platform_suspend(dev);
-
+#endif
 	return 0;
 }
 
 static int mali_driver_resume_scheduler(struct device *dev)
 {
+#if 1 /* NEXELL_FEATURE_PORTING */
 	struct mali_gpu_device_data *device_data =
 		mali_platform_device->dev.platform_data;
+	if (device_data->platform_resume)
+		device_data->platform_resume(dev);
+#endif
+
 #ifdef CONFIG_MALI_DEVFREQ
 	struct mali_device *mdev = dev_get_drvdata(dev);
 	if (!mdev)
 		return -ENODEV;
 #endif
-
-	if (device_data->platform_resume)
-		device_data->platform_resume(dev);
 
 	/* Tracing the frequency and voltage after mali is resumed */
 #if defined(CONFIG_MALI400_PROFILING) && defined(CONFIG_MALI_DVFS)
@@ -755,7 +800,6 @@ static int mali_driver_resume_scheduler(struct device *dev)
 				      mali_gpu_clk[1].vol / 1000,
 				      0, 0, 0);
 #endif
-
 	mali_pm_os_resume();
 
 #if defined(CONFIG_MALI_DEVFREQ) && \
@@ -769,8 +813,10 @@ static int mali_driver_resume_scheduler(struct device *dev)
 #ifdef CONFIG_PM_RUNTIME
 static int mali_driver_runtime_suspend(struct device *dev)
 {
+#if 0 /* NEXELL_FEATURE_PORTING */
 	struct mali_gpu_device_data *device_data =
 		mali_platform_device->dev.platform_data;
+#endif
 #ifdef CONFIG_MALI_DEVFREQ
 	struct mali_device *mdev = dev_get_drvdata(dev);
 	if (!mdev)
@@ -792,9 +838,10 @@ static int mali_driver_runtime_suspend(struct device *dev)
 		devfreq_suspend_device(mdev->devfreq);
 #endif
 
+#if 0 /* NEXELL_FEATURE_PORTING */
 		if (device_data->platform_suspend)
 			device_data->platform_suspend(dev);
-
+#endif
 		return 0;
 	} else {
 		return -EBUSY;
@@ -803,16 +850,18 @@ static int mali_driver_runtime_suspend(struct device *dev)
 
 static int mali_driver_runtime_resume(struct device *dev)
 {
+#if 0 /* NEXELL_FEATURE_PORTING */
 	struct mali_gpu_device_data *device_data =
 		mali_platform_device->dev.platform_data;
+	if (device_data->platform_resume)
+		device_data->platform_resume(dev);
+#endif
+
 #ifdef CONFIG_MALI_DEVFREQ
 	struct mali_device *mdev = dev_get_drvdata(dev);
 	if (!mdev)
 		return -ENODEV;
 #endif
-
-	if (device_data->platform_resume)
-		device_data->platform_resume(dev);
 
 	/* Tracing the frequency and voltage after mali is resumed */
 #if defined(CONFIG_MALI400_PROFILING) && defined(CONFIG_MALI_DVFS)
@@ -911,6 +960,153 @@ int map_errcode(_mali_osk_errcode_t err)
 		return -EFAULT;
 	}
 }
+
+
+#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
+static unsigned int gTestTimeEn;
+static unsigned int gTestTimeStartGP;
+static unsigned int gTestTimeEndGP;
+static unsigned int gTestTimeTotalGP;
+static int gTestTimeRefCntGP = 0;
+static struct timeval gTestTimeValGP;
+static unsigned int gTestTimeStartPP;
+static unsigned int gTestTimeEndPP;
+static unsigned int gTestTimeTotalPP;
+static struct timeval gTestTimeValPP;
+static int gTestTimeRefCntPP = 0;
+
+/*
+case  1
+[   32.743000] [drv] PP Start(621451)
+[   32.746000] [drv] GP End(624953), diff(7067), Total(117152)
+[   32.754000] [drv] PP Start(632949) (\B4\A9\C0\FB_cnt == 2)
+[   32.758000] [drv] PP End(636505), diff(3556), Total(381335)
+[   32.789000] [drv] PP End(667129), diff(34180), Total(415515) (\B4\A9\C0\FB_cnt == 0, 667129 - 621451)
+
+case 2
+[   32.915000] [drv] PP Start(793223)  --1-->
+[   32.918000] [drv] GP End(796829), diff(7585), Total(14905)
+[   32.924000] [drv] GP Start(802478)
+[   32.926000] [drv] PP Start(804737)  --2--> (\B4\A9\C0\FB_cnt == 2)
+[   32.926000] [drv] PP End(804835), diff(98), Total(233) <--1-- (\B4\A9\C0\FB_cnt == 1)
+[   32.936000] [drv] GP End(814843), diff(12365), Total(27270)
+[   32.951000] [drv] PP Start(829742) --3--> (\B4\A9\C0\FB_cnt == 2)
+[   32.954000] [drv] PP End(833230), diff(3488), Total(3721) <--2-- (\B4\A9\C0\FB_cnt == 1)
+[   32.960000] [drv] PP End(838838), diff(9096), Total(12817) <--3-- (\B4\A9\C0\FB_cnt == 0, 838838 - 793223)
+*/
+void TestIntTimeEn(int enable)
+{
+	gTestTimeEn = enable;
+	if (gTestTimeEn)
+	
+{
+		gTestTimeRefCntGP = gTestTimeRefCntPP = 0;
+		printk("[drv] VR timechecking On.\n");
+	}
+	else
+		printk("[drv] VR timechecking Off.\n");
+}
+
+void TestIntTimeStartGP(void)
+{
+	if (gTestTimeEn)
+	{ 
+		if (0 == gTestTimeRefCntGP)
+		{			
+			do_gettimeofday(&gTestTimeValGP);
+			gTestTimeStartGP = gTestTimeValGP.tv_usec;
+			//printk("[drv] GP Start(%d)\n", gTestTimeStartGP);
+		}
+		++gTestTimeRefCntGP;
+	}
+	//printk("[drv] GP Start done\n");
+}
+
+void TestIntStateUpadteGP(void)
+{
+	if (gTestTimeEn)
+	{ 
+		--gTestTimeRefCntGP;
+		if (0 == gTestTimeRefCntGP)
+		{
+			do_gettimeofday(&gTestTimeValGP);
+			gTestTimeEndGP = gTestTimeValGP.tv_usec;
+			if (gTestTimeEndGP > gTestTimeStartGP)
+			{
+				gTestTimeTotalGP += (gTestTimeEndGP - gTestTimeStartGP);
+			}
+			else if (gTestTimeEndGP < gTestTimeStartGP)
+			{
+				gTestTimeTotalGP += (0xFFFFFFFFUL - gTestTimeStartGP) + gTestTimeStartGP;
+			}
+			//printk("[drv] GP End(%d), diff(%d), Total(%d)\n", gTestTimeEndGP, gTestTimeEndGP-gTestTimeStartGP, gTestTimeTotalGP);
+		}
+	}
+	//printk("[drv] GP Update done\n");
+}
+
+unsigned int TestGetTimeTotalValGP(void)
+{
+	return gTestTimeTotalGP;
+}
+
+void TestClearTimeTotalValGP(void)
+{
+	gTestTimeTotalGP = 0;
+	//printk("[drv] GP clear\n");
+}
+
+void TestIntTimeStartPP(void)
+{
+	if (gTestTimeEn)
+	{ 	
+		if (0 == gTestTimeRefCntPP)
+		{			
+			do_gettimeofday(&gTestTimeValPP);
+			gTestTimeStartPP = gTestTimeValPP.tv_usec;
+			//printk("[drv] PP Start(%d)\n", gTestTimeStartPP);
+		}		
+		++gTestTimeRefCntPP;
+	}
+	//printk("[drv] PP Start done\n");
+}
+
+void TestIntStateUpadtePP(void)
+{
+	if (gTestTimeEn)
+	{ 
+		--gTestTimeRefCntPP;
+		if (0 == gTestTimeRefCntPP)
+		{
+			do_gettimeofday(&gTestTimeValPP);
+			gTestTimeEndPP = gTestTimeValPP.tv_usec;
+			if (gTestTimeEndPP > gTestTimeStartPP)
+			{
+				gTestTimeTotalPP += (gTestTimeEndPP - gTestTimeStartPP);
+			}
+			else if (gTestTimeEndPP < gTestTimeStartPP)
+			{
+				gTestTimeTotalPP += (0xFFFFFFFFUL - gTestTimeStartPP) + gTestTimeStartPP;
+			}
+			//printk("[drv] PP End(%d), diff(%d), Total(%d)\n", gTestTimeEndPP, gTestTimeEndPP-gTestTimeStartPP, gTestTimeTotalPP);
+		}
+	}
+	//printk("[drv] PP Update done\n");
+}
+
+unsigned int TestGetTimeTotalValPP(void)
+{
+	return gTestTimeTotalPP;
+}
+
+void TestClearTimeTotalValPP(void)
+{
+	gTestTimeTotalPP = 0;
+	//printk("[drv] PP clear\n");
+}
+#endif
+
+
 
 #ifdef HAVE_UNLOCKED_IOCTL
 static long mali_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
@@ -1138,6 +1334,13 @@ static int mali_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, 
 		BUILD_BUG_ON(!IS_ALIGNED(sizeof(_mali_uk_soft_job_signal_s), sizeof(u64)));
 		err = soft_job_signal_wrapper(session_data, (_mali_uk_soft_job_signal_s __user *)arg);
 		break;
+
+#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE		
+	case MALI_IOC_DBG_GET_TIME:
+		BUILD_BUG_ON(!IS_ALIGNED(sizeof(_mali_uk_test_job_get_time_s), sizeof(u64)));
+		err = test_job_get_time(session_data, (_mali_uk_test_job_get_time_s __user *)arg);
+		break;
+#endif
 
 	default:
 		MALI_DEBUG_PRINT(2, ("No handler for ioctl 0x%08X 0x%08lX\n", cmd, arg));

@@ -373,6 +373,10 @@ void mali_pp_job_start(struct mali_pp_core *core, struct mali_pp_job *job, u32 s
 	/* Adding barrier to make sure all rester writes are finished */
 	_mali_osk_write_mem_barrier();
 
+#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
+	if (0 == sub_job){ TestIntTimeStartPP(); }
+#endif
+
 	/* This is the command that starts the core.
 	 *
 	 * Don't actually run the job if PROFILING_SKIP_PP_JOBS are set, just

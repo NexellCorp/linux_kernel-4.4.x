@@ -44,7 +44,7 @@ enum mali_interrupt_result {
 _mali_osk_errcode_t mali_hw_core_create(struct mali_hw_core *core, const _mali_osk_resource_t *resource, u32 reg_size);
 void mali_hw_core_delete(struct mali_hw_core *core);
 
-/* nexell add */
+/* NEXELL_FEATURE_PORTING */
 #if defined(CONFIG_ARCH_S5P4418) && defined(CONFIG_SECURE_REG_ACCESS)
 #define USE_PSCI_REG_READ_WRITE
 #include <linux/soc/nexell/sec_reg.h>

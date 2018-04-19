@@ -26,7 +26,12 @@
 
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#include <linux/uaccess.h>
+#else
 #include <asm/uaccess.h>
+#endif
 #include <linux/module.h>
 #include <linux/mali/mali_utgard.h>
 #include "mali_kernel_sysfs.h"

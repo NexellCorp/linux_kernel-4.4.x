@@ -9,7 +9,12 @@
  */
 
 #include <linux/fs.h>      /* file system operations */
-#include <asm/uaccess.h>        /* user space access */
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#include <linux/uaccess.h>
+#else
+#include <asm/uaccess.h>
+#endif
 #include <linux/dma-buf.h>
 #include <linux/scatterlist.h>
 #include <linux/rbtree.h>
@@ -40,7 +45,7 @@ static int mali_dma_buf_map(mali_mem_backend *mem_backend)
 	struct mali_page_directory *pagedir;
 	_mali_osk_errcode_t err;
 	struct scatterlist *sg;
-	u32 virt, flags;
+	u32 virt, flags, unmap_dma_size;
 	int i;
 
 	MALI_DEBUG_ASSERT_POINTER(mem_backend);
@@ -50,7 +55,8 @@ static int mali_dma_buf_map(mali_mem_backend *mem_backend)
 
 	mem = mem_backend->dma_buf.attachment;
 	MALI_DEBUG_ASSERT_POINTER(mem);
-
+	MALI_DEBUG_ASSERT_POINTER(mem->buf);
+	unmap_dma_size = mem->buf->size;
 	session = alloc->session;
 	MALI_DEBUG_ASSERT_POINTER(session);
 	MALI_DEBUG_ASSERT(mem->session == session);
@@ -62,9 +68,12 @@ static int mali_dma_buf_map(mali_mem_backend *mem_backend)
 	mem->map_ref++;
 
 	MALI_DEBUG_PRINT(5, ("Mali DMA-buf: map attachment %p, new map_ref = %d\n", mem, mem->map_ref));
-
-	if (1 == mem->map_ref) {
-
+#if (!defined(CONFIG_MALI_DMA_BUF_MAP_ON_ATTACH)) && (defined(CONFIG_MALI_DMA_BUF_LAZY_MAP))
+	if (MALI_FALSE == mem->is_mapped)
+#else
+	if (1 == mem->map_ref)
+#endif
+	{
 		/* First reference taken, so we need to map the dma buf */
 		MALI_DEBUG_ASSERT(!mem->is_mapped);
 
@@ -91,6 +100,7 @@ static int mali_dma_buf_map(mali_mem_backend *mem_backend)
 			u32 size = sg_dma_len(sg);
 			dma_addr_t phys = sg_dma_address(sg);
 
+			unmap_dma_size -= size;
 			/* sg must be page aligned. */
 			MALI_DEBUG_ASSERT(0 == size % MALI_MMU_PAGE_SIZE);
 			MALI_DEBUG_ASSERT(0 == (phys & ~(uintptr_t)0xFFFFFFFF));
@@ -109,9 +119,17 @@ static int mali_dma_buf_map(mali_mem_backend *mem_backend)
 		}
 
 		mem->is_mapped = MALI_TRUE;
-		mali_session_memory_unlock(session);
+
+		if (0 != unmap_dma_size) {
+			MALI_DEBUG_PRINT_ERROR(("The dma buf size isn't equal to the total scatterlists' dma length.\n"));
+			mali_session_memory_unlock(session);
+			return -EFAULT;
+		}
+
 		/* Wake up any thread waiting for buffer to become mapped */
 		wake_up_all(&mem->wait_queue);
+
+		mali_session_memory_unlock(session);
 	} else {
 		MALI_DEBUG_ASSERT(mem->is_mapped);
 		mali_session_memory_unlock(session);
@@ -134,16 +152,21 @@ static void mali_dma_buf_unmap(mali_mem_allocation *alloc, struct mali_dma_buf_a
 	MALI_DEBUG_PRINT(5, ("Mali DMA-buf: unmap attachment %p, new map_ref = %d\n", mem, mem->map_ref));
 
 	if (0 == mem->map_ref) {
-		dma_buf_unmap_attachment(mem->attachment, mem->sgt, DMA_BIDIRECTIONAL);
+		if (NULL != mem->sgt) {
+			dma_buf_unmap_attachment(mem->attachment, mem->sgt, DMA_BIDIRECTIONAL);
+			mem->sgt = NULL;
+		}
 		if (MALI_TRUE == mem->is_mapped) {
 			mali_mem_mali_map_free(alloc->session, alloc->psize, alloc->mali_vma_node.vm_node.start,
 					       alloc->flags);
 		}
 		mem->is_mapped = MALI_FALSE;
 	}
-	mali_session_memory_unlock(alloc->session);
+
 	/* Wake up any thread waiting for buffer to become unmapped */
 	wake_up_all(&mem->wait_queue);
+
+	mali_session_memory_unlock(alloc->session);
 }
 
 #if !defined(CONFIG_MALI_DMA_BUF_MAP_ON_ATTACH)
@@ -301,7 +324,11 @@ _mali_osk_errcode_t mali_mem_bind_dma_buf(mali_mem_allocation *alloc,
 
 	dma_mem->buf = buf;
 	dma_mem->session = session;
+#if (!defined(CONFIG_MALI_DMA_BUF_MAP_ON_ATTACH)) && (defined(CONFIG_MALI_DMA_BUF_LAZY_MAP))
+	dma_mem->map_ref = 1;
+#else
 	dma_mem->map_ref = 0;
+#endif
 	init_waitqueue_head(&dma_mem->wait_queue);
 
 	dma_mem->attachment = dma_buf_attach(dma_mem->buf, &mali_platform_device->dev);
@@ -344,17 +371,21 @@ failed_alloc_mem:
 void mali_mem_unbind_dma_buf(mali_mem_backend *mem_backend)
 {
 	struct mali_dma_buf_attachment *mem;
+	struct  mali_session_data *session;
 	MALI_DEBUG_ASSERT_POINTER(mem_backend);
 	MALI_DEBUG_ASSERT(MALI_MEM_DMA_BUF == mem_backend->type);
 
 	mem = mem_backend->dma_buf.attachment;
+
 	MALI_DEBUG_ASSERT_POINTER(mem);
 	MALI_DEBUG_ASSERT_POINTER(mem->attachment);
 	MALI_DEBUG_ASSERT_POINTER(mem->buf);
 	MALI_DEBUG_PRINT(3, ("Mali DMA-buf: release attachment %p\n", mem));
 
-#if defined(CONFIG_MALI_DMA_BUF_MAP_ON_ATTACH)
 	MALI_DEBUG_ASSERT_POINTER(mem_backend->mali_allocation);
+	session = mem_backend->mali_allocation->session;
+
+#if (defined(CONFIG_MALI_DMA_BUF_MAP_ON_ATTACH)) ||((!defined(CONFIG_MALI_DMA_BUF_MAP_ON_ATTACH)) && (defined(CONFIG_MALI_DMA_BUF_LAZY_MAP)))
 	/* We mapped implicitly on attach, so we need to unmap on release */
 	mali_dma_buf_unmap(mem_backend->mali_allocation, mem);
 #endif
@@ -365,5 +396,8 @@ void mali_mem_unbind_dma_buf(mali_mem_backend *mem_backend)
 	dma_buf_detach(mem->buf, mem->attachment);
 	dma_buf_put(mem->buf);
 
+	MALI_DEBUG_ASSERT_POINTER(session);
+	mali_session_memory_lock(session);
 	_mali_osk_free(mem);
+	mali_session_memory_unlock(session);
 }

@@ -463,7 +463,7 @@ void mali_executor_zap_all_active(struct mali_session_data *session)
 			if (NULL != pp_job) {
 				/* PP job completed, make sure it is freed */
 				mali_scheduler_complete_pp_job(pp_job, 0,
-							       MALI_FALSE, MALI_TRUE);
+							       MALI_TRUE, MALI_TRUE);
 			}
 		}
 	}
@@ -481,7 +481,7 @@ void mali_executor_zap_all_active(struct mali_session_data *session)
 				if (NULL != pp_job) {
 					/* PP job completed, free it */
 					mali_scheduler_complete_pp_job(pp_job,
-								       0, MALI_FALSE,
+								       0, MALI_TRUE,
 								       MALI_TRUE);
 				}
 			}
@@ -986,7 +986,7 @@ void mali_executor_abort_session(struct mali_session_data *session)
 
 			/* GP job completed, make sure it is freed */
 			mali_scheduler_complete_gp_job(gp_job, MALI_FALSE,
-						       MALI_FALSE, MALI_TRUE);
+						       MALI_TRUE, MALI_TRUE);
 		} else {
 			/* Same session, but not working, so just clear it */
 			mali_group_clear_session(gp_group);
@@ -1003,7 +1003,7 @@ void mali_executor_abort_session(struct mali_session_data *session)
 			if (NULL != pp_job) {
 				/* PP job completed, make sure it is freed */
 				mali_scheduler_complete_pp_job(pp_job, 0,
-							       MALI_FALSE, MALI_TRUE);
+							       MALI_TRUE, MALI_TRUE);
 			}
 		}
 	}
@@ -1018,7 +1018,7 @@ void mali_executor_abort_session(struct mali_session_data *session)
 			if (NULL != pp_job) {
 				/* PP job completed, make sure it is freed */
 				mali_scheduler_complete_pp_job(pp_job, 0,
-							       MALI_FALSE, MALI_TRUE);
+							       MALI_TRUE, MALI_TRUE);
 			}
 		}
 	}
@@ -1186,6 +1186,8 @@ u32 mali_executor_dump_state(char *buf, u32 size)
 	}
 
 	if (mali_executor_has_virtual_group()) {
+		struct mali_group *child;
+
 		switch (virtual_group_state) {
 		case EXEC_STATE_EMPTY:
 			n += _mali_osk_snprintf(buf + n, size - n,
@@ -1211,6 +1213,12 @@ u32 mali_executor_dump_state(char *buf, u32 size)
 		}
 
 		n += mali_group_dump_state(virtual_group, buf + n, size - n);
+
+
+		_MALI_OSK_LIST_FOREACHENTRY(child, temp, &virtual_group->group_list,
+				    struct mali_group, group_list) {
+			n += mali_group_dump_state(child, buf + n, size - n);
+		}
 	}
 
 	mali_executor_unlock();
@@ -1977,6 +1985,9 @@ static void mali_executor_complete_group(struct mali_group *group,
 	mali_bool pp_job_is_done = MALI_TRUE;
 
 	if (NULL != gp_core) {
+		#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
+		TestIntStateUpadteGP();
+		#endif
 		gp_job = mali_executor_complete_gp(group, success);
 	} else {
 		MALI_DEBUG_ASSERT_POINTER(pp_core);
@@ -2010,6 +2021,10 @@ static void mali_executor_complete_group(struct mali_group *group,
 		MALI_DEBUG_ASSERT_POINTER(pp_job);
 		MALI_DEBUG_ASSERT_POINTER(pp_job_done);
 		*pp_job_done = pp_job;
+
+		#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
+		TestIntStateUpadtePP();
+		#endif
 	}
 }
 

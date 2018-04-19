@@ -446,6 +446,8 @@
 		unsigned int num_of_steps;
 	};
 
+	
+	/* NEXELL_FEATURE_PORTING */
 	struct device;
 	struct mali_gpu_device_data {
 		/* Shared GPU memory */

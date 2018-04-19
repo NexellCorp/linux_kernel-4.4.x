@@ -69,6 +69,9 @@ typedef enum {
 	_MALI_UK_GP_SUBSYSTEM,        /**< Vertex Processor Group of U/K calls */
 	_MALI_UK_PROFILING_SUBSYSTEM, /**< Profiling Group of U/K calls */
 	_MALI_UK_VSYNC_SUBSYSTEM,     /**< VSYNC Group of U/K calls */
+	#if 1 /* NEXELL_FEATURE_IOCTL_PERFORMANCE */
+	_MALI_UK_DBG_SUBSYSTEM,     
+	#endif
 } _mali_uk_subsystem_t;
 
 /** Within a function group each function has its unique sequence number
@@ -139,7 +142,11 @@ typedef enum {
 	_MALI_UK_PROFILING_CONTROL_SET, /** < __mali_uku_profiling_control_set() */
 
 	/** VSYNC reporting fuctions */
-	_MALI_UK_VSYNC_EVENT_REPORT      = 0, /**< _mali_ukk_vsync_event_report() */
+	_MALI_UK_VSYNC_EVENT_REPORT     = 0, /**< _mali_ukk_vsync_event_report() */
+	
+	#if 1 /* NEXELL_FEATURE_IOCTL_PERFORMANCE */
+	_MALI_UK_DBG_GET_GPU_TIME      	= 0,
+	#endif
 } _mali_uk_functions;
 
 /** @defgroup _mali_uk_getsysteminfo U/K Get System Info
@@ -1092,6 +1099,16 @@ typedef struct {
 	u64 response_packet_data; /** < [out] The response packet data */
 	u32 response_packet_size; /** < [in,out] The response packet data */
 } _mali_uk_profiling_control_set_s;
+
+
+#if 1 /* NEXELL_FEATURE_IOCTL_PERFORMANCE */
+typedef struct {
+	u64 ctx;                          /**< [in,out] user-kernel context (trashed on output) */
+	u32 time_val_gp;                         /**< [in,out] id for soft job */
+	u32 time_val_pp;                         /**< [out] id for soft job */
+} _mali_uk_test_job_get_time_s;
+#endif
+
 
 #ifdef __cplusplus
 }

@@ -72,7 +72,7 @@ mali_bool mali_session_pp_job_is_empty(void *data)
 	struct mali_session_data *session = (struct mali_session_data *)data;
 	MALI_DEBUG_ASSERT_POINTER(session);
 
-	if ( 0 == _mali_osk_atomic_read(&session->number_of_pp_jobs)) {
+	if (0 == _mali_osk_atomic_read(&session->number_of_pp_jobs)) {
 		return MALI_TRUE;
 	}
 	return MALI_FALSE;
