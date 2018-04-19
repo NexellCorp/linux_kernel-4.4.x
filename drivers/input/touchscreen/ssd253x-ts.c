@@ -665,7 +665,6 @@ static void ssd253x_finger_down(struct input_dev *input, int id, int px, int py,
 	input_report_abs(input, ABS_MT_POSITION_X, px);
 	input_report_abs(input, ABS_MT_POSITION_Y, py);
 	input_report_abs(input, ABS_MT_PRESSURE, pressure);
-	input_report_abs(input, ABS_PRESSURE, pressure);
 }
 
 static void ssd253x_finger_up(struct input_dev *input, int id)
@@ -1345,12 +1344,6 @@ static int ssd253x_ts_probe(struct i2c_client *client,
 		error = -ENODEV;
 		goto err1;
 	}
-	set_bit(EV_KEY, ssl_input->evbit);
-	set_bit(EV_ABS, ssl_input->evbit);
-	set_bit(EV_SYN, ssl_input->evbit);
-	set_bit(ABS_X, ssl_input->absbit);
-	set_bit(ABS_Y, ssl_input->absbit);
-	set_bit(BTN_TOUCH, ssl_input->keybit);
 #ifdef HAS_BUTTON
 #ifdef SIMULATED_BUTTON
 	for (i = 0; i < sizeof(SKeys) / sizeof(SKey_Info); i++) {
@@ -1366,18 +1359,12 @@ static int ssd253x_ts_probe(struct i2c_client *client,
 		input_set_capability(ssl_input, EV_KEY, ssl_priv->keys[i]);
 #endif
 #endif
-	ssl_input->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
-	set_bit(ABS_MT_POSITION_X, ssl_input->absbit);
-	set_bit(ABS_MT_POSITION_Y, ssl_input->absbit);
-	set_bit(ABS_MT_PRESSURE, ssl_input->absbit);
-	input_set_abs_params(ssl_input, ABS_MT_PRESSURE, 0, 16, 0, 0);
-	set_bit(MT_TOOL_FINGER, ssl_input->keybit);
 	set_bit(INPUT_PROP_DIRECT, ssl_input->propbit);
-	input_mt_init_slots(ssl_input, ssl_priv->finger_count, INPUT_MT_DIRECT);
-	input_set_abs_params(ssl_input, ABS_MT_POSITION_X, 0, LCD_RANGE_X - 1,
-			     0, 0);
-	input_set_abs_params(ssl_input, ABS_MT_POSITION_Y, 0, LCD_RANGE_Y - 1,
-			     0, 0);
+	input_set_abs_params(ssl_input, ABS_MT_POSITION_X, 0, LCD_RANGE_X-1, 0, 0);
+	input_set_abs_params(ssl_input, ABS_MT_POSITION_Y, 0, LCD_RANGE_Y-1, 0, 0);
+	input_set_abs_params(ssl_input, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
+	input_set_abs_params(ssl_input, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
+	input_mt_init_slots(ssl_input, ssl_priv->finger_count, 0);
 
 	ssl_input->name = client->name;
 	ssl_input->id.bustype = BUS_I2C;
