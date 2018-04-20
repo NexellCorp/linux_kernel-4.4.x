@@ -39,6 +39,7 @@
 		   "nexell,s5p6818";
 
 	aliases {
+		i2c5 = &i2c_gpio5;
 		i2c6 = &i2c_gpio6;
 		i2c7 = &i2c_gpio7;
 		i2c8 = &i2c_gpio8;
@@ -227,6 +228,17 @@
 			status = "okay";
 		};
 
+		i2s_1:i2s@c0056000 {
+			#sound-dai-cells = <1>;
+			master-mode = <1>;
+			mclk-in = <0>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <1>;
+			status = "okay";
+		};
+
 		vip_0:vip@c0063000 {
 			clk-base = <0xc00c1000>;
 			status = "okay";
@@ -381,7 +393,7 @@
 		};
 	};
 
-	i2c_gpio6:i2c@6 {
+	i2c_gpio5:i2c@5 {
 		compatible = "i2c-gpio";
 		gpios = <&gpio_a 5 0 /* sda */
 			&gpio_a 4 0 /* scl */
@@ -390,7 +402,23 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		alc5658: alc5658@1a {
+		alc5658_0: alc5658@1a {
+			#sound-dai-cells = <0>;
+			compatible = "realtek,rt5658";
+			reg = <0x1a>;
+		};
+	};
+
+	i2c_gpio6:i2c@6 {
+		compatible = "i2c-gpio";
+		gpios = <&gpio_e 13 0 /* sda */
+			&gpio_a 22 0 /* scl */
+			>;
+		i2c-gpio,delay-us = <10>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		alc5658_1: alc5658@1a {
 			#sound-dai-cells = <0>;
 			compatible = "realtek,rt5658";
 			reg = <0x1a>;
@@ -407,40 +435,75 @@
 		#size-cells = <0>;
 	};
 
-	sound {
+	sound0: sound@0 {
 		compatible = "simple-audio-card";
 		simple-audio-card,name = "Artik710 raptor Audio";
 		simple-audio-card,mclk-fs = <256>;
 		simple-audio-card,widgets =
-		    "Headphone", "Out Jack",
-		    "Microphone", "In Jack";
+			"Headphone", "Out Jack",
+			"Microphone", "In Jack";
 		simple-audio-card,routing =
-		    "Out Jack", "HPOL",
-		    "Out Jack", "HPOR",
-		    "IN2P", "In Jack",
-		    "IN2P", "In Jack";
+			"Out Jack", "HPOL",
+			"Out Jack", "HPOR",
+			"IN2P", "In Jack",
+			"IN2P", "In Jack";
 		status = "okay";
 
 		simple-audio-card,dai-link@0 {
-		    format = "i2s";
-		    cpu {
-			sound-dai = <&i2s_0 0>;
-		    };
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_0 0>;
+			};
 
-		    codec {
-			sound-dai = <&alc5658>;
-		    };
+			codec {
+				sound-dai = <&alc5658_0>;
+			};
 		};
 
 		simple-audio-card,dai-link@1 {
-		    format = "spdif";
-		    cpu {
-			sound-dai = <&spdif_tx 0>;
-		    };
+			cpu {
+				sound-dai = <&spdif_tx 0>;
+			};
 
-		    codec {
-			sound-dai = <&spdif_out>;
-		    };
+			codec {
+				sound-dai = <&spdif_out>;
+			};
+		};
+	};
+
+	sound1: sound@1 {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "Artik710 raptor Audio";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,widgets =
+			"Headphone", "Out Jack",
+			"Microphone", "In Jack";
+		simple-audio-card,routing =
+			"Out Jack", "HPOL",
+			"Out Jack", "HPOR",
+			"IN2P", "In Jack",
+			"IN2P", "In Jack";
+		status = "okay";
+
+		simple-audio-card,dai-link@0 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_1 0>;
+			};
+
+			codec {
+				sound-dai = <&alc5658_1>;
+			};
+		};
+
+		simple-audio-card,dai-link@1 {
+			cpu {
+				sound-dai = <&spdif_tx 0>;
+			};
+
+			codec {
+				sound-dai = <&spdif_out>;
+			};
 		};
 	};
 
