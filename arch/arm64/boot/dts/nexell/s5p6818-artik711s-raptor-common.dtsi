@@ -921,7 +921,6 @@
 
 &spi_0 {
 	status = "okay";
-	hierarchy = <1>; /* 0:master, 1:slave */
 	cs-gpios = <&gpio_c 30 0>;
 	spidev@0 {
 		compatible = "linux,spidev";
@@ -936,6 +935,7 @@
 &spi_2 {
 	status = "okay";
 	cs-gpios = <&gpio_c 10 0>;
+	hierarchy = <1>; /* 0:master, 1:slave */
 	spidev@0 {
 		compatible = "linux,spidev";
 		reg = <0>;
