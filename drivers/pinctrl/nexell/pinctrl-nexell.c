@@ -860,6 +860,13 @@ static int nexell_pinctrl_register(struct platform_device *pdev,
 			pdesc->name = pin_names;
 			pin_names += PIN_NAME_LENGTH;
 		}
+		pin_bank->grange.name = pin_bank->name;
+		pin_bank->grange.id = bank;
+		pin_bank->grange.pin_base =
+		    drvdata->ctrl->base + pin_bank->pin_base;
+		pin_bank->grange.base = pin_bank->gpio_chip.base;
+		pin_bank->grange.npins = pin_bank->gpio_chip.ngpio;
+		pin_bank->grange.gc = &pin_bank->gpio_chip;
 	}
 
 	ret = nexell_pinctrl_parse_dt(pdev, drvdata);
@@ -874,13 +881,6 @@ static int nexell_pinctrl_register(struct platform_device *pdev,
 
 	for (bank = 0; bank < drvdata->ctrl->nr_banks; ++bank) {
 		pin_bank = &drvdata->ctrl->pin_banks[bank];
-		pin_bank->grange.name = pin_bank->name;
-		pin_bank->grange.id = bank;
-		pin_bank->grange.pin_base =
-		    drvdata->ctrl->base + pin_bank->pin_base;
-		pin_bank->grange.base = pin_bank->gpio_chip.base;
-		pin_bank->grange.npins = pin_bank->gpio_chip.ngpio;
-		pin_bank->grange.gc = &pin_bank->gpio_chip;
 		pinctrl_add_gpio_range(drvdata->pctl_dev, &pin_bank->grange);
 	}
 
