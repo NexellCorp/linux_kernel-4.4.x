@@ -157,6 +157,16 @@
 		};
 
 		pinctrl@C0010000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&initial>;
+
+			initial: initial-state {
+				/* Camera power on for 1st parallel camera */
+				PIN_OUT(gpioc-7, HIGH, FUNC1, NONE, STR0);
+				/* Camera power on for 2nd parallel camera */
+				PIN_OUT(gpiod-5, HIGH, FUNC0, NONE, STR0);
+			};
+
 			key_wakeup0:key_wakeup0 {
 				nexell,pins = "alive-1";
 				nexell,pin-function = <NX_PIN_FUNC0>;

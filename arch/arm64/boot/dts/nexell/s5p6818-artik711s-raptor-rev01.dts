@@ -21,6 +21,7 @@
 / {
 	soc {
 		pinctrl@C0010000 {
+			/delete-property/pinctrl-0;
 			bt_cfg_btwake:bt_cfg_btwake {
 				nexell,pins = "gpiob-18";
 				nexell,pin-function = <NX_PIN_FUNC2>;
