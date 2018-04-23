@@ -218,14 +218,14 @@
 				nexell,pin-pull = <2>;
 				nexell,pin-strength = <0>;
 			};
-#if 0
-			backgear:backgear {
+
+			/* backgear:backgear {
 				nexell,pins = "gpioc-4";
 				nexell,pin-function = <1>;
 				nexell,pin-pull = <2>;
 				nexell,pin-strength = <0>;
 			};
-#endif
+			*/
 		};
 
 		i2c_1:i2c@c00a5000 {
@@ -464,16 +464,16 @@
 		i2c_name = "tp2825";
 		i2c_adapter = <7>;
 		addr = <0x45>;
-	}; 
+	};
 
 	power {
 		enable_seq = <
-			NX_ACTION_START NX_ACTION_TYPE_GPIO 0 1 1 NX_ACTION_END // gpio_b 8
+			NX_ACTION_START NX_ACTION_TYPE_GPIO 0 1 1 NX_ACTION_END
 		>;
 	};
 };
 
-#if 0
+/*
 #include "tp2825_rearcam_regset.dtsi"
 &rearcam {
 	pinctrl-names = "rear_cam_clk";
@@ -504,7 +504,7 @@
 		module = <0>;
 	};
 };
-#endif
+*/
 
 &dp_drm {
 	status = "okay";
@@ -563,7 +563,6 @@
 	};
 };
 
-#if 0
 &dp_drm_lvds {
 	status = "ok";
 
@@ -600,39 +599,6 @@
 		yc_order = <0>;
 	};
 };
-#endif
-
-#if 0
-&i2c_2 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	status = "okay";
-	rate = <400000>;
-
-	semisens@3c {
-		compatible = "semisens,semisens_ts";
-		reg = <0x3c>;
-		interrupt-parent = <&gpio_d>;
-		interrupts = <8 0>;
-		semisens,ldo_en_gpio = <&gpio_c 28 0x00>;
-		semisens,irq_gpio = <&gpio_d 8 0x00>;
-		semisens,reset_gpio = <&gpio_e 22 0x00>;
-		semisens,x_resolution = <1280>;
-		semisens,y_resolution = <800>;
-	};
-
-	tsc2007: tsc2007@48 {
-		compatible = "ti,tsc2007";
-		gpios = <&gpio_d 8 0>;
-		interrupt-parent = <&gpio_d>;
-		interrupts = <8 IRQ_TYPE_EDGE_FALLING>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&toutchpanel_irq>;
-		reg = <0x48>;
-		ti,x-plate-ohms = <180>;
-	};
-};
-#endif
 
 &dw_mmc_0 {
 	num-slots = <1>;
