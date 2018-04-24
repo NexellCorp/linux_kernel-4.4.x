@@ -63,10 +63,10 @@
 				compatible = "fixed-clock";
 				clock-frequency = <0>;
 			};
-            pwm0:pwm0@c00ba000 {
-                clk-input = <I_PLL2>;
-                clock-frequency = <10000000>;
-            };
+			pwm0:pwm0@c00ba000 {
+				clk-input = <I_PLL2>;
+				clock-frequency = <10000000>;
+			};
 
 			pwm1:pwm1@c00ba000 {
 				clk-input = <I_PLL0>;
@@ -79,12 +79,12 @@
 			clocks =  <&pwm0>, <&pwm1>;
 			clock-names = "pwm-tclk0", "pwm-tclk1";
 */
-            clock-names = "timers", "pwm-tclk0", "pwm-tclk1";
-            clocks =  <&pclk>, <&pwm0>, <&pwm1>;
-            pinctrl-names = "default";
-            pinctrl-0 = <&pwm0_pin &pwm1_pin>;
-            samsung,pwm-outputs = <0>, <1>;
-            status = "okay";
+			clock-names = "timers", "pwm-tclk0", "pwm-tclk1";
+			clocks =  <&pclk>, <&pwm0>, <&pwm1>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pwm0_pin &pwm1_pin>;
+			samsung,pwm-outputs = <0>, <1>;
+			status = "okay";
 		};
 
 		pinctrl@C0010000 {
@@ -736,7 +736,6 @@
 		compatible = "nexell,snd-smart-voice,i2s,pl022";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		pwms = <&pwm 3 125 0>;
 		gpio_regs = < PHYS_BASE_GPIOA 0x1000
 			PHYS_BASE_GPIOB 0x1000
 			PHYS_BASE_GPIOC 0x1000
@@ -744,13 +743,25 @@
 			PHYS_BASE_GPIOE 0x1000
 			PHYS_BASE_ALIVE 0x200>;
 
-		cpu-dais = <2>;	/* i2s:1EA, spi:1EA */
-		pin {
-			spi-cs-gpio = <&gpio_c 16 0>;
-			pdm-isrun-gpio = <&gpio_d 20 0>;
-			pdm-lrck-gpio = <&gpio_b 26 0>;
-			i2s-lrck-gpio = <&gpio_b 4 0>;
-			pdm-nrst-gpio = <&gpio_d 16 0>;
+		clkgen_regs = <PHYS_BASE_CLK_15 0x1000
+			PHYS_BASE_CLK_16 0x1000
+			PHYS_BASE_CLK_17 0x1000>;
+
+		ref {
+			sound-dev = <&i2s_2 0>;
+		};
+
+		mic {
+			ch@4 {
+				sound-dev = <&snd_spi_2 0>;
+				pin {
+				spi-cs-gpio = <&gpio_c 16 0>;
+				pdm-isrun-gpio = <&gpio_d 20 0>;
+				pdm-lrck-gpio = <&gpio_b 26 0>;
+				i2s-lrck-gpio = <&gpio_b 4 0>;
+				pdm-nrst-gpio = <&gpio_d 16 0>;
+				};
+			};
 		};
 	};
 
