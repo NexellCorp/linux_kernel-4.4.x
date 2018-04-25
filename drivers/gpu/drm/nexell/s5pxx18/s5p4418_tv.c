@@ -248,7 +248,22 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 	struct nx_tvout_dev *tvout = display->context;
 	struct nx_sync_info *sync = &tvout->control.sync;
 	int module = tvout->control.module;
+	int mux = 0;
 
+	switch (module) {
+	case 0:
+		mux = 0;
+		break;
+	case 1:
+		mux = 2;
+		break;
+	default:
+		pr_err("Failed, %s not support module %d\n",
+		       __func__, module);
+		return -EINVAL;
+	}
+
+	nx_disp_top_set_primary_mux(mux);
 	nx_dpc_set_reg_flush(module);
 
 	if (sync->interlace > 0)
