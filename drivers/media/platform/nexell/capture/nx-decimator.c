@@ -667,9 +667,13 @@ static int register_v4l2(struct nx_decimator *me)
 	if (ret)
 		BUG();
 
-	clipper = nx_v4l2_get_subdev("nx-clipper");
+	memset(dev_name, 0x0, sizeof(dev_name));
+	snprintf(dev_name, sizeof(dev_name), "nx-clipper%d%s", me->module,
+			(me->logical) ? "-logical" : "");
+	clipper = nx_v4l2_get_subdev(dev_name);
 	if (!clipper) {
-		dev_err(&me->pdev->dev, "can't get clipper subdev\n");
+		dev_err(&me->pdev->dev, "can't get clipper(%s) subdev\n",
+				dev_name);
 		return -1;
 	}
 
