@@ -801,7 +801,7 @@
 			status = "disabled";
 		};
 
-		clipper_2:clipper2@c0064000 {
+		clipper_2:clipper2@c0099000 {
 			compatible = "nexell,nx-clipper";
 			module = <2>;
 			status = "disabled";
@@ -810,6 +810,18 @@
 		decimator_0:decimator0@c0063000 {
 			compatible = "nexell,nx-decimator";
 			module = <0>;
+			status = "disabled";
+		};
+
+		decimator_1:decimator1@c0064000 {
+			compatible = "nexell,nx-decimator";
+			module = <1>;
+			status = "disabled";
+		};
+
+		decimator_2:decimator2@c0099000 {
+			compatible = "nexell,nx-decimator";
+			module = <2>;
 			status = "disabled";
 		};
 
