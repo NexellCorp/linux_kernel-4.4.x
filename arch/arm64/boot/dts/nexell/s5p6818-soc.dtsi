@@ -338,7 +338,7 @@ clocks {
 		clock-output-names = "vip1";
 	};
 
-	vip2:vip@c0099000 {
+	vip2:vip@c009a000 {
 		#clock-cells = <0>;
 		cell-id = <CLK_ID_VIP_2>;
 		reg = <PHYS_BASE_CLK_40 0x1000>;
