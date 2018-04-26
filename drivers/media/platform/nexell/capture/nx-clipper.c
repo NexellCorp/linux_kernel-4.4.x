@@ -167,7 +167,6 @@ struct nx_clipper {
 	struct nx_capture_power_seq disable_seq;
 	struct nx_v4l2_i2c_board_info sensor_info;
 
-	struct device *dev;
 	struct v4l2_subdev subdev;
 	struct media_pad pads[NX_CLIPPER_PAD_MAX];
 
@@ -176,8 +175,7 @@ struct nx_clipper {
 	u32 width;
 	u32 height;
 
-	void *dma_addr;
-	dma_addr_t dma_handle;
+	struct nx_dma_buf buf;
 
 	atomic_t state;
 	struct completion stop_done;
@@ -911,14 +909,35 @@ static int enable_sensor_power(struct nx_clipper *me, bool enable)
 
 static int alloc_dma_buffer(struct nx_clipper *me)
 {
-	if (me->dma_addr == NULL) {
-		me->dma_addr = dma_alloc_coherent(me->dev,
-				me->width * 3,
-				&me->dma_handle, GFP_KERNEL);
-		if (me->dma_addr == NULL) {
-			WARN_ON(1);
+	if (me->buf.addr == NULL) {
+		struct nx_video_buffer *buf;
+		u32 y_size, cbcr_size;
+
+		buf = nx_video_get_next_buffer(&me->vbuf_obj, false);
+		if (!buf) {
+			dev_warn(&me->pdev->dev, "can't get next buffer\n");
+			return -ENOENT;
+		}
+		if (me->buf.format == MEDIA_BUS_FMT_YVYU12_1X24) {
+			y_size = buf->dma_addr[2] - buf->dma_addr[0];
+			cbcr_size = buf->dma_addr[1] - buf->dma_addr[2];
+		} else {
+			y_size = buf->dma_addr[1] - buf->dma_addr[0];
+			cbcr_size = buf->dma_addr[2] - buf->dma_addr[1];
+		}
+		me->buf.size = y_size + (cbcr_size * 2);
+		me->buf.addr = dma_alloc_coherent(&me->pdev->dev,
+				me->buf.size,
+				&me->buf.handle[0], GFP_KERNEL);
+		if (me->buf.addr == NULL) {
+			dev_warn(&me->pdev->dev,
+					"failed to alloc dma buffer\n");
 			return -ENOMEM;
 		}
+		me->buf.stride[0] = buf->stride[0];
+		me->buf.stride[1] = buf->stride[1];
+		me->buf.handle[1] = me->buf.handle[0] + y_size;
+		me->buf.handle[2] = me->buf.handle[1] + cbcr_size;
 	}
 
 	return 0;
@@ -926,12 +945,14 @@ static int alloc_dma_buffer(struct nx_clipper *me)
 
 static void free_dma_buffer(struct nx_clipper *me)
 {
-	if (me->dma_addr) {
-		dma_free_coherent(me->dev, me->width * 3,
-				me->dma_addr,
-				me->dma_handle);
-		me->dma_handle = -1;
-		me->dma_addr = NULL;
+	if (me->buf.addr) {
+		dma_free_coherent(&me->pdev->dev,
+				me->buf.size,
+				me->buf.addr,
+				me->buf.handle[0]);
+		me->buf.handle[0] = me->buf.handle[1] = me->buf.handle[2] = 0;
+		me->buf.stride[0] = me->buf.stride[1] = 0;
+		me->buf.addr = NULL;
 	}
 }
 
@@ -973,12 +994,12 @@ static int update_buffer(struct nx_clipper *me)
 
 static int handle_buffer_underrun(struct nx_clipper *me)
 {
-	if (me->dma_addr) {
+	if (me->buf.addr) {
 		nx_vip_set_clipper_addr(me->module, me->mem_fmt,
 					me->crop.width, me->crop.height,
-					me->dma_handle, me->dma_handle+(me->width),
-					me->dma_handle + (me->width*2),
-					0, 0);
+					me->buf.handle[0], me->buf.handle[1],
+					me->buf.handle[2], me->buf.stride[0],
+					me->buf.stride[1]);
 	}
 	return 0;
 }
@@ -1212,7 +1233,8 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 #endif
 		if (!(NX_ATOMIC_READ(&me->state) &
 		      (STATE_MEM_RUNNING | STATE_CLIP_RUNNING))) {
-			if (nx_vip_is_running(me->module, VIP_CLIPPER)) {
+			if (is_host_video &&
+					nx_vip_is_running(me->module, VIP_CLIPPER)) {
 				pr_err("VIP%d Clipper is already running\n",
 						me->module);
 				goto UP_AND_OUT;
@@ -1251,16 +1273,14 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 				goto UP_AND_OUT;
 			}
 
-			ret = alloc_dma_buffer(me);
-			if (ret) {
-				WARN_ON(1);
-				goto UP_AND_OUT;
-			}
 			ret = update_buffer(me);
 			if (ret) {
 				WARN_ON(1);
 				goto UP_AND_OUT;
 			}
+			ret = alloc_dma_buffer(me);
+			if (ret)
+				goto UP_AND_OUT;
 			nx_vip_run(me->module, VIP_CLIPPER);
 			NX_ATOMIC_SET_MASK(STATE_MEM_RUNNING, &me->state);
 		} else
@@ -1482,6 +1502,7 @@ static int nx_clipper_set_fmt(struct v4l2_subdev *sd,
 		return -ENODEV;
 	}
 
+	me->buf.format = format->format.code;
 	if (pad == 0) {
 		/* set bus format */
 		u32 nx_bus_fmt;
@@ -2048,8 +2069,7 @@ static int nx_clipper_probe(struct platform_device *pdev)
 		return ret;
 
 	me->buffer_underrun = false;
-	me->dma_addr = NULL;
-	me->dma_handle = -1;
+	me->buf.addr = NULL;
 	platform_set_drvdata(pdev, me);
 
 #ifdef DEBUG_SYNC

@@ -56,18 +56,10 @@ enum {
 	STATE_STOPPING = (1 << 1),
 };
 
-struct nx_dma_buf {
-	u32 format;
-	void *addr;
-	dma_addr_t handle[3];
-	u32 size;
-};
-
 struct nx_decimator {
 	u32 module;
 	u32 logical;
 
-	struct device *dev;
 	struct v4l2_subdev subdev;
 	struct media_pad pads[NX_DECIMATOR_PAD_MAX];
 	struct nx_dma_buf buf;
@@ -94,33 +86,33 @@ static int register_irq_handler(struct nx_decimator *me);
 
 static int alloc_dma_buffer(struct nx_decimator *me)
 {
-	int y_size, cbcr_size;
-#ifdef CONFIG_ARCH_S5P6818
-	y_size = cbcr_size = me->width;
-#else
-	struct nx_video_buffer *buf;
-
-	buf = nx_video_get_next_buffer(&me->vbuf_obj, false);
-	if (!buf) {
-		dev_err(&me->pdev->dev, "can't get next buffer\n");
-		return -ENOENT;
-	}
-	if (me->buf.format == MEDIA_BUS_FMT_YVYU12_1X24) {
-		y_size = buf->dma_addr[2] - buf->dma_addr[0];
-		cbcr_size = buf->dma_addr[1] - buf->dma_addr[2];
-	} else {
-		y_size = buf->dma_addr[1] - buf->dma_addr[0];
-		cbcr_size = buf->dma_addr[2] - buf->dma_addr[1];
-	}
-#endif
-	me->buf.size = y_size + (cbcr_size * 2);
 	if (me->buf.addr == NULL) {
-		me->buf.addr = dma_alloc_coherent(me->dev, me->buf.size,
+		int y_size, cbcr_size;
+		struct nx_video_buffer *buf;
+
+		buf = nx_video_get_next_buffer(&me->vbuf_obj, false);
+		if (!buf) {
+			dev_err(&me->pdev->dev, "can't get next buffer\n");
+			return -ENOENT;
+		}
+		if (me->buf.format == MEDIA_BUS_FMT_YVYU12_1X24) {
+			y_size = buf->dma_addr[2] - buf->dma_addr[0];
+			cbcr_size = buf->dma_addr[1] - buf->dma_addr[2];
+		} else {
+			y_size = buf->dma_addr[1] - buf->dma_addr[0];
+			cbcr_size = buf->dma_addr[2] - buf->dma_addr[1];
+		}
+		me->buf.size = y_size + (cbcr_size * 2);
+		me->buf.addr = dma_alloc_coherent(&me->pdev->dev,
+				me->buf.size,
 				&me->buf.handle[0], GFP_KERNEL);
 		if (me->buf.addr == NULL) {
-			WARN_ON(1);
+			dev_err(&me->pdev->dev,
+					"failed to alloc dma buffer\n");
 			return -ENOMEM;
 		}
+		me->buf.stride[0] = buf->stride[0];
+		me->buf.stride[1] = buf->stride[1];
 		me->buf.handle[1] = me->buf.handle[0] + y_size;
 		me->buf.handle[2] = me->buf.handle[1] + cbcr_size;
 	}
@@ -130,11 +122,12 @@ static int alloc_dma_buffer(struct nx_decimator *me)
 static void free_dma_buffer(struct nx_decimator *me)
 {
 	if (me->buf.addr) {
-		dma_free_coherent(me->dev, me->buf.size,
+		dma_free_coherent(&me->pdev->dev, me->buf.size,
 				me->buf.addr,
 				me->buf.handle[0]);
 		me->buf.handle[0] = me->buf.handle[1] =
 			me->buf.handle[2] = 0;
+		me->buf.stride[0] = me->buf.stride[1] = 0;
 		me->buf.addr = NULL;
 	}
 }
@@ -145,7 +138,8 @@ static int handle_buffer_underrun(struct nx_decimator *me)
 		nx_vip_set_decimator_addr(me->module, me->mem_fmt,
 					me->width, me->height,
 					me->buf.handle[0], me->buf.handle[1],
-					me->buf.handle[2], 0, 0);
+					me->buf.handle[2], me->buf.stride[0],
+					me->buf.stride[1]);
 	}
 	return 0;
 }
@@ -359,10 +353,8 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 			}
 			update_buffer(me);
 			ret = alloc_dma_buffer(me);
-			if (ret) {
-				WARN_ON(1);
+			if (ret)
 				goto UP_AND_OUT;
-			}
 			nx_vip_run(me->module, VIP_DECIMATOR);
 			NX_ATOMIC_SET_MASK(STATE_RUNNING, &me->state);
 		}
@@ -726,7 +718,6 @@ static int nx_decimator_probe(struct platform_device *pdev)
 		WARN_ON(1);
 		return -ENOMEM;
 	}
-	me->dev = dev;
 	if (!nx_vip_is_valid(me->module)) {
 		dev_err(dev, "NX VIP %d is not valid\n", me->module);
 		return -ENODEV;

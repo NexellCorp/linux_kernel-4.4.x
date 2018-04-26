@@ -44,6 +44,14 @@ struct nx_mem_fmt_map {
 	u32 nx_mem_fmt;
 };
 
+struct nx_dma_buf {
+	u32 format;
+	void *addr;
+	dma_addr_t handle[3];
+	u32 stride[2];
+	u32 size;
+};
+
 bool nx_vip_is_valid(u32 module);
 int nx_vip_reset(u32 module);
 int nx_vip_clock_config(u32 module, u32 source, u32 frequency);
