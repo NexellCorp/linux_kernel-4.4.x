@@ -475,7 +475,7 @@
 		pl022,com-mode = <0x2>;
 		pl022,rx-level-trig = <1>;
 		pl022,tx-level-trig = <1>;
-		pl022,slave-tx-disable;
+		pl022,slave-tx-enable;
 		spi-cpol;
 		spi-cpha;
 		reg = <0>;
