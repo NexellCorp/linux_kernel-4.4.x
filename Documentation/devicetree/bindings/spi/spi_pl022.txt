@@ -31,11 +31,18 @@ contain the following properties.
 	1: Texas Instruments Synchronous Serial Frame Format
 	2: Microwire (Half Duplex)
 - pl022,com-mode : polling, interrupt or dma
+	0: Interrupt
+	1: Polling
+	2: DMA
 - pl022,rx-level-trig : Rx FIFO watermark level
 - pl022,tx-level-trig : Tx FIFO watermark level
 - pl022,ctrl-len : Microwire interface: Control length
 - pl022,wait-state : Microwire interface: Wait state
 - pl022,duplex : Microwire interface: Full/Half duplex
+- pl022,hierarchy : select master/slave mode
+	0: Master
+	1: Slave
+- pl022,slave-tx-enable : TX enables in slave mode
 
 
 Example:
