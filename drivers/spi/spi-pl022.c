@@ -1867,7 +1867,7 @@ static int pl022_setup(struct spi_device *spi)
 			if (of_property_read_u32(np, "pl022,hierarchy",
 				&chip_info_dt.hierarchy))
 				chip_info_dt.hierarchy = SSP_MASTER;
-			if(of_find_property(np, "pl022,slave-tx-disable", NULL))
+			if(of_find_property(np, "pl022,slave-tx-enable", NULL))
 				chip_info_dt.slave_tx_disable = DRIVE_TX;
 			of_property_read_u32(np, "pl022,interface",
 				&chip_info_dt.iface);
