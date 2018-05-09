@@ -44,6 +44,22 @@
 #include <linux/of_gpio.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/reset.h>
+#ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
+#include <linux/pm_qos.h>
+#include <linux/soc/nexell/cpufreq.h>
+
+#define QOS_REQUEST_TIMEOUT_US	100000 /* 100 milliseconds */
+static struct pm_qos_request nx_spi_qos;
+
+static void nx_spi_qos_update(int val, int timeout_us)
+{
+	if (!pm_qos_request_active(&nx_spi_qos))
+		pm_qos_add_request(&nx_spi_qos, PM_QOS_BUS_THROUGHPUT, val);
+	else
+		pm_qos_update_request_timeout(&nx_spi_qos, val, timeout_us);
+}
+#endif
+
 /*
  * This macro is used to define some register default values.
  * reg is masked with mask, the OR:ed with an (again masked)
@@ -1574,6 +1590,23 @@ static int pl022_transfer_one_message(struct spi_master *master,
 {
 	struct pl022 *pl022 = spi_master_get_devdata(master);
 
+#ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
+	unsigned int count = 0;
+	struct spi_transfer *xfer = list_entry(msg->transfers.next,
+					struct spi_transfer, transfer_list);
+	int ms = (xfer->len * 8 * 1000) / xfer->speed_hz;
+
+	/* To avoid changing devfreq too often, It gave a minimum timeout */
+	if (ms < 100)
+		ms = QOS_REQUEST_TIMEOUT_US;
+
+	nx_spi_qos_update(NX_BUS_CLK_SPI_KHZ, ms);
+	while ((nx_devfreq_read_cur_freq() != NX_BUS_CLK_SPI_KHZ) &&
+			(count++ < 10))
+		udelay(100);
+	if (count > 10)
+		dev_err(&pl022->adev->dev, "devfreq has not been updated\n");
+#endif
 	/* Initial message state */
 	pl022->cur_msg = msg;
 	msg->state = STATE_START;
