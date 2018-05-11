@@ -653,7 +653,7 @@ static ssize_t fscadj_store(struct device *dev, struct device_attribute *attr,
 	}
 
 	if (val >= 0 && val <= 65535) {
-		param->bright = val;
+		param->fscadj = val;
 
 		if (ctx->plugged && param->ops != NULL)
 			param->ops->set_fscadj(param);
