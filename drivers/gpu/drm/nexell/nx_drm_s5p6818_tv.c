@@ -110,7 +110,7 @@ static int tvout_parse_dt(struct device *dev, struct tvout_context *ctx)
 		param->hsw = 42;
 		param->hbp = 90;
 		param->hfp = 12;
-		param->vactive = 480;
+		param->vactive = 576;
 		param->vsw = 2;
 		param->vbp = 21;
 		param->vfp = 3;
@@ -424,7 +424,7 @@ static ssize_t type_store(struct device *dev, struct device_attribute *attr,
 			param->hsw = 42;
 			param->hbp = 90;
 			param->hfp = 12;
-			param->vactive = 480;
+			param->vactive = 576;
 			param->vsw = 2;
 			param->vbp = 21;
 			param->vfp = 3;
