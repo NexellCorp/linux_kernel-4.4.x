@@ -421,7 +421,7 @@ pinctrl@C0010000 {
 	spi2_bus:spi2 {
 		nexell,pins = "gpioc-9", "gpioc-10", "gpioc-11", "gpioc-12";
 		nexell,pin-function = <NX_PIN_FUNC2>;
-		nexell,pin-pull = <NX_PIN_PULL_UP>;
+		nexell,pin-pull = <NX_PIN_PULL_NONE>;
 		nexell,pin-strength = <NX_PIN_STR0>;
 	};
 
