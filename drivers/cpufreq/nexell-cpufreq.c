@@ -593,6 +593,9 @@ static void *nxp_cpufreq_get_dt_data(struct platform_device *pdev)
 	}
 
 	list = of_get_property(node, "dvfs-tables", &size);
+	if (!list)
+		return NULL;
+
 	size /= FN_SIZE;
 
 	if (size) {
