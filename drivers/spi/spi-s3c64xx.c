@@ -205,6 +205,7 @@ struct s3c64xx_spi_driver_data {
 	struct s3c64xx_spi_dma_data	tx_dma;
 	struct s3c64xx_spi_port_config	*port_conf;
 	unsigned int			port_id;
+	bool				slave_aborted;
 };
 
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
@@ -494,14 +495,21 @@ static int wait_for_dma(struct s3c64xx_spi_driver_data *sdd,
 	u32 status;
 	int ms;
 
-	/* millisecs to xfer 'len' bytes @ 'cur_speed' */
-	ms = xfer->len * 8 * 1000 / sdd->cur_speed;
-	if(sdd->cntrlr_info->hierarchy == SSP_SLAVE)
-		ms += 1000; /* some tolerance */
-	else
-		ms += 100;
-	val = msecs_to_jiffies(ms) + 10;
-	val = wait_for_completion_timeout(&sdd->xfer_completion, val);
+	if(spi_controller_is_slave(sdd->master)) {
+		/* Slave mode */
+		if (wait_for_completion_interruptible(&sdd->xfer_completion) ||
+				sdd->slave_aborted) {
+			dev_dbg(&sdd->pdev->dev, "interrupted\n");
+			return -EINTR;
+		}
+	} else {
+		/* Master mode */
+		/* millisecs to xfer 'len' bytes @ 'cur_speed' */
+		ms = xfer->len * 8 * 1000 / sdd->cur_speed;
+		ms += 100; /* some tolerance */
+		val = msecs_to_jiffies(ms) + 10;
+		val = wait_for_completion_timeout(&sdd->xfer_completion, val);
+	}
 
 	/*
 	 * If the previous xfer was completed within timeout, then
@@ -542,18 +550,29 @@ static int wait_for_pio(struct s3c64xx_spi_driver_data *sdd,
 	u8 *buf;
 	int ms;
 
-	/* millisecs to xfer 'len' bytes @ 'cur_speed' */
-	ms = xfer->len * 8 * 1000 / sdd->cur_speed;
-	if(sdd->cntrlr_info->hierarchy == SSP_SLAVE)
-		ms += 10000; /* some tolerance */
-	else
+	if(spi_controller_is_slave(sdd->master)) {
+		/* Slave mode */
+		do {
+			status = readl(regs + S3C64XX_SPI_STATUS);
+			usleep_range(100, 200);
+		} while (RX_FIFO_LVL(status, sdd) < xfer->len &&
+				!sdd->slave_aborted);
+		if (sdd->slave_aborted) {
+			dev_dbg(&sdd->pdev->dev, "interrupted\n");
+			return -EINTR;
+		}
+	} else {
+		/* Master mode */
+		/* millisecs to xfer 'len' bytes @ 'cur_speed' */
+		ms = xfer->len * 8 * 1000 / sdd->cur_speed;
 		ms += 10; /* some tolerance */
-	val = msecs_to_loops(ms);
-	do {
-		status = readl(regs + S3C64XX_SPI_STATUS);
-	} while (RX_FIFO_LVL(status, sdd) < xfer->len && --val);
-
-
+		val = msecs_to_loops(ms);
+		do {
+			status = readl(regs + S3C64XX_SPI_STATUS);
+		} while (RX_FIFO_LVL(status, sdd) < xfer->len && --val);
+		if (val == 0)
+			return -ETIMEDOUT;
+	}
 	/* If it was only Tx */
 	if (!xfer->rx_buf) {
 		sdd->state &= ~TXBUSY;
@@ -600,7 +619,6 @@ static int wait_for_pio(struct s3c64xx_spi_driver_data *sdd,
 static void s3c64xx_spi_config(struct s3c64xx_spi_driver_data *sdd)
 {
 	void __iomem *regs = sdd->regs;
-	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 	u32 val;
 
 	/* Disable Clock */
@@ -617,7 +635,7 @@ static void s3c64xx_spi_config(struct s3c64xx_spi_driver_data *sdd)
 	val &= ~(S3C64XX_SPI_CH_SLAVE |
 			S3C64XX_SPI_CPOL_L |
 			S3C64XX_SPI_CPHA_B);
-	if(sci->hierarchy == SSP_SLAVE)
+	if(spi_controller_is_slave(sdd->master))
 		val |= S3C64XX_SPI_CH_SLAVE;
 
 	if (sdd->cur_mode & SPI_CPOL)
@@ -680,6 +698,10 @@ static int s3c64xx_spi_prepare_message(struct spi_master *master,
 	struct spi_device *spi = msg->spi;
 	struct s3c64xx_spi_csinfo *cs = spi->controller_data;
 
+	if(spi_controller_is_slave(sdd->master)) {
+		s3c64xx_spi_config(sdd);
+		return 0;
+	}
 	/* If Master's(controller) state differs from that needed by Slave */
 	if (sdd->cur_speed != spi->max_speed_hz
 			|| sdd->cur_mode != spi->mode
@@ -691,7 +713,8 @@ static int s3c64xx_spi_prepare_message(struct spi_master *master,
 	}
 
 	/* Configure feedback delay */
-	writel(cs->fb_delay & 0x3, sdd->regs + S3C64XX_SPI_FB_CLK);
+	if (cs)
+		writel(cs->fb_delay & 0x3, sdd->regs + S3C64XX_SPI_FB_CLK);
 
 	return 0;
 }
@@ -722,6 +745,7 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 #endif
 
 	reinit_completion(&sdd->xfer_completion);
+	sdd->slave_aborted = false;
 
 	/* Only BPW and Speed may change across transfers */
 	bpw = xfer->bits_per_word;
@@ -845,11 +869,6 @@ static int s3c64xx_spi_setup(struct spi_device *spi)
 		 * has to be override to have the proper GPIO pin number.
 		 */
 		spi->cs_gpio = cs->line;
-	}
-
-	if (IS_ERR_OR_NULL(cs)) {
-		dev_err(&spi->dev, "No CS for SPI(%d)\n", spi->chip_select);
-		return -ENODEV;
 	}
 
 	if (!spi_get_ctldata(spi)) {
@@ -1028,7 +1047,6 @@ static struct s3c64xx_spi_info *s3c64xx_spi_parse_dt(struct device *dev)
 {
 	struct s3c64xx_spi_info *sci;
 	u32 temp;
-	u32 hierarchy =0;
 
 	sci = devm_kzalloc(dev, sizeof(*sci), GFP_KERNEL);
 	if (!sci)
@@ -1041,16 +1059,17 @@ static struct s3c64xx_spi_info *s3c64xx_spi_parse_dt(struct device *dev)
 		sci->src_clk_nr = temp;
 	}
 
+	if (of_property_read_bool(dev->of_node, "spi-slave"))
+		sci->hierarchy = SSP_SLAVE;
+	else
+		sci->hierarchy = SSP_MASTER;
+
 	if (of_property_read_u32(dev->of_node, "num-cs", &temp)) {
 		dev_warn(dev, "number of chip select lines not specified, assuming 1 chip select line\n");
 		sci->num_cs = 1;
 	} else {
 		sci->num_cs = temp;
 	}
-	if (of_property_read_u32(dev->of_node, "hierarchy", &hierarchy))
-		sci->hierarchy = SSP_MASTER;
-	else
-		sci->hierarchy = hierarchy;
 
 	return sci;
 }
@@ -1075,6 +1094,15 @@ static inline struct s3c64xx_spi_port_config *s3c64xx_spi_get_port_config(
 #endif
 	return (struct s3c64xx_spi_port_config *)
 			 platform_get_device_id(pdev)->driver_data;
+}
+
+static int s3c64xx_slave_abort(struct spi_master *master)
+{
+	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
+
+	sdd->slave_aborted = true;
+	complete(&sdd->xfer_completion);
+	return 0;
 }
 
 static int s3c64xx_spi_probe(struct platform_device *pdev)
@@ -1110,7 +1138,11 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 		return irq;
 	}
 
-	master = spi_alloc_master(&pdev->dev,
+	if (sci->hierarchy == SSP_MASTER)
+		master = spi_alloc_master(&pdev->dev,
+				sizeof(struct s3c64xx_spi_driver_data));
+	else
+		master = spi_alloc_slave(&pdev->dev,
 				sizeof(struct s3c64xx_spi_driver_data));
 	if (master == NULL) {
 		dev_err(&pdev->dev, "Unable to allocate SPI Master\n");
@@ -1166,6 +1198,7 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 	master->prepare_message = s3c64xx_spi_prepare_message;
 	master->transfer_one = s3c64xx_spi_transfer_one;
 	master->unprepare_transfer_hardware = s3c64xx_spi_unprepare_transfer;
+	master->slave_abort = s3c64xx_slave_abort;
 	master->num_chipselect = sci->num_cs;
 	master->dma_alignment = 8;
 	master->bits_per_word_mask = SPI_BPW_MASK(32) | SPI_BPW_MASK(16) |
@@ -1261,7 +1294,7 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 
 	val  = S3C64XX_SPI_INT_RX_OVERRUN_EN | S3C64XX_SPI_INT_RX_UNDERRUN_EN |
 	       S3C64XX_SPI_INT_TX_OVERRUN_EN;
-	if(sci->hierarchy == SSP_MASTER)
+	if (!spi_controller_is_slave(sdd->master))
 		val |=  S3C64XX_SPI_INT_TX_UNDERRUN_EN;
 	writel(val, sdd->regs + S3C64XX_SPI_INT_EN);
 
