@@ -593,19 +593,21 @@ static void *nxp_cpufreq_get_dt_data(struct platform_device *pdev)
 	}
 
 	list = of_get_property(node, "dvfs-tables", &size);
-	if (!list)
-		return NULL;
+	if (!list) {
+		pr_info("cannot find dvfs-tables\n");
+	} else {
+		size /= FN_SIZE;
 
-	size /= FN_SIZE;
+		if (size) {
+			for (i = 0; size/2 > i; i++) {
+				plat_tbs[i][0] = be32_to_cpu(*list++);
+				plat_tbs[i][1] = be32_to_cpu(*list++);
+				pr_debug("DTS %2d = %8ldkhz, %8ld uV\n",
+					 i, plat_tbs[i][0], plat_tbs[i][1]);
+			}
 
-	if (size) {
-		for (i = 0; size/2 > i; i++) {
-			plat_tbs[i][0] = be32_to_cpu(*list++);
-			plat_tbs[i][1] = be32_to_cpu(*list++);
-			pr_debug("DTS %2d = %8ldkhz, %8ld uV\n",
-				 i, plat_tbs[i][0], plat_tbs[i][1]);
+			pdata->table_size = size/2;
 		}
-		pdata->table_size = size/2;
 	}
 
 	if(!of_property_read_u32(node, "max_freq", &tmp)) {
