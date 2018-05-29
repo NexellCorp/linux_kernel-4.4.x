@@ -769,6 +769,10 @@ static int spidev_remove(struct spi_device *spi)
 {
 	struct spidev_data	*spidev = spi_get_drvdata(spi);
 
+#ifdef CONFIG_SPI_SLAVE
+	/* abort if slave mode */
+	spi_slave_abort(spi);
+#endif
 	/* make sure ops on existing fds can abort cleanly */
 	spin_lock_irq(&spidev->spi_lock);
 	spidev->spi = NULL;
