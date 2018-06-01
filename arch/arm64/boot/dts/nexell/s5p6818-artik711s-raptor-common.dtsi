@@ -846,6 +846,8 @@
 
 &dp_drm_tvout {
 	status = "ok";
+	saturation = <60>;
+	pedestal = <1>;
 
 	display-timing {
 		clock-frequency = <27000000>;
