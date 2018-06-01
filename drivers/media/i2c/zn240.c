@@ -43,6 +43,11 @@ static struct nx_resolution supported_resolutions[] = {
 	}
 };
 
+struct i2c_info {
+	int i2c_id;
+	int i2c_addr;
+};
+
 struct zn240_state {
 	struct v4l2_subdev	subdev;
 	struct v4l2_mbus_framefmt fmt;
@@ -168,12 +173,17 @@ static int sensor_zn240_load_regs(struct v4l2_subdev *subdev,
 static int sensor_zn240_init(struct v4l2_subdev *subdev, u32 val)
 {
 	int ret = 0;
+	struct zn240_state *priv = to_state(subdev);
 	struct i2c_client *client = to_client(subdev);
+	struct i2c_info *host = v4l2_get_subdev_hostdata(subdev);
 	u8 id_h = 0, id_l = 0;
 
 	WARN_ON(!subdev);
 
 	dev_info(&client->dev, "%s start\n", __func__);
+
+	if (host->i2c_addr)
+		client->addr = host->i2c_addr;
 
 	/* Set page 0 */
 	ret = sensor_zn240_write_reg(client, ZN240_PAGE, 0x00);
