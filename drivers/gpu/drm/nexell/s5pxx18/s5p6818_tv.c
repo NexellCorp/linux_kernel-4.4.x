@@ -263,7 +263,7 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 	nx_dpc_set_clock_source(module, 1, ctrl->clk_src_lv1);
 	nx_dpc_set_clock_out_enb(module, 1, true);
 
-	nx_dpc_set_mode(module, out_format, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0);
+	nx_dpc_set_mode(module, out_format, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0);
 	nx_dpc_set_hsync(module, 720, param->hsw, param->hfp, param->hbp, 0);
 	nx_dpc_set_vsync(module, param->vactive/2, param->vsw, param->vfp,
 			 param->vbp, 0, param->vactive/2, param->vsw,
@@ -282,7 +282,7 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 					       0, 0x0,
 					       0, 0x0,
 					       0, 0x0,
-					       rgbfmt_a8b8g8r8,
+					       rgbfmt_a8r8g8b8,
 					       locksize_16);
 	nx_mlc_set_layer_reg_finish(module, topmlc);
 	nx_mlc_set_layer_reg_finish(module, rgb0);
