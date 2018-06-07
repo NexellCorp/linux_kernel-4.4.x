@@ -542,7 +542,7 @@ static int nx_i2s_set_plat_param(struct nx_i2s_snd_param *par, void *data)
 	int i = 0, ret = 0;
 	unsigned int id = 0;
 	char clkname[MAX_CLK_NAME_LENGTH];
-	int dfs_pllno;
+	int dfs_pllno = 0;
 	struct resource *res;
 
 	id = of_alias_get_id(pdev->dev.of_node, "i2s");
