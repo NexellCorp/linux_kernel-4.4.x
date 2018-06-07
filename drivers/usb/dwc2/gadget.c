@@ -4821,12 +4821,6 @@ int dwc2_hsotg_suspend(struct dwc2_hsotg *hsotg)
 			if (hsotg->eps_out[ep])
 				dwc2_hsotg_ep_disable(&hsotg->eps_out[ep]->ep);
 		}
-	} else {
-		if (of_device_is_compatible(hsotg->dev->of_node,
-					    "nexell,nexell-dwc2otg")) {
-			phy_exit(hsotg->phy);
-			phy_power_off(hsotg->phy);
-		}
 	}
 
 	return 0;
@@ -4848,12 +4842,6 @@ int dwc2_hsotg_resume(struct dwc2_hsotg *hsotg)
 		if (hsotg->enabled)
 			dwc2_hsotg_core_connect(hsotg);
 		spin_unlock_irqrestore(&hsotg->lock, flags);
-	} else {
-		if (of_device_is_compatible(hsotg->dev->of_node,
-					    "nexell,nexell-dwc2otg")) {
-			phy_power_on(hsotg->phy);
-			phy_init(hsotg->phy);
-		}
 	}
 
 	return 0;
