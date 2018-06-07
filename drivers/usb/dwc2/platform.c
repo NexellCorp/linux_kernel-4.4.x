@@ -500,6 +500,90 @@ error:
 	return retval;
 }
 
+struct dwc2_core_global_regs {
+	uint32_t gotgctl;
+	uint32_t gotgint;
+	uint32_t gahbcfg;
+	uint32_t gusbcfg;
+	uint32_t grstctl;
+	uint32_t gintmsk;
+	uint32_t grxfsiz;
+	uint32_t gnptxfsiz;
+	uint32_t gi2cctl;
+	uint32_t gpvndctl;
+	uint32_t ggpio;
+	uint32_t ghwcfg1;
+	uint32_t ghwcfg2;
+	uint32_t ghwcfg3;
+	uint32_t ghwcfg4;
+	uint32_t glpmcfg;
+	uint32_t gpwrdn;
+	uint32_t gdfifocfg;
+	uint32_t adpctl;
+	uint32_t hptxfsiz;
+	uint32_t dtxfsiz[15];
+};
+
+static struct dwc2_core_global_regs save_global_regs;
+
+static void dwc2_driver_suspend_regs(struct dwc2_hsotg *hsotg, int suspend)
+{
+	struct dwc2_core_global_regs *regs = &save_global_regs;
+	int idx;
+
+	dev_dbg(hsotg->dev, "%s %d suspend %d\n", __func__, __LINE__, suspend);
+
+	if (suspend) {
+		regs->gotgctl = readl(hsotg->regs + GOTGCTL);
+		regs->gotgint = readl(hsotg->regs + GOTGINT);
+		regs->gahbcfg = readl(hsotg->regs + GAHBCFG);
+		regs->gusbcfg = readl(hsotg->regs + GUSBCFG);
+		regs->grstctl = readl(hsotg->regs + GRSTCTL);
+		regs->gintmsk = readl(hsotg->regs + GINTMSK);
+		regs->grxfsiz = readl(hsotg->regs + GRXFSIZ);
+		regs->gnptxfsiz = readl(hsotg->regs + GNPTXFSIZ);
+		regs->gi2cctl = readl(hsotg->regs + GI2CCTL);
+		regs->gpvndctl = readl(hsotg->regs + GPVNDCTL);
+		regs->ggpio = readl(hsotg->regs + GGPIO);
+		regs->ghwcfg1 = readl(hsotg->regs + GHWCFG1);
+		regs->ghwcfg2 = readl(hsotg->regs + GHWCFG2);
+		regs->ghwcfg3 = readl(hsotg->regs + GHWCFG3);
+		regs->ghwcfg4 = readl(hsotg->regs + GHWCFG4);
+		regs->glpmcfg = readl(hsotg->regs + GLPMCFG);
+		regs->gpwrdn = readl(hsotg->regs + GPWRDN);
+		regs->gdfifocfg = readl(hsotg->regs + GDFIFOCFG);
+		regs->adpctl = readl(hsotg->regs + ADPCTL);
+		regs->hptxfsiz = readl(hsotg->regs + HPTXFSIZ);
+		for (idx = 1; idx < hsotg->num_of_eps; idx++)
+			regs->dtxfsiz[idx] = readl(hsotg->regs +
+						   DPTXFSIZN(idx));
+	} else {
+		writel(regs->gotgctl, hsotg->regs + GOTGCTL);
+		writel(regs->gotgint, hsotg->regs + GOTGINT);
+		writel(regs->gahbcfg, hsotg->regs + GAHBCFG);
+		writel(regs->gusbcfg, hsotg->regs + GUSBCFG);
+		writel(regs->grstctl, hsotg->regs + GRSTCTL);
+		writel(regs->gintmsk, hsotg->regs + GINTMSK);
+		writel(regs->grxfsiz, hsotg->regs + GRXFSIZ);
+		writel(regs->gnptxfsiz, hsotg->regs + GNPTXFSIZ);
+		writel(regs->gi2cctl, hsotg->regs + GI2CCTL);
+		writel(regs->gpvndctl, hsotg->regs + GPVNDCTL);
+		writel(regs->ggpio, hsotg->regs + GGPIO);
+		writel(regs->ghwcfg1, hsotg->regs + GHWCFG1);
+		writel(regs->ghwcfg2, hsotg->regs + GHWCFG2);
+		writel(regs->ghwcfg3, hsotg->regs + GHWCFG3);
+		writel(regs->ghwcfg4, hsotg->regs + GHWCFG4);
+		writel(regs->glpmcfg, hsotg->regs + GLPMCFG);
+		writel(regs->gpwrdn, hsotg->regs + GPWRDN);
+		writel(regs->gdfifocfg, hsotg->regs + GDFIFOCFG);
+		writel(regs->adpctl, hsotg->regs + ADPCTL);
+		writel(regs->hptxfsiz, hsotg->regs + HPTXFSIZ);
+		for (idx = 1; idx < hsotg->num_of_eps; idx++)
+			writel(regs->dtxfsiz[idx], hsotg->regs +
+			       DPTXFSIZN(idx));
+	}
+}
+
 static int __maybe_unused dwc2_suspend(struct device *dev)
 {
 	struct dwc2_hsotg *dwc2 = dev_get_drvdata(dev);
@@ -510,6 +594,10 @@ static int __maybe_unused dwc2_suspend(struct device *dev)
 		if (ret)
 			return ret;
 	}
+
+	if (of_device_is_compatible(dwc2->dev->of_node,
+				"nexell,nexell-dwc2otg"))
+		dwc2_driver_suspend_regs(dwc2, 1);
 
 	if (dwc2->ll_hw_enabled)
 		ret = __dwc2_lowlevel_hw_disable(dwc2);
@@ -528,8 +616,15 @@ static int __maybe_unused dwc2_resume(struct device *dev)
 			return ret;
 	}
 
-	if (dwc2_is_device_mode(dwc2))
-		ret = dwc2_hsotg_resume(dwc2);
+	if (of_device_is_compatible(dwc2->dev->of_node,
+				"nexell,nexell-dwc2otg")) {
+		dwc2_driver_suspend_regs(dwc2, 0);
+		if (dwc2->op_state == OTG_STATE_B_PERIPHERAL)
+			ret = dwc2_hsotg_resume(dwc2);
+	} else {
+		if (dwc2_is_device_mode(dwc2))
+			ret = dwc2_hsotg_resume(dwc2);
+	}
 
 	return ret;
 }
