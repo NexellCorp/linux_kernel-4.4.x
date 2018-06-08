@@ -408,7 +408,7 @@ void tzio_file_closed(struct file *filp)
 }
 
 static int tzio_push_message(struct scm_buffer *ring, struct tzio_context *ctx,
-			     struct tzio_message *msg, void *payload)
+			     struct tzio_message *msg, void *__user payload)
 {
 	unsigned long chid;
 	struct scm_msg_link scm_msg;
@@ -764,10 +764,8 @@ static int tzdev_ipc_thread(void *__arg)
 	return 0;
 }
 
-#define TZIO_PAYLOAD_MAX	256
-
-int tzio_message_wait(struct tzio_message *__user msg,
-		      struct tzio_context *context)
+int tzio_message_wait(struct tzio_message *msg,
+		      struct tzio_context *context, void *__user payload)
 {
 	int ret;
 
@@ -822,11 +820,10 @@ int tzio_message_wait(struct tzio_message *__user msg,
 				}
 
 				if ((context->timeout_seconds > 0) &&
-					(context->softlock_timer >
-						context->timeout_seconds)) {
+					(context->softlock_timer > context->timeout_seconds)) {
 					tzlog_print(TZLOG_ERROR,
-						"TA %u timed out. Killing all requests\n",
-						context->remote_id);
+							"TA %u timed out. Killing all requests\n",
+							context->remote_id);
 					tzio_connection_closed(context->remote_id);
 					break;
 				}
@@ -839,12 +836,10 @@ int tzio_message_wait(struct tzio_message *__user msg,
 
 	ret = context->status;
 
-	/* Clear context ID restart */
-	put_user(0, &msg->context_id);
-
+	msg->context_id = 0;
 	if (context->payload_size) {
 		if (copy_to_user(
-		    msg->payload, context->payload, context->payload_size)) {
+		    payload, context->payload, context->payload_size)) {
 			tzlog_print(TZLOG_ERROR,
 				    "Can't copy data back to userspace\n");
 			ret = -EFAULT;
@@ -860,25 +855,24 @@ int tzio_message_wait(struct tzio_message *__user msg,
 	return ret;
 }
 
-int tzio_message_restart(struct tzio_message *__user msg, struct file *filp,
-			 int context_id)
+int tzio_message_restart(struct tzio_message *msg, struct file *filp, void *__user payload)
 {
 	struct tzio_context *context;
 	unsigned long flags;
 	int ret;
 
 	tzlog_print(TZLOG_DEBUG, "Restart waiting for context %d\n",
-		    context_id);
+			msg->context_id);
 
 	spin_lock_irqsave(&tzio_context_slock, flags);
 
-	context = tzio_context_get(context_id);
+	context = tzio_context_get(msg->context_id);
 
 	if (context == NULL) {
 		spin_unlock_irqrestore(&tzio_context_slock, flags);
 		tzlog_print(TZLOG_DEBUG,
 			    "Unable to finish waiting for context %d - doesn't exist\n",
-			    context_id);
+				msg->context_id);
 		return -EINVAL;
 	}
 
@@ -886,18 +880,20 @@ int tzio_message_restart(struct tzio_message *__user msg, struct file *filp,
 		spin_unlock_irqrestore(&tzio_context_slock, flags);
 		tzlog_print(TZLOG_DEBUG,
 			    "Unable to finish waiting for context %d - file mismatch\n",
-			    context_id);
+				msg->context_id);
 		return -EINVAL;
 	}
 
 	spin_unlock_irqrestore(&tzio_context_slock, flags);
 
-	ret = tzio_message_wait(msg, context);
+	ret = tzio_message_wait(msg, context, payload);
 
 	tzio_context_put(context);
 
 	return ret;
 }
+
+#define TZIO_PAYLOAD_MAX 256
 
 int tzio_exchange_message(struct file *filp, struct tzio_message *__user msg)
 {
@@ -907,64 +903,41 @@ int tzio_exchange_message(struct file *filp, struct tzio_message *__user msg)
 	struct scm_mux_link *ch;
 	struct tzio_message tzio_msg;
 	unsigned int svc_flags;
-	char __payload[TZIO_PAYLOAD_MAX];
-	int32_t restart_context_id;
-	uint32_t timeout_seconds;
+	char ctx_payload[TZIO_PAYLOAD_MAX];
 
-	ret = get_user(restart_context_id, &msg->context_id);
-
-	if (ret < 0) {
-		tzlog_print(TZLOG_ERROR, "get_user error\n");
-		return ret;
-	}
-
-	ret = get_user(timeout_seconds, &msg->timeout_seconds);
-
-	if (ret < 0) {
-		tzlog_print(TZLOG_ERROR, "get_user error\n");
-		return ret;
-	}
-
-	if (restart_context_id)
-		return tzio_message_restart(msg, filp, restart_context_id);
-
-	if (copy_from_user(&tzio_msg, msg, sizeof(struct tzio_message))) {
+	if (copy_from_user(&tzio_msg, msg, sizeof(struct tzio_message)) != 0) {
 		tzlog_print(TZLOG_ERROR, "copy_from_user error\n");
 		return -EFAULT;
 	}
 
-	/*Just in order to clear prevent warning. */
-	if (tzio_msg.length == 0 || tzio_msg.length > 0x10000000) {
-		tzlog_print(TZLOG_ERROR, "tzio_msg.length is illegal\n");
-		return -EFAULT;
+	if (tzio_msg.context_id > 0) {
+		ret = tzio_message_restart(&tzio_msg, filp, msg->payload);
+		goto exit;
 	}
 
-	if (tzio_msg.length > 0
-	    && !access_ok(VERIFY_WRITE, msg->payload, tzio_msg.length)) {
+	if (tzio_msg.length == 0 || tzio_msg.length > TZIO_PAYLOAD_MAX) {
 		tzlog_print(TZLOG_ERROR, "tzio_msg.length is illegal\n");
-		return -EFAULT;
+		ret = -EFAULT;
+		goto exit;
 	}
-
-	if (tzio_msg.length > TZIO_PAYLOAD_MAX)
-		return -EFAULT;
 
 	context = tzio_context_alloc(GFP_KERNEL);
-
 	if (context == NULL) {
 		tzlog_print(TZLOG_WARNING,
 			    "No memory to allocate tzio context\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto exit;
 	}
 
-	tzio_init_context(context, filp, __payload, timeout_seconds);
+	tzio_init_context(context, filp, ctx_payload, tzio_msg.timeout_seconds);
 
 	link = tzio_acquire_link(GFP_KERNEL);
-
 	if (link == NULL) {
 		tzlog_print(TZLOG_ERROR,
 			    "Can't obtain tzio link for message exchange. System out of memory\n");
 		tzio_context_put(context);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto exit;
 	}
 
 	ch = link->mux_link;
@@ -976,40 +949,30 @@ int tzio_exchange_message(struct file *filp, struct tzio_message *__user msg)
 	BUG_ON(ch->in.size != 0);
 
 	ret = tzio_context_idr_insert(context, GFP_KERNEL);
-
 	if (ret < 0) {
 		tzlog_print(TZLOG_ERROR,
 			    "Unable to insert tzio context into IDR (%d)\n",
 			    ret);
 		tzio_release_link(link);
 		tzio_context_put(context);
-		return ret;
+		goto exit;
 	}
 
-	ret = put_user(context->id, &msg->context_id);
-
-	if (ret < 0) {
-		tzlog_print(TZLOG_ERROR, "Can't update context_id\n");
-		tzio_release_link(link);
-		tzio_context_idr_remove(context);
-		tzio_context_put(context);
-		return ret;
-	}
+	tzio_msg.context_id = context->id;
 
 	ret = tzio_push_message(&ch->in, context, &tzio_msg, msg->payload);
-
 	if (ret != 0) {
 		tzio_release_link(link);
 		tzio_context_idr_remove(context);
 		tzio_context_put(context);
-		return ret;
+		goto exit;
 	}
 
 	tzio_push_completions(&ch->in);
 
 	svc_flags = SCM_PROCESS_RX | SCM_PROCESS_TX | SCM_PROCESS_DPC;
 
-	if (unlikely(msg->boost_flag))
+	if (unlikely(tzio_msg.boost_flag))
 		plat_preprocess();
 
 	do {
@@ -1023,7 +986,6 @@ int tzio_exchange_message(struct file *filp, struct tzio_message *__user msg)
 		BUG_ON(ch->in.size > SCM_RING_SIZE);
 
 		tzsys_crash_check();
-
 		if (ret == -EFAULT) {
 			tzlog_print(TZLOG_ERROR,
 				    "TZIO Link buffer %p corrupted\n",
@@ -1031,31 +993,25 @@ int tzio_exchange_message(struct file *filp, struct tzio_message *__user msg)
 
 			ch->in.size = 0;
 			ch->out.size = 0;
-
 			tzlog_notify();
-
-			goto out;
+			goto error;
 		}
 
 		if (ret == -ENODEV) {
 			tzlog_notify();
 			tzlog_print(TZLOG_ERROR, "TRM died !!!\n");
-
-			goto out;
+			goto error;
 		}
 
 		if (ret == -ENOMEM || (ch->out.flags & SCM_FLAG_LOW_MEMORY)) {
 			tzlog_notify();
 			tzio_flushd_notify();
-
 			tzlog_print(TZLOG_ERROR,
 				    "No memory to process TA messages or system is OOM\n");
 
 			if (ret == -ENOMEM) {
 				ret = -ENOSPC;
-
 				tzio_pop_message(&ch->out);
-
 				set_current_state(TASK_INTERRUPTIBLE);
 				schedule_timeout(HZ / 10);
 			}
@@ -1066,7 +1022,7 @@ int tzio_exchange_message(struct file *filp, struct tzio_message *__user msg)
 			tzlog_notify();
 			tzlog_print(TZLOG_ERROR, "Invalid SCM response: 0x%x\n",
 				    ret);
-			goto out;
+			goto error;
 		}
 
 		tzio_pop_message(&ch->out);
@@ -1075,7 +1031,7 @@ int tzio_exchange_message(struct file *filp, struct tzio_message *__user msg)
 	} while (ret == -ENOSPC || ret == -EAGAIN
 	       || (ret == -EINTR && context->state < CONTEXT_STATE_COMPLETING));
 
-out:
+error:
 
 	/*
 	 * Mame sure all messages were popped
@@ -1089,12 +1045,19 @@ out:
 		tzdev_notify_worker();
 
 	if (signal_pending(current)) {
-		if (unlikely(msg->boost_flag))
+		if (unlikely(tzio_msg.boost_flag))
 			plat_postprocess();
-		return -EINTR;
+		goto exit;
 	}
 
-	return tzio_message_wait(msg, context);
+	ret = tzio_message_wait(&tzio_msg, context, msg->payload);
+
+exit:
+	if (copy_to_user(msg, &tzio_msg, sizeof(struct tzio_message)) != 0) {
+		tzlog_print(TZLOG_ERROR, "copy_to_user error\n");
+		return -EFAULT;
+	};
+	return ret;
 }
 
 int tzdev_register_notify_handler(uint32_t target_id,
@@ -1175,6 +1138,7 @@ static long tzio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		{
 			struct secos_kern_info kinfo = {};
 			struct tzio_info tz_info = {};
+
 			kinfo.size = sizeof(kinfo);
 			kinfo.abi = SECOS_ABI_VERSION;
 			ret = scm_query_kernel_info(&kinfo);
@@ -1207,7 +1171,7 @@ static long tzio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 
 	default:
-		tzlog_print(TZLOG_ERROR, "Unknown TZIO Command: %d\n", cmd);
+		tzlog_print(TZLOG_ERROR, "Unknown TZIO Command: %x\n", cmd);
 		ret = -EINVAL;
 	}
 
@@ -1557,14 +1521,14 @@ int tzpath_fullpath_create(const char *dir_path)
 		return -EINVAL;
 	}
 
-	parent_dir = kmalloc(PATH_MAX, GFP_KERNEL);
+	parent_dir = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
 	if (parent_dir == NULL) {
 		tzlog_print(K_ERR, "vmalloc failed\n");
 		ret = -ENOMEM;
 		goto error_exit;
 	}
 
-	full_path = kmalloc(PATH_MAX, GFP_KERNEL);
+	full_path = (char *)kmalloc(PATH_MAX, GFP_KERNEL);
 	if (full_path == NULL) {
 		tzlog_print(K_ERR, "vmalloc failed\n");
 		ret = -ENOMEM;
@@ -1782,7 +1746,7 @@ static struct kobj_attribute tzmem_attr =
 __ATTR(tzmem, 0660, tzmem_show, tzmem_store);
 
 static struct kobj_attribute tzpath_attr =
-__ATTR(tzpath, 0600, tzpath_show, tzpath_store);
+__ATTR(tzpath, 0660, tzpath_show, tzpath_store);
 
 #ifndef CONFIG_ARM_PSCI
 static struct kobj_attribute tzpm_attr =
