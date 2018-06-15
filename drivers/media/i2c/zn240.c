@@ -75,7 +75,7 @@ static const struct reg_value zn240_test_pattern_on[] = {
 	{0x93, 0xe0, 0},
 };
 
-static const struct reg_value zn240_test_parttern_off[] = {
+static const struct reg_value zn240_test_pattern_off[] = {
 	{0x00, 0x01, 0},
 	{0x7f, 0x01, 0},
 	{0x93, 0x60, 0},
@@ -223,6 +223,46 @@ static int sensor_zn240_init(struct v4l2_subdev *subdev, u32 val)
 	return ret;
 }
 
+static int sensor_zn240_test_pattern(struct v4l2_subdev *subdev, int value)
+{
+	int ret = 0;
+	struct i2c_client *client = to_client(subdev);
+
+	if (value == 1) {
+		ret = sensor_zn240_load_regs(subdev, zn240_test_pattern_on,
+				ARRAY_SIZE(zn240_test_pattern_on));
+	} else {
+		ret = sensor_zn240_load_regs(subdev, zn240_test_pattern_off,
+				ARRAY_SIZE(zn240_test_pattern_off));
+	}
+
+	if (ret < 0) {
+		dev_err(&client->dev, "test_pattern %s failed\n",
+			value?"on":"off");
+		return ret;
+	}
+
+	dev_info(&client->dev, "%s end\n", __func__);
+
+	return ret;
+}
+
+static int sensor_zn240_s_ctrl(struct v4l2_subdev *subdev,
+	struct v4l2_control *ctrl)
+{
+	int ret = 0;
+
+	switch (ctrl->id) {
+	case V4L2_CID_TEST_PATTERN:
+		ret = sensor_zn240_test_pattern(subdev, ctrl->value);
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 static int sensor_zn240_s_stream(struct v4l2_subdev *subdev,
 	int enable)
 {
@@ -329,6 +369,7 @@ static struct v4l2_subdev_pad_ops pad_ops = {
 
 static const struct v4l2_subdev_core_ops core_ops = {
 	.init		= sensor_zn240_init,
+	.s_ctrl		= sensor_zn240_s_ctrl,
 };
 
 static const struct v4l2_subdev_video_ops video_ops = {
