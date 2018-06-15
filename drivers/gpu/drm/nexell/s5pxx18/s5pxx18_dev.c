@@ -265,6 +265,9 @@ int nx_soc_dp_cont_prepare(struct nx_control_dev *control)
 		enum polarity vs_polarity = sync->v_sync_invert ?
 				polarity_activelow : polarity_activehigh;
 
+		nx_dpc_set_mode(module, out_format, interlace, invert_field,
+				rgb_mode, swap_rb, yc_order, emb_sync, emb_sync,
+				vck_select, vclk_invert, 0);
 		nx_dpc_set_sync(module,
 				progressive,
 				sync->h_active_len,
@@ -548,10 +551,6 @@ int nx_soc_dp_plane_rgb_set_format(struct nx_plane_layer *layer,
 	pr_debug("%s: %s, fmt:0x%x, pixel=%d\n",
 		 __func__, layer->name, format, pixelbyte);
 
-	if (layer->format == format &&
-		layer->pixelbyte == pixelbyte)
-		return 0;
-
 	layer->format = format;
 	layer->pixelbyte = pixelbyte;
 
@@ -593,12 +592,6 @@ int nx_soc_dp_plane_rgb_set_position(struct nx_plane_layer *layer,
 	int module = layer->module;
 	int num = layer->num;
 	int sx, sy, ex, ey;
-
-	if (layer->left == src_x && layer->top == src_y &&
-	layer->width == src_w && layer->height == src_h &&
-	layer->dst_left == dst_x && layer->dst_top == dst_y &&
-	layer->dst_width == dst_w && layer->dst_height == dst_h)
-		return 0;
 
 	/* source */
 	layer->left = src_x;
