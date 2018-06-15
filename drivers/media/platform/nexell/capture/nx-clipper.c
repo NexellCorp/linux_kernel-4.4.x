@@ -1563,6 +1563,20 @@ static int nx_clipper_g_ctrl(struct v4l2_subdev *sd,
 	return ret;
 }
 
+static int nx_clipper_s_ctrl(struct v4l2_subdev *sd,
+			     struct v4l2_control *ctrl)
+{
+	struct nx_clipper *me = v4l2_get_subdevdata(sd);
+	struct v4l2_subdev *remote = get_remote_source_subdev(me);
+
+	if (!remote) {
+		WARN_ON(1);
+		return -ENODEV;
+	}
+
+	return v4l2_subdev_call(remote, core, s_ctrl, ctrl);
+}
+
 /**
  * called by VIDIOC_SUBDEV_S_CROP
  */
@@ -1739,6 +1753,7 @@ static const struct v4l2_subdev_pad_ops nx_clipper_pad_ops = {
 
 static const struct v4l2_subdev_core_ops nx_clipper_core_ops = {
 	.g_ctrl = nx_clipper_g_ctrl,
+	.s_ctrl = nx_clipper_s_ctrl,
 };
 
 static const struct v4l2_subdev_ops nx_clipper_subdev_ops = {
