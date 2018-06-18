@@ -7788,7 +7788,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #ifdef DHD_ENABLE_LPC
 	uint32 lpc = 1;
 #endif /* DHD_ENABLE_LPC */
-	uint power_mode = PM_FAST;
+	uint power_mode = PM_OFF;
 #if defined(BCMSDIO)
 	uint32 dongle_align = DHD_SDALIGN;
 	uint32 glom = CUSTOM_GLOM_SETTING;
