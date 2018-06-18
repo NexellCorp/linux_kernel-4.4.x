@@ -4421,7 +4421,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			}
 
 			if (numpkt != 1) {
-				DHD_ERROR(("%s: Got BRCM event packet in a chained packet.\n",
+				DHD_TRACE(("%s: Got BRCM event packet in a chained packet.\n",
 				__FUNCTION__));
 			}
 #ifdef DHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT
@@ -7796,7 +7796,11 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #if defined(VSDB) || defined(ROAM_ENABLE)
 	uint bcn_timeout = CUSTOM_BCN_TIMEOUT;
 #else
+#if 1 //SKJ 20180501 : wifi control
+	uint bcn_timeout = 8;
+#else
 	uint bcn_timeout = 4;
+#endif
 #endif /* CUSTOMER_HW4 && (VSDB || ROAM_ENABLE) */
 #if defined(CUSTOMER_HW4) && defined(ENABLE_BCN_LI_BCN_WAKEUP)
 	uint32 bcn_li_bcn = 1;
