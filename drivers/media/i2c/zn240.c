@@ -53,6 +53,7 @@ struct zn240_state {
 	struct v4l2_mbus_framefmt fmt;
 	struct media_pad	pad;	/* for media device pad */
 	struct i2c_client	*client;
+	bool   streaming;
 };
 
 struct reg_value {
@@ -214,6 +215,7 @@ static int sensor_zn240_init(struct v4l2_subdev *subdev, u32 val)
 		return ret;
 	}
 
+	priv->streaming = true;
 	dev_info(&client->dev, "%s end\n", __func__);
 
 	msleep(100);
@@ -225,17 +227,24 @@ static int sensor_zn240_s_stream(struct v4l2_subdev *subdev,
 	int enable)
 {
 	int ret = 0;
+	struct zn240_state *priv = to_state(subdev);
 	struct i2c_client *client = to_client(subdev);
 
 	dev_info(&client->dev, "%s %d\n", __func__, enable);
 
+	if (priv->streaming == enable) {
+		dev_info(&client->dev, "%s stream is already %s\n", __func__,
+				(enable) ? "started" : "stopped");
+		return 0;
+	}
 	if (enable) {
 		ret = sensor_zn240_init(subdev, 1);
 		if (ret) {
 			dev_err(&client->dev, "stream_on is fail(%d)", ret);
 			goto p_err;
 		}
-	}
+	} else
+		priv->streaming = false;
 
 p_err:
 	return ret;
@@ -357,6 +366,7 @@ int sensor_zn240_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
+	zn240_state->streaming = false;
 	subdev_module = &zn240_state->subdev;
 	snprintf(subdev_module->name, V4L2_SUBDEV_NAME_SIZE,
 		"%s", SENSOR_NAME);
