@@ -92,7 +92,11 @@
 #include <dhd_wet.h>
 #endif /* DHD_WET */
 
+#if 1 //SKJ 20180501 : block event msg
+int dhd_msg_level = DHD_ERROR_VAL | DHD_MSGTRACE_VAL;
+#else
 int dhd_msg_level = DHD_ERROR_VAL | DHD_MSGTRACE_VAL | DHD_EVENT_VAL;
+#endif
 
 
 
