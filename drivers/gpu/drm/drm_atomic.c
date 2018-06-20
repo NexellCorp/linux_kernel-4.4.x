@@ -765,6 +765,35 @@ static int drm_atomic_plane_check(struct drm_plane *plane,
 }
 
 /**
+ * drm_atomic_plane_check_simple - check plane state simple version
+ * @plane: plane to check
+ * @state: plane state to check
+ *
+ * Provides core sanity checks for plane state.
+ *
+ * RETURNS:
+ * Zero on success, error code on failure
+ */
+static int drm_atomic_plane_check_simple(struct drm_plane *plane,
+		struct drm_plane_state *state)
+{
+	/* either *both* CRTC and FB must be set, or neither */
+	if (state->crtc && !state->fb)
+		return -EINVAL;
+	else if (state->fb && !state->crtc)
+		return -EINVAL;
+
+	/* if disabled, we don't care about the rest of the state: */
+	if (!state->crtc)
+		return 0;
+
+	/* Check whether this plane is usable on this CRTC */
+	if (!(plane->possible_crtcs & drm_crtc_mask(state->crtc)))
+		return -EINVAL;
+
+	return 0;
+}
+/**
  * drm_atomic_get_connector_state - get connector state
  * @state: global atomic state object
  * @connector: connector to get state object for
@@ -1262,6 +1291,48 @@ int drm_atomic_check_only(struct drm_atomic_state *state)
 EXPORT_SYMBOL(drm_atomic_check_only);
 
 /**
+ * drm_atomic_check_simple - check whether a given config would work
+ * @state: atomic configuration to check
+ *
+ * Note that this function can return -EDEADLK if the driver needed to acquire
+ * more locks but encountered a deadlock. The caller must then do the usual w/w
+ * backoff dance and restart. All other errors are fatal.
+ *
+ * Returns:
+ * 0 on success, negative error code on failure.
+ */
+int drm_atomic_check_simple(struct drm_atomic_state *state)
+{
+	struct drm_plane *plane;
+	struct drm_plane_state *plane_state;
+	struct drm_crtc *crtc;
+	struct drm_crtc_state *crtc_state;
+	int i, ret = 0;
+
+	DRM_DEBUG_ATOMIC("checking %p\n", state);
+
+	for_each_plane_in_state(state, plane, plane_state, i) {
+		ret = drm_atomic_plane_check_simple(plane, plane_state);
+		if (ret) {
+			DRM_DEBUG_ATOMIC("[PLANE:%d] atomic core check failed\n",
+					 plane->base.id);
+			return ret;
+		}
+	}
+
+	for_each_crtc_in_state(state, crtc, crtc_state, i) {
+		ret = drm_atomic_crtc_check(crtc, crtc_state);
+		if (ret) {
+			DRM_DEBUG_ATOMIC("[CRTC:%d] atomic core check failed\n",
+					 crtc->base.id);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+/**
  * drm_atomic_commit - commit configuration atomically
  * @state: atomic configuration to check
  *
@@ -1609,7 +1680,7 @@ retry:
 		 * Unlike commit, check_only does not clean up state.
 		 * Below we call drm_atomic_state_free for it.
 		 */
-		ret = drm_atomic_check_only(state);
+		ret = drm_atomic_check_simple(state);
 	} else if (arg->flags & DRM_MODE_ATOMIC_NONBLOCK) {
 		ret = drm_atomic_async_commit(state);
 	} else {
