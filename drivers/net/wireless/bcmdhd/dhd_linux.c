@@ -5699,7 +5699,7 @@ dhd_stop(struct net_device *net)
 #endif /* BCMPCIE */
 
 	if (dhd->pub.up == 0) {
-		goto exit;
+                goto exit;
 	}
 
 	dhd_if_flush_sta(DHD_DEV_IFP(net));
@@ -7003,6 +7003,9 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	if (dhd_watchdog_prio >= 0) {
 		/* Initialize watchdog thread */
 		PROC_START(dhd_watchdog_thread, dhd, &dhd->thr_wdt_ctl, 0, "dhd_watchdog_thread");
+                if (dhd->thr_wdt_ctl.thr_pid < 0) {
+                        goto fail;
+                }
 
 	} else {
 		dhd->thr_wdt_ctl.thr_pid = -1;
@@ -7016,6 +7019,9 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	if (dhd_dpc_prio >= 0) {
 		/* Initialize DPC thread */
 		PROC_START(dhd_dpc_thread, dhd, &dhd->thr_dpc_ctl, 0, "dhd_dpc");
+                if (dhd->thr_dpc_ctl.thr_pid < 0) {
+                        goto fail;
+                }
 	} else {
 #if defined(CUSTOMER_HW4) && defined(ARGOS_CPU_SCHEDULER) && \
 	defined(ARGOS_DPC_TASKLET_CTL)
@@ -7048,6 +7054,9 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 		bzero(&dhd->pub.skbbuf[0], sizeof(void *) * MAXSKBPEND);
 		/* Initialize RXF thread */
 		PROC_START(dhd_rxf_thread, dhd, &dhd->thr_rxf_ctl, 0, "dhd_rxf");
+                if (dhd->thr_rxf_ctl.thr_pid < 0) {
+                        goto fail;
+                }
 	}
 
 	dhd_state |= DHD_ATTACH_STATE_THREADS_CREATED;
@@ -9372,7 +9381,9 @@ void dhd_detach(dhd_pub_t *dhdp)
 #endif /* PROP_TXSTATUS */
 
 #ifdef WL_CFG80211
-	wl_cfg80211_down(NULL);
+        if (dhd->dhd_state & DHD_ATTACH_STATE_CFG80211) {
+                wl_cfg80211_down(NULL);
+        }
 #endif /* WL_CFG80211 */
 
 	if (dhd->dhd_state & DHD_ATTACH_STATE_PROT_ATTACH) {
