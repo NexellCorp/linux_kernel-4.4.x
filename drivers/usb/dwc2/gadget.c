@@ -3642,7 +3642,7 @@ irq_retry:
 	if (gintsts & GINTSTS_ERLYSUSP) {
 		dev_dbg(hsotg->dev, "GINTSTS_ErlySusp\n");
 		dwc2_writel(GINTSTS_ERLYSUSP, hsotg->regs + GINTSTS);
-#if defined(CONFIG_USB_F_CARPLAY) || defined(CONFIG_USB_CONFIGFS_CARPLAY)
+#if defined(CONFIG_USB_F_IAP) || defined(CONFIG_USB_CONFIGFS_F_IAP)
 		if (hsotg->connected)
 			dwc2_hsotg_disconnect(hsotg);
 #endif
