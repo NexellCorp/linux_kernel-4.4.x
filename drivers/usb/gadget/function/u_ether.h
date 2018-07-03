@@ -93,7 +93,7 @@ struct gether {
 			|USB_CDC_PACKET_TYPE_PROMISCUOUS \
 			|USB_CDC_PACKET_TYPE_DIRECTED)
 
-#if defined(CONFIG_USB_F_CARPLAY) || defined(CONFIG_USB_CONFIGFS_CARPLAY)
+#if defined(CONFIG_USB_F_IAP) || defined(CONFIG_USB_CONFIGFS_F_IAP)
 /* create regnet sysfs */
 extern void gether_sysreg(void);
 extern void gether_sysunreg(void);

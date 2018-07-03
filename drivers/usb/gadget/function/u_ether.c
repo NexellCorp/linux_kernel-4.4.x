@@ -902,7 +902,7 @@ static struct device_type gadget_type = {
 	.name	= "gadget",
 };
 
-#if defined(CONFIG_USB_F_CARPLAY) || defined(CONFIG_USB_CONFIGFS_CARPLAY)
+#if defined(CONFIG_USB_F_IAP) || defined(CONFIG_USB_CONFIGFS_F_IAP)
 struct net_device *g_regnetdev;
 
 static ssize_t regnet_show(struct device *dev,
@@ -1002,7 +1002,7 @@ struct eth_dev *gether_setup_name(struct usb_gadget *g,
 {
 	struct eth_dev		*dev;
 	struct net_device	*net;
-#if !defined(CONFIG_USB_F_CARPLAY) && !defined(CONFIG_USB_CONFIGFS_CARPLAY)
+#if !defined(CONFIG_USB_F_IAP) && !defined(CONFIG_USB_CONFIGFS_F_IAP)
 	int			status;
 #endif
 
@@ -1039,14 +1039,14 @@ struct eth_dev *gether_setup_name(struct usb_gadget *g,
 
 	net->ethtool_ops = &ops;
 
-#if defined(CONFIG_USB_F_CARPLAY) || defined(CONFIG_USB_CONFIGFS_CARPLAY)
+#if defined(CONFIG_USB_F_IAP) || defined(CONFIG_USB_CONFIGFS_F_IAP)
 	g_regnetdev = net;
 #endif
 
 	dev->gadget = g;
 	SET_NETDEV_DEV(net, &g->dev);
 	SET_NETDEV_DEVTYPE(net, &gadget_type);
-#if !defined(CONFIG_USB_F_CARPLAY) && !defined(CONFIG_USB_CONFIGFS_CARPLAY)
+#if !defined(CONFIG_USB_F_IAP) && !defined(CONFIG_USB_CONFIGFS_F_IAP)
 	status = register_netdev(net);
 	if (status < 0) {
 		dev_dbg(&g->dev, "register_netdev failed, %d\n", status);
@@ -1063,7 +1063,7 @@ struct eth_dev *gether_setup_name(struct usb_gadget *g,
 		 *  - tx queueing enabled if open *and* carrier is "on"
 		 */
 		netif_carrier_off(net);
-#if !defined(CONFIG_USB_F_CARPLAY) && !defined(CONFIG_USB_CONFIGFS_CARPLAY)
+#if !defined(CONFIG_USB_F_IAP) && !defined(CONFIG_USB_CONFIGFS_F_IAP)
 	}
 #endif
 	return dev;
@@ -1264,7 +1264,7 @@ void gether_cleanup(struct eth_dev *dev)
 	unregister_netdev(dev->net);
 	flush_work(&dev->work);
 	free_netdev(dev->net);
-#if defined(CONFIG_USB_F_CARPLAY) || defined(CONFIG_USB_CONFIGFS_CARPLAY)
+#if defined(CONFIG_USB_F_IAP) || defined(CONFIG_USB_CONFIGFS_F_IAP)
 	g_regnetdev = NULL;
 #endif
 }

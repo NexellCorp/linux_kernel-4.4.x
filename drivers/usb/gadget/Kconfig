@@ -214,7 +214,7 @@ config USB_F_AUDIO_SINK
 config USB_F_ACC
 	tristate
 
-config USB_F_CARPLAY
+config USB_F_IAP
 	tristate
 
 choice
@@ -517,12 +517,12 @@ config USB_CONFIGFS_F_PRINTER
 	  For more information, see Documentation/usb/gadget_printer.txt
 	  which includes sample code for accessing the device file.
 
-config USB_CONFIGFS_CARPLAY
-	bool "Apple Carplay (IAP+NCM)"
+config USB_CONFIGFS_F_IAP
+	bool "Apple Carplay (IAP)"
 	depends on USB_CONFIGFS
 	depends on NET
 	select USB_U_ETHER
-	select USB_F_CARPLAY
+	select USB_F_IAP
 	help
 	  NCM is an advanced protocol for Ethernet encapsulation, allows
 	  grouping of several ethernet frames into one USB transfer and

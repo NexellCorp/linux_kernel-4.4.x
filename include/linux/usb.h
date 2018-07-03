@@ -1887,6 +1887,9 @@ static inline int usb_translate_errors(int error_code)
 extern void usb_register_notify(struct notifier_block *nb);
 extern void usb_unregister_notify(struct notifier_block *nb);
 
+#define err(format, arg...)					\
+	printk(KERN_ERR KBUILD_MODNAME ": " format "\n", ##arg)
+
 /* debugfs stuff */
 extern struct dentry *usb_debug_root;
 

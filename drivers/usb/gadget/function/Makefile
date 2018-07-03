@@ -54,5 +54,5 @@ usb_f_audio_sink-y           	:= f_audio_sink.o u_audio_sink.o
 obj-$(CONFIG_USB_F_AUDIO_SINK)	+= usb_f_audio_sink.o
 usb_f_accessory-y               := f_accessory.o
 obj-$(CONFIG_USB_F_ACC)         += usb_f_accessory.o
-usb_f_carplay-y			:= f_carplay.o
-obj-$(CONFIG_USB_F_CARPLAY)	+= usb_f_carplay.o
+usb_f_iap-y                     := f_iap.o
+obj-$(CONFIG_USB_F_IAP)			+= usb_f_iap.o
