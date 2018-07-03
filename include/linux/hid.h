@@ -561,6 +561,10 @@ struct hid_device {							/* device report descriptor */
 	struct list_head debug_list;
 	spinlock_t  debug_list_lock;
 	wait_queue_head_t debug_wait;
+
+	/* Function pointers for controlling read. */
+	int  (*hidraw_ctrl_msg_usage) (struct hid_device *, void*);
+	void (*hidraw_start_hid) (struct hid_device *);
 };
 
 static inline void *hid_get_drvdata(struct hid_device *hdev)

@@ -42,6 +42,12 @@ struct hidraw_list {
 	struct mutex read_mutex;
 };
 
+/* USB Vendor mode control message */
+int hidraw_control_msg_usage(struct hid_device *hid,
+                             void *vendorRequestInfo);
+int hidraw_check_more_request (struct hid_device *hid);
+void hidraw_hid_start(struct hid_device *hid);
+
 #ifdef CONFIG_HIDRAW
 int hidraw_init(void);
 void hidraw_exit(void);

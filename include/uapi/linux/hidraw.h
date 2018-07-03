@@ -29,12 +29,24 @@ struct hidraw_devinfo {
 	__s16 product;
 };
 
+struct hidraw_vendor_request_info {
+        __u8 request;
+        __u8 request_type;
+        __u16 value;
+        __u16 index;
+        __u32 size;
+};
+
 /* ioctl interface */
 #define HIDIOCGRDESCSIZE	_IOR('H', 0x01, int)
 #define HIDIOCGRDESC		_IOR('H', 0x02, struct hidraw_report_descriptor)
 #define HIDIOCGRAWINFO		_IOR('H', 0x03, struct hidraw_devinfo)
 #define HIDIOCGRAWNAME(len)     _IOC(_IOC_READ, 'H', 0x04, len)
 #define HIDIOCGRAWPHYS(len)     _IOC(_IOC_READ, 'H', 0x05, len)
+
+/* New IOCTL */
+#define HIDIOCSRAWDMVR          _IOW('H', 0x15, struct hidraw_vendor_request_info)
+
 /* The first byte of SFEATURE and GFEATURE is the report number */
 #define HIDIOCSFEATURE(len)    _IOC(_IOC_WRITE|_IOC_READ, 'H', 0x06, len)
 #define HIDIOCGFEATURE(len)    _IOC(_IOC_WRITE|_IOC_READ, 'H', 0x07, len)

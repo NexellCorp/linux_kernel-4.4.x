@@ -30,6 +30,7 @@ static const struct hid_blacklist {
 	__u16 idProduct;
 	__u32 quirks;
 } hid_blacklist[] = {
+	{ USB_VENDOR_ID_APPLE, USB_PRODUCT_ID_APPLE_IPOD, HID_QUIRK_NO_INIT_REPORTS },
 	{ USB_VENDOR_ID_AASHIMA, USB_DEVICE_ID_AASHIMA_GAMEPAD, HID_QUIRK_BADPAD },
 	{ USB_VENDOR_ID_AASHIMA, USB_DEVICE_ID_AASHIMA_PREDATOR, HID_QUIRK_BADPAD },
 	{ USB_VENDOR_ID_ALPS, USB_DEVICE_ID_IBM_GAMEPAD, HID_QUIRK_BADPAD },
@@ -340,7 +341,7 @@ static const struct hid_blacklist *usbhid_exists_squirk(const u16 idVendor,
 	for (; hid_blacklist[n].idVendor; n++)
 		if (hid_blacklist[n].idVendor == idVendor &&
 			(hid_blacklist[n].idProduct == (__u16) HID_ANY_ID ||
-				hid_blacklist[n].idProduct == idProduct))
+				hid_blacklist[n].idProduct & idProduct))
 			bl_entry = &hid_blacklist[n];
 
 	if (bl_entry != NULL)

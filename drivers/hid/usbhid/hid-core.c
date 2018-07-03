@@ -75,7 +75,7 @@ static int hid_submit_ctrl(struct hid_device *hid);
 static void hid_cancel_delayed_stuff(struct usbhid_device *usbhid);
 
 /* Start up the input URB */
-static int hid_start_in(struct hid_device *hid)
+int hid_start_in(struct hid_device *hid)
 {
 	unsigned long flags;
 	int rc = 0;
@@ -316,18 +316,28 @@ static void hid_irq_in(struct urb *urb)
 		hid_warn(urb->dev, "input irq status %d received\n",
 			 urb->status);
 	}
+     /* Before issuing a new URB request, check if the underlying HID device's
+      * report buffer is not full. This is needed in the case application is not
+      * able to keep up with the data rate.
+      *
+      */
+    	if (hidraw_check_more_request (hid)) {
+        	status = usb_submit_urb(urb, GFP_ATOMIC);
+       	if (status) {
+       		clear_bit(HID_IN_RUNNING, &usbhid->iofl);
+            	if (status != -EPERM) {
+                	/*hid_err("can't resubmit intr, %s-%s/input%d, status %d",
+                          hid_to_usb_dev(hid)->bus->bus_name,
+                          hid_to_usb_dev(hid)->devpath,
+                          usbhid->ifnum, status);*/
+                          hid_io_error(hid);
+        	}
+        }
+    }
+    else {
+        clear_bit(HID_IN_RUNNING, &usbhid->iofl);
+    }
 
-	status = usb_submit_urb(urb, GFP_ATOMIC);
-	if (status) {
-		clear_bit(HID_IN_RUNNING, &usbhid->iofl);
-		if (status != -EPERM) {
-			hid_err(hid, "can't resubmit intr, %s-%s/input%d, status %d\n",
-				hid_to_usb_dev(hid)->bus->bus_name,
-				hid_to_usb_dev(hid)->devpath,
-				usbhid->ifnum, status);
-			hid_io_error(hid);
-		}
-	}
 }
 
 static int hid_submit_out(struct hid_device *hid)
@@ -1362,7 +1372,8 @@ static int usbhid_probe(struct usb_interface *intf, const struct usb_device_id *
 			hid_err(intf, "can't add hid device: %d\n", ret);
 		goto err_free;
 	}
-
+	hid->hidraw_ctrl_msg_usage = hidraw_control_msg_usage;
+	hid->hidraw_start_hid = hidraw_hid_start;
 	return 0;
 err_free:
 	kfree(usbhid);
@@ -1657,6 +1668,37 @@ static void __exit hid_exit(void)
 	usb_deregister(&hid_driver);
 	usbhid_quirks_exit();
 }
+
+/* This function will send a USB Vendor mode control message */
+int hidraw_control_msg_usage(struct hid_device *hid,
+                             void *pvData)
+{
+    int ret;
+    struct usb_device *dev = hid_to_usb_dev(hid);
+    struct hidraw_vendor_request_info *vendorRequestInfo = (struct hidraw_vendor_request_info *)pvData;
+
+    ret = usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
+              vendorRequestInfo->request,
+              vendorRequestInfo->request_type,
+              vendorRequestInfo->value,
+              vendorRequestInfo->index,
+              NULL,
+              vendorRequestInfo->size,
+              USB_CTRL_SET_TIMEOUT);
+
+    return ret;
+}
+EXPORT_SYMBOL(hidraw_control_msg_usage);
+
+void hidraw_hid_start(struct hid_device *hid)
+{
+    struct usbhid_device *usbhid = hid->driver_data;
+
+    if(!test_bit(HID_IN_RUNNING, &usbhid->iofl)) {
+		hid_start_in (hid);
+    }
+}
+EXPORT_SYMBOL(hidraw_hid_start);
 
 module_init(hid_init);
 module_exit(hid_exit);

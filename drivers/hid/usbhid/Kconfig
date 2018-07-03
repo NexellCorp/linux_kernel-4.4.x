@@ -2,7 +2,7 @@ menu "USB HID support"
 	depends on USB
 
 config USB_HID
-	tristate "USB HID transport layer"
+	tristate "USB Human Interface Device (full HID) support"
 	default y
 	depends on USB && INPUT
 	select HID
@@ -24,6 +24,13 @@ config USB_HID
 comment "Input core support is needed for USB HID input layer or HIDBP support"
 	depends on USB_HID && INPUT=n
 
+config IAP_HID
+	bool "Enable support for iAP (iPod Accessory Protocol) HID"
+	default n
+	depends on USB_HID
+	help
+		Enable support for iPod accessory protocol on USB HID class.
+	
 config HID_PID
 	bool "PID device support"
 	help
@@ -49,6 +56,7 @@ menu "USB HID Boot Protocol drivers"
 
 config USB_KBD
 	tristate "USB HIDBP Keyboard (simple Boot) support"
+	default n
 	depends on USB && INPUT
 	---help---
 	  Say Y here only if you are absolutely sure that you don't want
@@ -65,6 +73,7 @@ config USB_KBD
 
 config USB_MOUSE
 	tristate "USB HIDBP Mouse (simple Boot) support"
+	default n
 	depends on USB && INPUT
 	---help---
 	  Say Y here only if you are absolutely sure that you don't want

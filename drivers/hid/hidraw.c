@@ -47,6 +47,7 @@ static ssize_t hidraw_read(struct file *file, char __user *buffer, size_t count,
 {
 	struct hidraw_list *list = file->private_data;
 	int ret = 0, len;
+	int notFilled = 0;
 	DECLARE_WAITQUEUE(wait, current);
 
 	mutex_lock(&list->read_mutex);
@@ -99,10 +100,69 @@ static ssize_t hidraw_read(struct file *file, char __user *buffer, size_t count,
 		list->buffer[list->tail].value = NULL;
 		list->tail = (list->tail + 1) & (HIDRAW_BUFFER_SIZE - 1);
 	}
+	/* if the hid report buffer is empty, then request for the URB here so that
+     	 * buffer is filled again.
+     	 */
+	if (list->head > list->tail) {
+           if(list->tail+1 == list->head) {
+              notFilled = 1;
+           }
+	}
+	else {
+           if((list->tail-list->head) ==  (HIDRAW_BUFFER_SIZE - 1)) {
+              notFilled = 1;
+           }
+	}
+
+	if (!list->hidraw->exist) {
+		mutex_unlock(&list->read_mutex);
+	return -EIO;
+	}
+
+        if (notFilled == 1) {
+           list->hidraw->hid->hidraw_start_hid(list->hidraw->hid);
+	}
 out:
 	mutex_unlock(&list->read_mutex);
 	return ret;
 }
+
+/*
+ * To be called from the irq in, A new URB should be submitted if hid report
+ * buffer is not full.
+ * Returns 1 can submit a URB request
+ *         0 can't submit a URB request.
+ *
+ */
+int hidraw_check_more_request (struct hid_device *hid)
+{
+	struct hidraw *hidraw = hid->hidraw;
+	struct hidraw_list *list;
+	unsigned long flags;
+	int more = 1;
+
+	if (hidraw != NULL) {
+
+		spin_lock_irqsave(&hidraw->list_lock, flags);
+
+		list_for_each_entry(list, &hidraw->list, node) {
+			if (list->head > list->tail) {
+                           if((list->head - list->tail) == (HIDRAW_BUFFER_SIZE - 1)) {
+                                 more = 0;
+                           }
+			}
+                        else {
+                           if(list->head+1 == list->tail) {
+                                 more = 0;
+                           }
+                        }
+		}
+		spin_unlock_irqrestore(&hidraw->list_lock, flags);
+	}
+
+	return more;
+}
+EXPORT_SYMBOL (hidraw_check_more_request);
 
 /*
  * The first byte of the report buffer is expected to be a report number.
@@ -123,6 +183,10 @@ static ssize_t hidraw_send_report(struct file *file, const char __user *buffer, 
 
 	dev = hidraw_table[minor]->hid;
 
+	if (!dev) {
+ 		ret = -ENODEV;
+ 		goto out;
+ 	}
 
 	if (count > HID_MAX_BUFFER_SIZE) {
 		hid_warn(dev, "pid %d passed too large report\n",
@@ -374,6 +438,7 @@ static long hidraw_ioctl(struct file *file, unsigned int cmd,
 	unsigned int minor = iminor(inode);
 	long ret = 0;
 	struct hidraw *dev;
+	struct hidraw_vendor_request_info vendorRequestInfo; /* USB Vendor mode request */
 	void __user *user_arg = (void __user*) arg;
 
 	mutex_lock(&minors_lock);
@@ -416,6 +481,18 @@ static long hidraw_ioctl(struct file *file, unsigned int cmd,
 					ret = -EFAULT;
 				break;
 			}
+		case HIDIOCSRAWDMVR:  /* USB Vendor mode request */
+            		{
+                		struct hid_device *hid = dev->hid;
+                		ret = 0;
+
+                		if (copy_from_user(&vendorRequestInfo, user_arg, sizeof(vendorRequestInfo))) {
+                    			ret = -EFAULT;
+                    		break;
+                	}
+                	ret = hid->hidraw_ctrl_msg_usage(hid, (void*)&vendorRequestInfo);
+                	break;
+            		}
 		default:
 			{
 				struct hid_device *hid = dev->hid;
