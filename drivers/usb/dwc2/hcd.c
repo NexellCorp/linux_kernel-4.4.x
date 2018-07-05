@@ -2632,29 +2632,6 @@ static int dwc2_alloc_split_dma_aligned_buf(struct dwc2_hsotg *hsotg,
 
 #define DWC2_USB_DMA_ALIGN 4
 
-	if (!qh->dw_align_buf) {
-		qh->dw_align_buf = kmem_cache_alloc(hsotg->unaligned_cache,
-						    GFP_ATOMIC | GFP_DMA);
-		if (!qh->dw_align_buf)
-			return -ENOMEM;
-	}
-
-	qh->dw_align_buf_dma = dma_map_single(hsotg->dev, qh->dw_align_buf,
-					      DWC2_KMEM_UNALIGNED_BUF_SIZE,
-					      DMA_FROM_DEVICE);
-
-	if (dma_mapping_error(hsotg->dev, qh->dw_align_buf_dma)) {
-		dev_err(hsotg->dev, "can't map align_buf\n");
-		chan->align_buf = 0;
-		return -EINVAL;
-	}
-
-	chan->align_buf = qh->dw_align_buf_dma;
-	return 0;
-}
-
-#define DWC2_USB_DMA_ALIGN 4
-
 static void dwc2_free_dma_aligned_buffer(struct urb *urb)
 {
 	void *stored_xfer_buffer;
