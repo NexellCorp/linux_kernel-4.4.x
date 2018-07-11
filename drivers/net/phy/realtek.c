@@ -105,11 +105,32 @@ static int rtl8211f_config_intr(struct phy_device *phydev)
 	return err;
 }
 
+#if defined(CONFIG_ANDROID) && defined(CONFIG_ARCH_S5P6818)
+static struct phy_device *s_phydev = NULL;
+
+void rtl8211f_power_off(void)
+{
+	if (s_phydev != NULL) {
+		int value;
+		struct phy_device *phydev = s_phydev;
+
+		value = phy_read(phydev, MII_BMCR);
+		value |= BMCR_PDOWN;
+		pr_err("%s: set addr 0x%x, value 0x%x\n", __func__, MII_BMCR,
+		       value);
+		phy_write(phydev, MII_BMCR, value);
+	}
+}
+#endif
+
 static int rtl8211f_config_init(struct phy_device *phydev)
 {
 	int ret;
 	u16 reg;
 
+#if defined(CONFIG_ANDROID) && defined(CONFIG_ARCH_S5P6818)
+	s_phydev = phydev;
+#endif
 	ret = genphy_config_init(phydev);
 	if (ret < 0)
 		return ret;

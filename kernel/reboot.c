@@ -249,6 +249,10 @@ void kernel_halt(void)
 }
 EXPORT_SYMBOL_GPL(kernel_halt);
 
+#if defined(CONFIG_ANDROID) && defined(CONFIG_ARCH_S5P6818) && defined(CONFIG_REALTEK_PHY)
+extern void rtl8211f_power_off(void);
+#endif
+
 /**
  *	kernel_power_off - power_off the system
  *
@@ -256,6 +260,9 @@ EXPORT_SYMBOL_GPL(kernel_halt);
  */
 void kernel_power_off(void)
 {
+#if defined(CONFIG_ANDROID) && defined(CONFIG_ARCH_S5P6818) && defined(CONFIG_REALTEK_PHY)
+	rtl8211f_power_off();
+#endif
 	kernel_shutdown_prepare(SYSTEM_POWER_OFF);
 	if (pm_power_off_prepare)
 		pm_power_off_prepare();
