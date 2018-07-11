@@ -192,14 +192,46 @@ static void nx_pcm_dma_complete(void *arg)
 {
 	struct snd_pcm_substream *substream = arg;
 	struct nx_pcm_runtime_data *prtd = substream_to_prtd(substream);
+	long long ts = prtd->time_stamp_us;
+	long long new = ktime_to_us(ktime_get());
+	long long period_us = prtd->period_time_us;
+	int over_samples = div64_s64((new - ts), period_us);
+	int i;
 
-	prtd->offset += snd_pcm_lib_period_bytes(substream);
-	if (prtd->offset >= snd_pcm_lib_buffer_bytes(substream))
-		prtd->offset = 0;
+	/* i2s master mode */
+	if (prtd->dma_param->real_clock != 0) {
+		if (2 > over_samples) {
+			over_samples = 1;
+			prtd->time_stamp_us = new;
+		} else {
+			prtd->time_stamp_us += (over_samples * period_us);
+		}
+	}
+	/*
+	if (over_samples > 1)
+		dev_warn(prtd->dev, "[pcm_overs : %d]\n", over_samples);
+	*/
+	if (prtd->dma_param->real_clock != 0) {
+		/* i2s master mode */
+		for (i = 0; over_samples > i; i++) {
+			prtd->offset += snd_pcm_lib_period_bytes(substream);
+			if (prtd->offset >= snd_pcm_lib_buffer_bytes(substream))
+				prtd->offset = 0;
 
-	nx_pcm_file_mem_write(substream);
-	nx_pcm_dma_clear(substream);
-	snd_pcm_period_elapsed(substream);
+			nx_pcm_file_mem_write(substream);
+			nx_pcm_dma_clear(substream);
+			snd_pcm_period_elapsed(substream);
+		}
+	} else {
+		/* i2s slave mode */
+		prtd->offset += snd_pcm_lib_period_bytes(substream);
+		if (prtd->offset >= snd_pcm_lib_buffer_bytes(substream))
+			prtd->offset = 0;
+
+		nx_pcm_file_mem_write(substream);
+		nx_pcm_dma_clear(substream);
+		snd_pcm_period_elapsed(substream);
+	}
 }
 
 static int nx_pcm_dma_request_channel(void *runtime_data, int stream)
@@ -349,6 +381,7 @@ static int nx_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 		dma_async_issue_pending(prtd->dma_chan);
+		prtd->time_stamp_us = ktime_to_us(ktime_get());
 		break;
 
 	case SNDRV_PCM_TRIGGER_RESUME:

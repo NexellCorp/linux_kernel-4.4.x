@@ -85,6 +85,7 @@ struct nx_pcm_runtime_data {
 	long mem_len;
 	unsigned int mem_offs;
 	long long period_time_us;
+	long long time_stamp_us;
 	/* sample rate detector for smart-voice */
 #if defined CONFIG_SND_CODEC_SMARTVOICE || defined CONFIG_SND_CODEC_FARFIELD
 	bool run_detector;
