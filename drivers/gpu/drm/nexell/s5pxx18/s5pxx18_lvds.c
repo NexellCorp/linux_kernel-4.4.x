@@ -48,6 +48,23 @@ static int lvds_phy_reset(struct reset_control *rsc[], int num)
 	return 0;
 }
 
+static int lvds_phy_reset_assert(struct reset_control *rsc[], int num)
+{
+	int count = num;
+	int i;
+
+	if (num < 0) {
+		pr_err("%s: resets num (currently %d) must be bigger than 0\n",
+				__func__, num);
+		return -EINVAL;
+	}
+
+	for (i = 0; count > i; i++)
+		reset_control_assert(rsc[i]);
+
+	return 0;
+}
+
 static int lvds_ops_open(struct nx_drm_display *display, int pipe)
 {
 	struct nx_lvds_dev *lvds = display->context;
@@ -268,15 +285,17 @@ static int lvds_ops_enable(struct nx_drm_display *display)
 
 static int lvds_ops_disable(struct nx_drm_display *display)
 {
+	struct nx_lvds_dev *lvds = display->context;
+	int module = lvds->control.module;
 	int clkid = NX_CLOCK_LVDS;
+	struct nx_control_res *res = &lvds->control.res;
 
 	pr_debug("%s\n", __func__);
 
-	/* SPDIF and MIPI */
-	nx_disp_top_clkgen_set_clock_divisor_enable(clkid, 0);
-
-	/* START: CLKGEN, MIPI is started in setup function */
+	nx_disp_top_set_lvdsmux(0, module);
 	nx_disp_top_clkgen_set_clock_divisor_enable(clkid, false);
+
+	lvds_phy_reset_assert(res->sub_resets, res->num_sub_resets);
 
 	return 0;
 }
