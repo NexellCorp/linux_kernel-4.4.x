@@ -491,11 +491,11 @@ static int wait_for_dma(struct s3c64xx_spi_driver_data *sdd,
 			struct spi_transfer *xfer)
 {
 	void __iomem *regs = sdd->regs;
-	unsigned long val;
+	unsigned long val = 1;
 	u32 status;
 	int ms;
 
-	if(spi_controller_is_slave(sdd->master)) {
+	if (spi_controller_is_slave(sdd->master)) {
 		/* Slave mode */
 		if (wait_for_completion_interruptible(&sdd->xfer_completion) ||
 				sdd->slave_aborted) {
