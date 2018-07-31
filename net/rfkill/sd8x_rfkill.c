@@ -173,7 +173,11 @@ static int sd8x_pwr_ctrl(struct sd8x_rfkill_platform_data *pdata, int on)
 				gpio_direction_output(gpio_bt_wlan_1p8, 0);
 			if (gpio_wlan_2p2 >= 0)
 				gpio_direction_output(gpio_wlan_2p2, 0);
-			msleep(10);
+			/* PMIC_EN must be asserted a minimum of 100 ms to guarantee that
+			 * VCORE and AVDD18 are discharged to less than 0.2V for the POR
+			 * to generate properly after PMIC_EN is deasserted.
+			 */
+			msleep(100);
 			if (gpio_wlan_2p2 >= 0)
 				gpio_direction_output(gpio_wlan_2p2, 1);
 			if (gpio_bt_wlan_1p8 >= 0)
