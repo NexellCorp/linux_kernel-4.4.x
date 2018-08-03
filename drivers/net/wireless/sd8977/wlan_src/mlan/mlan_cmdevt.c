@@ -98,10 +98,7 @@ wlan_dump_pending_commands(pmlan_adapter pmadapter)
 	pcmd_node =
 		(cmd_ctrl_node *)util_peek_list(pmadapter->pmoal_handle,
 						&pmadapter->cmd_pending_q,
-						pmadapter->callbacks.
-						moal_spin_lock,
-						pmadapter->callbacks.
-						moal_spin_unlock);
+						MNULL, MNULL);
 	if (!pcmd_node) {
 		wlan_release_cmd_lock(pmadapter);
 		LEAVE();
@@ -1479,10 +1476,7 @@ wlan_exec_next_cmd(mlan_adapter *pmadapter)
 	pcmd_node =
 		(cmd_ctrl_node *)util_peek_list(pmadapter->pmoal_handle,
 						&pmadapter->cmd_pending_q,
-						pmadapter->callbacks.
-						moal_spin_lock,
-						pmadapter->callbacks.
-						moal_spin_unlock);
+						MNULL, MNULL);
 
 	if (pcmd_node) {
 		pcmd = (HostCmd_DS_COMMAND *)(pcmd_node->cmdbuf->pbuf +
@@ -1499,8 +1493,7 @@ wlan_exec_next_cmd(mlan_adapter *pmadapter)
 		util_unlink_list(pmadapter->pmoal_handle,
 				 &pmadapter->cmd_pending_q,
 				 (pmlan_linked_list)pcmd_node,
-				 pmadapter->callbacks.moal_spin_lock,
-				 pmadapter->callbacks.moal_spin_unlock);
+				 MNULL, MNULL);
 		wlan_release_cmd_lock(pmadapter);
 		ret = wlan_dnld_cmd_to_fw(priv, pcmd_node);
 		priv = wlan_get_priv(pmadapter, MLAN_BSS_ROLE_ANY);
