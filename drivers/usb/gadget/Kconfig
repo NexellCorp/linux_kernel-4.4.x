@@ -518,15 +518,17 @@ config USB_CONFIGFS_F_PRINTER
 	  which includes sample code for accessing the device file.
 
 config USB_CONFIGFS_F_IAP
-	bool "Apple Carplay (IAP)"
+	bool "Apple Carplay (IAP+NCM)"
 	depends on USB_CONFIGFS
 	depends on NET
 	select USB_U_ETHER
 	select USB_F_IAP
 	help
-	  NCM is an advanced protocol for Ethernet encapsulation, allows
-	  grouping of several ethernet frames into one USB transfer and
-	  different alignment possibilities.
+	  This driver implement USB CDC NCM and IAP subclass standard.
+	  Support the allgo carplay features.
+
+	  If y is selected, the following modules are created by default.
+	  "usb_f_iap.ko", "g_iap_ncm.ko"
 
 source "drivers/usb/gadget/legacy/Kconfig"
 

@@ -55,4 +55,4 @@ obj-$(CONFIG_USB_F_AUDIO_SINK)	+= usb_f_audio_sink.o
 usb_f_accessory-y               := f_accessory.o
 obj-$(CONFIG_USB_F_ACC)         += usb_f_accessory.o
 usb_f_iap-y                     := f_iap.o
-obj-$(CONFIG_USB_F_IAP)			+= usb_f_iap.o
+obj-m                           += usb_f_iap.o
