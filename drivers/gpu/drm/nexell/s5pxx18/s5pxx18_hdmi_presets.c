@@ -822,6 +822,17 @@ static struct hdmi_preset hdmi_conf_768p60 = {
 		 },
 };
 
+static struct hdmi_preset hdmi_conf_600p60 = {
+	.mode = {
+		 .pixelclock = 45000000,
+		 .h_as = 1024, .h_sw = 2, .h_bp = 160, .h_fp = 160, .h_si = 0,
+		 .v_as = 600, .v_sw = 14, .v_bp = 23, .v_fp = 15, .v_si = 0,
+		 .refresh = 60,
+		 .name = "1024x600p@60",
+		 .flags = 0,
+		 },
+};
+
 static const struct hdmi_preset hdmi_conf_1024p60 = {
 	.mode = {
 		 .pixelclock = 108000000,
@@ -832,6 +843,18 @@ static const struct hdmi_preset hdmi_conf_1024p60 = {
 		 .flags = 0,
 		 },
 };
+
+static const struct hdmi_preset hdmi_conf_1920x720p60 = {
+	.mode = {
+		 .pixelclock = 83500000,
+		 .h_as = 1920, .h_sw = 40, .h_bp = 44, .h_fp = 44, .h_si = 0,
+		 .v_as = 720, .v_sw = 2, .v_bp = 4, .v_fp = 4, .v_si = 0,
+		 .refresh = 60,
+		 .name = "1920x720p@60",
+		 .flags = 0,
+		 },
+};
+
 /*
  * PHY preset data tables
  */
@@ -861,6 +884,13 @@ static const u8 hdmiphy_preset_27_027[32] = {
 	0xe8, 0x0e, 0xd9, 0x45, 0xa0, 0xac, 0x80, 0x0a,
 	0x80, 0x09, 0x84, 0x05, 0x22, 0x24, 0x86, 0x54,
 	0xe3, 0x24, 0x00, 0x00, 0x00, 0x01, 0x80, 0x10,
+};
+
+static const u8 hdmiphy_preset_45[32] = {
+	0x52, 0x4B, 0x35, 0x40, 0x01, 0x00, 0xC8, 0x82,
+	0xC8, 0xE1, 0xD8, 0x45, 0xA0, 0xAC, 0x80, 0x08,
+	0x80, 0x09, 0x84, 0x05, 0x22, 0x24, 0x86, 0x54,
+	0x11, 0x25, 0x01, 0x00, 0x00, 0x01, 0x80, 0x10,
 };
 
 static const u8 hdmiphy_preset_54[32] = {
@@ -896,6 +926,13 @@ static const u8 hdmiphy_preset_74_25[32] = {
 	0xe8, 0xba, 0xd8, 0x45, 0xa0, 0xac, 0x80, 0x08,
 	0x80, 0x09, 0x84, 0x05, 0x22, 0x24, 0x86, 0x54,
 	0xa5, 0x24, 0x01, 0x00, 0x00, 0x01, 0x80, 0x10,
+};
+
+static const u8 hdmiphy_preset_83_5[32] = {
+	0xd1, 0x23, 0x11, 0x40, 0x0c, 0xfb, 0xc8, 0x85,
+	0xe8, 0xd1, 0xd8, 0x45, 0xa0, 0xac, 0x80, 0x08,
+	0x80, 0x09, 0x84, 0x05, 0x22, 0x24, 0x86, 0x54,
+	0x93, 0x24, 0x01, 0x00, 0x00, 0x01, 0x80, 0x10,
 };
 
 static const u8 hdmiphy_preset_108[32] = {
@@ -999,10 +1036,22 @@ const struct hdmi_conf hdmi_conf[] = {
 	 .phy_data = hdmiphy_preset_65,
 	 .support = true,
 	},
-	{ /* 10 : 1280x1024@60 */
+	{ /* 10 : 1024x600@60 */
+	 .preset = &hdmi_conf_600p60,
+	 .format = &_format_2d,
+	 .phy_data = hdmiphy_preset_45,
+	 .support = true,
+	},
+	{ /* 11 : 1280x1024@60 */
 	 .preset = &hdmi_conf_1024p60,
 	 .format = &_format_2d,
 	 .phy_data = hdmiphy_preset_108,
+	 .support = true,
+	},
+	{ /* 12 : 1920x720p@60 */
+	 .preset = &hdmi_conf_1920x720p60,
+	 .format = &_format_2d,
+	 .phy_data = hdmiphy_preset_83_5,
 	 .support = true,
 	},
 	{ /*  : 1920x1080p@24 */

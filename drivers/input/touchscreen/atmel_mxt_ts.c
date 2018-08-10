@@ -25,9 +25,13 @@
 #include <linux/platform_data/atmel_mxt_ts.h>
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
+#include <linux/irq.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/slab.h>
 #include <asm/unaligned.h>
+#include <linux/gpio.h>
+#include <linux/workqueue.h>
 
 /* Firmware files */
 #define MXT_FW_NAME		"maxtouch.fw"
@@ -672,7 +676,9 @@ static void mxt_input_button(struct mxt_data *data, u8 *message)
 {
 	struct input_dev *input = data->input_dev;
 	const struct mxt_platform_data *pdata = data->pdata;
-	int i;
+	int i, key;
+
+	key = (((int)message[3])<<8) + message[2];
 
 	for (i = 0; i < pdata->t19_num_keys; i++) {
 		if (pdata->t19_keymap[i] == KEY_RESERVED)
@@ -680,7 +686,7 @@ static void mxt_input_button(struct mxt_data *data, u8 *message)
 
 		/* Active-low switch */
 		input_report_key(input, pdata->t19_keymap[i],
-				 !(message[1] & BIT(i)));
+				 (key & BIT(i)));
 	}
 }
 
@@ -1613,6 +1619,8 @@ static int mxt_get_object_table(struct mxt_data *data)
 			break;
 		case MXT_SPT_GPIOPWM_T19:
 			data->T19_reportid = min_id;
+			if (data->T19_reportid == 5)
+				data->T19_reportid = 3;
 			break;
 		case MXT_TOUCH_MULTITOUCHSCREEN_T100:
 			data->multitouch = MXT_TOUCH_MULTITOUCHSCREEN_T100;
@@ -1818,6 +1826,15 @@ static int mxt_initialize_input_device(struct mxt_data *data)
 	unsigned int num_mt_slots;
 	unsigned int mt_flags = 0;
 
+	if (data->pdata->gpio_reset)
+		gpio_set_value(data->pdata->gpio_reset, 0);
+
+	msleep(100);
+
+	if (data->pdata->gpio_reset)
+		gpio_set_value(data->pdata->gpio_reset, 1);
+
+
 	switch (data->multitouch) {
 	case MXT_TOUCH_MULTI_T9:
 		num_mt_slots = data->T9_reportid_max - data->T9_reportid_min + 1;
@@ -1865,12 +1882,19 @@ static int mxt_initialize_input_device(struct mxt_data *data)
 	}
 
 	/* If device has buttons we assume it is a touchpad */
+#if 1 /* modify : lockey */
+	if (pdata->t19_num_keys)
+		mxt_set_up_as_touchpad(input_dev, data);
+
+	mt_flags |= INPUT_MT_DIRECT;
+#else
 	if (pdata->t19_num_keys) {
 		mxt_set_up_as_touchpad(input_dev, data);
 		mt_flags |= INPUT_MT_POINTER;
 	} else {
 		mt_flags |= INPUT_MT_DIRECT;
 	}
+#endif
 
 	/* For multi touch */
 	error = input_mt_init_slots(input_dev, num_mt_slots, mt_flags);
@@ -2446,6 +2470,9 @@ static const struct mxt_platform_data *mxt_parse_dt(struct i2c_client *client)
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return ERR_PTR(-ENOMEM);
+
+	pdata->gpio_reset = of_get_named_gpio_flags(np, "atmel,reset-gpio",
+						    0, NULL);
 
 	if (of_find_property(np, "linux,gpio-keymap", &proplen)) {
 		pdata->t19_num_keys = proplen / sizeof(u32);
