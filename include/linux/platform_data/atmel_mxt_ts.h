@@ -28,6 +28,7 @@ struct mxt_platform_data {
 	enum mxt_suspend_mode suspend_mode;
 	bool skip_cfg_load;
 	bool switch_xy;
+	int gpio_reset;
 };
 
 #endif /* __LINUX_PLATFORM_DATA_ATMEL_MXT_TS_H */
