@@ -798,6 +798,7 @@ dtb-$(CONFIG_ARCH_S5P4418) += \
 	s5p4418-allo_display-rev01.dtb \
 	s5p4418-zh_dragon-rev00.dtb \
 	s5p4418-zh_blackdragon-rev00.dtb \
+	s5p4418-zh_hmdragon-rev00.dtb \
 	s5p4418-daudio_covi-rev00.dtb \
 	s5p4418-ff_voice.dtb \
 	s5p4418-clova-rev00.dtb \

@@ -85,3 +85,20 @@ config BINDER_INIT_LEVEL_UP
 config ION_INIT_LEVEL_UP
 	bool "ion init level up"
 	depends on ARCH_S5P4418 && REDUCE_BOOT_TIME
+
+config DRM_INIT_LEVEL_UP
+	bool "drm init level up"
+	depends on ARCH_S5P4418 && REDUCE_BOOT_TIME
+
+config V4L2_INIT_LEVEL_UP
+	bool "v4l2 init level up"
+	depends on ARCH_S5P4418 && REDUCE_BOOT_TIME
+
+config V4L2_DEBUG
+	bool "v4l2 probe debug"
+	depends on ARCH_S5P4418 && REDUCE_BOOT_TIME
+
+config DRM_DEBUG
+	bool "drm probe debug"
+	depends on ARCH_S5P4418 && REDUCE_BOOT_TIME
+

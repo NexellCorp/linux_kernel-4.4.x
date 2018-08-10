@@ -501,7 +501,11 @@ int nx_soc_dp_plane_top_set_enable(struct nx_top_plane *top, bool on)
 	if (on) {
 		int m_lock_size = 16;
 
+#if 1 /* zh-hmdragon */
+		nx_mlc_set_field_enable(module, 0);
+#else
 		nx_mlc_set_field_enable(module, top->interlace);
+#endif
 		nx_mlc_set_rgblayer_gama_table_power_mode(module, 0, 0, 0);
 		nx_mlc_set_rgblayer_gama_table_sleep_mode(module, 1, 1, 1);
 		nx_mlc_set_rgblayer_gamma_enable(module, 0);

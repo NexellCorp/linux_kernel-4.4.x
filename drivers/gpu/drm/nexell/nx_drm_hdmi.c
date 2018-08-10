@@ -54,6 +54,7 @@ struct hdmi_context {
 	int crtc_pipe;
 	unsigned int possible_crtcs_mask;
 	bool skip_boot_connect;
+	u32 prefered_mode;
 };
 
 #define ctx_to_display(c)	\
@@ -175,17 +176,19 @@ static int panel_hdmi_ops_get_modes(struct device *dev,
 	if (!hdmi->ddc_adpt)
 		return -ENODEV;
 
-	edid = drm_get_edid(connector, hdmi->ddc_adpt);
-	if (edid) {
-		hdmi->dvi_mode = !drm_detect_hdmi_monitor(edid);
-		DRM_DEBUG_KMS("%s : width[%d] x height[%d]\n",
-			(hdmi->dvi_mode ? "dvi monitor" : "hdmi monitor"),
-			edid->width_cm, edid->height_cm);
+	if (!ctx->prefered_mode) {
+		edid = drm_get_edid(connector, hdmi->ddc_adpt);
+		if (edid) {
+			hdmi->dvi_mode = !drm_detect_hdmi_monitor(edid);
+			DRM_DEBUG_KMS("%s : width[%d] x height[%d]\n",
+				(hdmi->dvi_mode ? "dvi monitor" : "hdmi monitor"),
+				edid->width_cm, edid->height_cm);
 
-		drm_mode_connector_update_edid_property(connector, edid);
-		num_modes = drm_add_edid_modes(connector, edid);
-		panel_hdmi_dump_edid_modes(connector, num_modes, false);
-		kfree(edid);
+			drm_mode_connector_update_edid_property(connector, edid);
+			num_modes = drm_add_edid_modes(connector, edid);
+			panel_hdmi_dump_edid_modes(connector, num_modes, false);
+			kfree(edid);
+		}
 	}
 
 	return panel_hdmi_preferred_modes(dev, connector, num_modes);
@@ -518,6 +521,7 @@ static int panel_hdmi_parse_dt_hdmi(struct platform_device *pdev,
 		property_read(np, "height", vm->vactive);
 		property_read(np, "flags", vm->flags);
 		property_read(np, "refresh", display->vrefresh);
+		property_read(np, "prefered", ctx->prefered_mode);
 	}
 
 	/* EDID ddc */
