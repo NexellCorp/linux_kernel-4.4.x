@@ -252,12 +252,6 @@ void nx_vip_set_vipenable(u32 module_index, int b_vipenb, int b_sep_enb,
 	const u16 decienb = 1u << 0;
 
 	p_register = __g_p_register[module_index];
-	temp = p_register->vip_config;
-	if (b_vipenb)
-		temp |= (u16)vipenb;
-	else
-		temp &= (u16)~vipenb;
-	writel(temp, &p_register->vip_config);
 	temp = 0;
 	if (b_sep_enb)
 		temp |= (u16)sepenb;
@@ -266,6 +260,12 @@ void nx_vip_set_vipenable(u32 module_index, int b_vipenb, int b_sep_enb,
 	if (b_deci_enb)
 		temp |= (u16)decienb;
 	writel(temp, &p_register->vip_cdenb);
+	temp = p_register->vip_config;
+	if (b_vipenb)
+		temp |= (u16)vipenb;
+	else
+		temp &= (u16)~vipenb;
+	writel(temp, &p_register->vip_config);
 }
 
 void nx_vip_get_vipenable(u32 module_index, int *p_vipenb, int *p_sep_enb,
