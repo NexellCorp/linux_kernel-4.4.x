@@ -264,10 +264,12 @@ void nx_vip_set_data_mode(u32 module_index, u32 data_order,
 void nx_vip_get_data_mode(u32 module_index, u32 *data_order,
 			  u32 *p_data_width);
 void nx_vip_set_sync(u32 module_index, int b_ext_sync,
-		     u32 source_bits, u32 avw, u32 avh, u32 hsw,
-		     u32 hfp, u32 hbp, u32 vsw, u32 vfp, u32 vbp);
+		     u32 source_bits, u32 avw, u32 avh,
+		     u32 pcs, u32 hp, u32 vp, u32 hsw, u32 hfp, u32 hbp,
+		     u32 vsw, u32 vfp, u32 vbp);
 void nx_vip_set_hvsync(u32 module_index, int b_ext_sync, u32 avw, u32 avh,
-		       u32 hsw, u32 hfp, u32 hbp, u32 vsw, u32 vfp, u32 vbp);
+		       u32 pcs, u32 hp, u32 vp, u32 hsw, u32 hfp, u32 hbp,
+		       u32 vsw, u32 vfp, u32 vbp);
 void nx_vip_get_hvsync(u32 module_index, int *p_ext_sync, u32 *pavw, u32 *pavh,
 		       u32 *phbegin, u32 *phend, u32 *pvbegin, u32 *pvend);
 void nx_vip_set_hvsync_for_mipi(u32 module_index, u32 avw, u32 avh, u32 hsw,

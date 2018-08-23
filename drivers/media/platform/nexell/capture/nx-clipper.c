@@ -150,6 +150,9 @@ struct nx_clipper {
 	s32 clk_src;
 	u32 clk_freq;
 	u32 external_sync;
+	u32 padclk_sel;
+	u32 h_syncpolarity;
+	u32 v_syncpolarity;
 	u32 h_frontporch;
 	u32 h_syncwidth;
 	u32 h_backporch;
@@ -622,6 +625,9 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 			return -EINVAL;
 		}
 		me->port = 1;
+		me->padclk_sel = 0;
+		me->h_syncpolarity = 0;
+		me->v_syncpolarity = 0;
 #ifdef CONFIG_ARCH_S5P4418
 		me->h_frontporch = 8;
 		me->h_syncwidth = 7;
@@ -657,6 +663,9 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 			/* when 656, porch value is always same, so ignore user
 			 * config
 			 */
+			me->padclk_sel = 0;
+			me->h_syncpolarity = 0;
+			me->v_syncpolarity = 0;
 			me->h_frontporch = 7;
 			me->h_syncwidth = 1;
 			me->h_backporch = 10;
@@ -664,6 +673,15 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 			me->v_syncwidth = 2;
 			me->v_backporch = 3;
 		} else {
+			if (of_property_read_u32(np, "padclk_sel",
+						 &me->padclk_sel))
+				me->padclk_sel = 0;
+			if (of_property_read_u32(np, "h_syncpolarity",
+						 &me->h_syncpolarity))
+				me->h_syncpolarity = 0;
+			if (of_property_read_u32(np, "v_syncpolarity",
+						 &me->v_syncpolarity))
+				me->v_syncpolarity = 0;
 			if (of_property_read_u32(np, "h_frontporch",
 						 &me->h_frontporch)) {
 				dev_err(dev, "failed to get dt h_frontporch\n");
@@ -1178,6 +1196,9 @@ static void set_vip(struct nx_clipper *me)
 				  me->width * 2,
 				  me->interlace ?
 				  me->height >> 1 : me->height,
+				  me->padclk_sel,
+				  me->h_syncpolarity,
+				  me->v_syncpolarity,
 				  me->h_syncwidth,
 				  me->h_frontporch,
 				  me->h_backporch,

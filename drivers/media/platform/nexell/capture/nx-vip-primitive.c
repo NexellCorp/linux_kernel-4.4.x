@@ -348,11 +348,11 @@ void nx_vip_get_data_mode(u32 module_index, u32 *p_data_order,
 }
 
 void nx_vip_set_sync(u32 module_index, int b_ext_sync,
-		     u32 source_bits, u32 avw, u32 avh, u32 hsw,
-		     u32 hfp, u32 hbp, u32 vsw, u32 vfp, u32 vbp)
+		     u32 source_bits, u32 avw, u32 avh,
+		     u32 pcs, u32 hp, u32 vp, u32 hsw, u32 hfp,
+		     u32 hbp, u32 vsw, u32 vfp, u32 vbp)
 {
 	const u32 drange = 1ul << 9;
-
 	const u32 extsyncenb = 1ul << 8;
 
 	register u32 temp;
@@ -363,6 +363,7 @@ void nx_vip_set_sync(u32 module_index, int b_ext_sync,
 	writel(0xffffffff, &p_register->vip_vend);
 	writel(0xffffffff, &p_register->vip_hbegin);
 	writel(0xffffffff, &p_register->vip_hend);
+
 	temp = (u32)p_register->vip_config;
 	temp &= ~drange;
 	if (b_ext_sync)
@@ -393,6 +394,26 @@ void nx_vip_set_sync(u32 module_index, int b_ext_sync,
 	}
 
 	if (b_ext_sync) {
+#ifdef CONFIG_ARCH_S5P6818
+		if (0 != pcs) {
+			temp = (u32)p_register->vip_padclk_sel;
+			temp &= ~(1 << 1);
+			temp |= (pcs << 1);
+			writel((u16)temp, &p_register->vip_padclk_sel);
+		}
+#endif
+		if (0 != hp) {
+			temp = (u32)p_register->vip_syncctrl;
+			temp &= ~(1 << 8);
+			temp |= (hp << 8);
+			writel((u16)temp, &p_register->vip_syncctrl);
+		}
+		if (0 != vp) {
+			temp = (u32)p_register->vip_syncctrl;
+			temp &= ~(1 << 9);
+			temp |= (vp << 9);
+			writel((u16)temp, &p_register->vip_syncctrl);
+		}
 		if (0 != vbp) {
 			temp = (u32)p_register->vip_syncctrl;
 			temp &= ~(3 << 11);
@@ -428,10 +449,11 @@ void nx_vip_set_sync(u32 module_index, int b_ext_sync,
 }
 
 void nx_vip_set_hvsync(u32 module_index, int b_ext_sync, u32 avw, u32 avh,
-		       u32 hsw, u32 hfp, u32 hbp, u32 vsw, u32 vfp, u32 vbp)
+		       u32 pcs, u32 hp, u32 vp, u32 hsw, u32 hfp, u32 hbp,
+		       u32 vsw, u32 vfp, u32 vbp)
 {
-	nx_vip_set_sync(module_index, b_ext_sync, nx_vip_vd_8bit, avw, avh, hsw,
-			hfp, hbp, vsw, vfp, vbp);
+	nx_vip_set_sync(module_index, b_ext_sync, nx_vip_vd_8bit, avw, avh,
+			pcs, hp, vp, hsw, hfp, hbp, vsw, vfp, vbp);
 }
 
 void nx_vip_set_hvsync_for_mipi(u32 module_index, u32 avw, u32 avh, u32 hsw,
@@ -444,7 +466,7 @@ void nx_vip_set_hvsync_for_mipi(u32 module_index, u32 avw, u32 avh, u32 hsw,
 	int bypass_ext_sync = false;
 
 	nx_vip_set_sync(module_index, b_ext_sync, nx_vip_vd_16bit, avw >> 1,
-			avh, hsw, hfp, 0, vsw, vfp, 0);
+			avh, 0, 0, 0, hsw, hfp, 0, vsw, vfp, 0);
 	nx_vip_set_dvalid_mode(module_index, b_ext_dvalid, bypass_ext_dvalid,
 			       bypass_ext_sync);
 #else
