@@ -144,6 +144,7 @@ enum {
 struct nx_clipper {
 	u32 module;
 	u32 logical;
+	u32 logical_num;
 	u32 interface_type;
 	s32 clk_src;
 	u32 clk_freq;
@@ -590,6 +591,13 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 
 	if (of_property_read_u32(np, "logical", &me->logical))
 		me->logical = 0;
+
+	if (me->logical == 1) {
+		if (of_property_read_u32(np, "logical_num", &me->logical_num)) {
+			dev_err(dev, "failed to get dt logical_num\n");
+			return -EINVAL;
+		}
+	}
 
 	if (of_property_read_u32(np, "interface_type", &me->interface_type)) {
 		dev_err(dev, "failed to get dt interface_type\n");
@@ -1667,8 +1675,12 @@ static int init_v4l2_subdev(struct nx_clipper *me)
 	struct media_entity *entity = &sd->entity;
 
 	v4l2_subdev_init(sd, &nx_clipper_subdev_ops);
-	snprintf(sd->name, sizeof(sd->name), "%s%d%s", NX_CLIPPER_DEV_NAME,
-		 me->module, (me->logical) ? "-logical" : "");
+	if (me->logical)
+		snprintf(sd->name, sizeof(sd->name), "%s%d%s%d",
+			NX_CLIPPER_DEV_NAME, me->module, "-logical", me->logical_num);
+	else
+		snprintf(sd->name, sizeof(sd->name), "%s%d",
+			NX_CLIPPER_DEV_NAME, me->module);
 	v4l2_set_subdevdata(sd, me);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
@@ -1757,21 +1769,21 @@ static int create_sysfs_for_camera_sensor(struct nx_clipper *me,
 		me->interface_type == NX_CAPTURE_INTERFACE_MIPI_CSI;
 
 	snprintf(kobject_name, sizeof(kobject_name), "camerasensor%d",
-			(me->logical) ? (me->module + 10) : me->module);
+			(me->logical) ?
+			(me->module + me->logical_num + 10) : me->module);
 	kobj = kobject_create_and_add(kobject_name, &platform_bus.kobj);
 	if (!kobj) {
-		dev_err(&me->pdev->dev, "failed to kobject_create for module %d-%d\n",
-			me->module, me->logical);
+		dev_err(&me->pdev->dev, "failed to kobject_create for module %d-%d-%d\n",
+			me->module, me->logical, me->logical_num);
 		return -EINVAL;
 	}
 
 	ret = sysfs_create_file(kobj, camera_sensor_attrs[me->module]);
 	if (ret) {
-		dev_err(&me->pdev->dev, "failed to sysfs_create_file for module %d-%d\n",
-			me->module, me->logical);
+		dev_err(&me->pdev->dev, "failed to sysfs_create_file for module %d-%d-%d\n",
+			me->module, me->logical, me->logical_num);
 		kobject_put(kobj);
 	}
-
 	return 0;
 }
 
@@ -1911,8 +1923,12 @@ static int register_v4l2(struct nx_clipper *me)
 	}
 
 #ifdef CONFIG_VIDEO_NEXELL_CLIPPER
-	snprintf(dev_name, sizeof(dev_name), "VIDEO CLIPPER%d%s", me->module,
-			(me->logical) ? " LOGICAL" : "");
+	if (me->logical)
+		snprintf(dev_name, sizeof(dev_name), "VIDEO CLIPPER%d%s%d",
+				me->module, " LOGICAL", me->logical_num);
+	else
+		snprintf(dev_name, sizeof(dev_name), "VIDEO CLIPPER%d",
+				me->module);
 	video = nx_video_create(dev_name, NX_VIDEO_TYPE_CAPTURE,
 				    nx_v4l2_get_v4l2_device(),
 				    nx_v4l2_get_alloc_ctx());

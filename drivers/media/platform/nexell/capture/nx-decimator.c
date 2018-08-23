@@ -59,6 +59,7 @@ enum {
 struct nx_decimator {
 	u32 module;
 	u32 logical;
+	u32 logical_num;
 
 	struct v4l2_subdev subdev;
 	struct media_pad pads[NX_DECIMATOR_PAD_MAX];
@@ -609,8 +610,12 @@ static int init_v4l2_subdev(struct nx_decimator *me)
 	struct media_entity *entity = &sd->entity;
 
 	v4l2_subdev_init(sd, &nx_decimator_subdev_ops);
-	snprintf(sd->name, sizeof(sd->name), "%s%d%s", NX_DECIMATOR_DEV_NAME,
-		 me->module, (me->logical) ? "-logical" : "");
+	if (me->logical)
+		snprintf(sd->name, sizeof(sd->name), "%s%d%s%d", NX_DECIMATOR_DEV_NAME,
+				me->module, "-logical", me->logical_num);
+	else
+		snprintf(sd->name, sizeof(sd->name), "%s%d", NX_DECIMATOR_DEV_NAME,
+				me->module);
 	v4l2_set_subdevdata(sd, me);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
@@ -638,9 +643,12 @@ static int register_v4l2(struct nx_decimator *me)
 	ret = nx_v4l2_register_subdev(&me->subdev);
 	if (ret)
 		BUG();
-
-	snprintf(dev_name, sizeof(dev_name), "VIDEO DECIMATOR%d%s", me->module,
-			(me->logical) ? " LOGICAL" : "");
+	if (me->logical)
+		snprintf(dev_name, sizeof(dev_name), "VIDEO DECIMATOR%d%s%d",
+			me->module, " LOGICAL", me->logical_num);
+	else
+		snprintf(dev_name, sizeof(dev_name), "VIDEO DECIMATOR%d",
+				me->module);
 	video = nx_video_create(dev_name, NX_VIDEO_TYPE_CAPTURE,
 				    nx_v4l2_get_v4l2_device(),
 				    nx_v4l2_get_alloc_ctx());
@@ -660,8 +668,11 @@ static int register_v4l2(struct nx_decimator *me)
 		BUG();
 
 	memset(dev_name, 0x0, sizeof(dev_name));
-	snprintf(dev_name, sizeof(dev_name), "nx-clipper%d%s", me->module,
-			(me->logical) ? "-logical" : "");
+	if (me->logical)
+		snprintf(dev_name, sizeof(dev_name), "nx-clipper%d%s%d", me->module,
+				"-logical", me->logical_num);
+	else
+		snprintf(dev_name, sizeof(dev_name), "nx-clipper%d", me->module);
 	clipper = nx_v4l2_get_subdev(dev_name);
 	if (!clipper) {
 		dev_err(&me->pdev->dev, "can't get clipper(%s) subdev\n",
@@ -700,7 +711,12 @@ static int nx_decimator_parse_dt(struct platform_device *pdev,
 	}
 	if (of_property_read_u32(np, "logical", &me->logical))
 		me->logical = 0;
-
+	if (me->logical == 1) {
+		if (of_property_read_u32(np, "logical_num", &me->logical_num)) {
+			dev_err(dev, "failed to get dt logical_num\n");
+			return -EINVAL;
+		}
+	}
 	return 0;
 }
 
