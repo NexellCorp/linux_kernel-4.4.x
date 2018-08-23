@@ -131,6 +131,7 @@ struct nx_capture_power_seq {
 
 struct nx_v4l2_i2c_board_info {
 	int     i2c_adapter_id;
+	int	i2c_addr;
 	struct i2c_board_info board_info;
 };
 
@@ -243,6 +244,9 @@ static int parse_sensor_i2c_board_info_dt(struct device_node *np,
 		dev_err(dev, "failed to get sensor i2c addr\n");
 		return -EINVAL;
 	}
+
+	if (of_property_read_u32(np, "real_addr", &info->i2c_addr))
+				info->i2c_addr = 0;
 
 	strlcpy(info->board_info.type, name, sizeof(info->board_info.type));
 	info->board_info.addr = addr;
