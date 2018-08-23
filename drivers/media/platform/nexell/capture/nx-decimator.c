@@ -178,10 +178,9 @@ static irqreturn_t nx_decimator_irq_handler(void *data)
 {
 	struct nx_decimator *me = data;
 
-	if (NX_ATOMIC_READ(&me->state) & STATE_STOPPING) {
-		nx_vip_stop(me->module, VIP_DECIMATOR);
+	if (NX_ATOMIC_READ(&me->state) & STATE_STOPPING)
 		complete(&me->stop_done);
-	} else {
+	else {
 		if (!me->buffer_underrun) {
 			struct nx_video_buffer *done = NULL;
 			struct nx_video_buffer_object *obj = &me->vbuf_obj;
@@ -353,14 +352,13 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 				goto UP_AND_OUT;
 			}
 			update_buffer(me);
-			ret = alloc_dma_buffer(me);
-			if (ret)
-				goto UP_AND_OUT;
+			alloc_dma_buffer(me);
 			nx_vip_run(me->module, VIP_DECIMATOR);
 			NX_ATOMIC_SET_MASK(STATE_RUNNING, &me->state);
 		}
 	} else {
 		if (NX_ATOMIC_READ(&me->state) & STATE_RUNNING) {
+#if 0
 			if (!me->buffer_underrun) {
 				NX_ATOMIC_SET_MASK(STATE_STOPPING, &me->state);
 				if (!wait_for_completion_timeout(&me->stop_done,
@@ -373,9 +371,19 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 						     &me->state);
 			} else
 				nx_vip_stop(module, VIP_DECIMATOR);
+#else
+			NX_ATOMIC_SET_MASK(STATE_STOPPING, &me->state);
+			if (!wait_for_completion_timeout(&me->stop_done,
+								2*HZ)) {
+				pr_warn("timeout for waiting decimator stop\n");
+			}
+			nx_vip_stop(module, VIP_DECIMATOR);
+			NX_ATOMIC_CLEAR_MASK(STATE_STOPPING,
+						&me->state);
+#endif
+			unregister_irq_handler(me);
 			free_dma_buffer(me);
 			me->buffer_underrun = false;
-			unregister_irq_handler(me);
 			nx_video_clear_buffer(&me->vbuf_obj);
 
 			hostdata_back = v4l2_get_subdev_hostdata(remote);

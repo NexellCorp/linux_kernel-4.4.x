@@ -1072,10 +1072,9 @@ static irqreturn_t nx_clipper_irq_handler(void *data)
 	}
 
 	if (do_process) {
-		if (NX_ATOMIC_READ(&me->state) & STATE_MEM_STOPPING) {
-			nx_vip_stop(me->module, VIP_CLIPPER);
+		if (NX_ATOMIC_READ(&me->state) & STATE_MEM_STOPPING)
 			complete(&me->stop_done);
-		} else {
+		else {
 			if (!me->buffer_underrun) {
 				struct nx_video_buffer *done_buf = NULL;
 				struct nx_video_buffer_object *obj = &me->vbuf_obj;
@@ -1314,9 +1313,7 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 				WARN_ON(1);
 				goto UP_AND_OUT;
 			}
-			ret = alloc_dma_buffer(me);
-			if (ret)
-				goto UP_AND_OUT;
+			alloc_dma_buffer(me);
 			nx_vip_run(me->module, VIP_CLIPPER);
 			NX_ATOMIC_SET_MASK(STATE_MEM_RUNNING, &me->state);
 		} else
@@ -1330,6 +1327,7 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 #ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 		if (is_host_video &&
 		    (NX_ATOMIC_READ(&me->state) & STATE_MEM_RUNNING)) {
+#if 0
 			if (!me->buffer_underrun) {
 				NX_ATOMIC_SET_MASK(STATE_MEM_STOPPING,
 						   &me->state);
@@ -1343,12 +1341,22 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 						     &me->state);
 			} else
 				nx_vip_stop(module, VIP_CLIPPER);
+#else
+			NX_ATOMIC_SET_MASK(STATE_MEM_STOPPING,
+						&me->state);
+			if (!wait_for_completion_timeout(&me->stop_done,
+								2*HZ)) {
+				pr_warn("timeout for waiting clipper stop\n");
+			}
+			nx_vip_stop(module, VIP_CLIPPER);
+			NX_ATOMIC_CLEAR_MASK(STATE_MEM_STOPPING,
+						&me->state);
+#endif
+			unregister_irq_handler(me);
 			free_dma_buffer(me);
 			me->buffer_underrun = false;
-			unregister_irq_handler(me);
 			nx_video_clear_buffer(&me->vbuf_obj);
 			NX_ATOMIC_CLEAR_MASK(STATE_MEM_RUNNING, &me->state);
-
 		}
 		memset(&me->crop, 0, sizeof(me->crop));
 
@@ -1359,7 +1367,9 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 #else
 		if (NX_ATOMIC_READ(&me->state) & STATE_CLIP_RUNNING) {
 #endif
-		if (!nx_vip_is_running(me->module, VIP_DECIMATOR)) {
+		if ((!nx_vip_is_running(me->module, VIP_DECIMATOR)) &&
+				(!(NX_ATOMIC_READ(&me->state) &
+				   STATE_MEM_RUNNING))) {
 			if (me->clk_src >= 0)
 				nx_vip_clock_enable(me->module, false);
 			v4l2_subdev_call(remote, video, s_stream, 0);
