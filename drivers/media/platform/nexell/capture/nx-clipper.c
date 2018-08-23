@@ -35,6 +35,8 @@
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/dma-mapping.h>
+#include <linux/init.h>
+#include <linux/interrupt.h>
 
 #include <media/media-device.h>
 #include <media/v4l2-device.h>
@@ -192,6 +194,8 @@ struct nx_clipper {
 	struct platform_device *pdev;
 
 #ifdef CONFIG_VIDEO_NEXELL_CLIPPER
+	struct tasklet_struct work;
+	struct list_head done_bufs;
 	struct nx_video_buffer_object vbuf_obj;
 	struct nx_v4l2_irq_entry *irq_entry;
 	u32 mem_fmt;
@@ -1025,6 +1029,55 @@ static int update_buffer(struct nx_clipper *me)
 	return 0;
 }
 
+#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
+static int handle_buffer_done(struct nx_clipper *me)
+{
+	struct nx_video_buffer *buf = NULL;
+
+	while (!list_empty(&me->done_bufs)) {
+		buf = list_first_entry(&me->done_bufs,
+				struct nx_video_buffer, list);
+		if (buf && buf->cb_buf_done) {
+			buf->consumer_index++;
+			buf->cb_buf_done(buf);
+			list_del_init(&buf->list);
+		}
+	}
+	return 0;
+}
+
+static void init_buffer_handler(struct nx_clipper *me)
+{
+	INIT_LIST_HEAD(&me->done_bufs);
+	tasklet_init(&me->work, (void*)handle_buffer_done,
+			(long unsigned int)me);
+}
+
+static void add_buffer_to_handler(struct nx_clipper *me,
+		struct nx_video_buffer *done_buf)
+{
+	list_add_tail(&done_buf->list, &me->done_bufs);
+	tasklet_schedule(&me->work);
+}
+
+static void deinit_buffer_handler(struct nx_clipper *me)
+{
+	struct nx_video_buffer *buf = NULL;
+
+	tasklet_kill(&me->work);
+	while (!list_empty(&me->done_bufs)) {
+		buf = list_entry(me->done_bufs.next,
+					struct nx_video_buffer, list);
+		if (buf) {
+			buf->cb_buf_done(buf);
+			list_del_init(&buf->list);
+		} else
+			break;
+	}
+	list_del_init(&me->done_bufs);
+}
+#endif
+
 static int handle_buffer_underrun(struct nx_clipper *me)
 {
 	if (me->buf.addr) {
@@ -1090,10 +1143,8 @@ static irqreturn_t nx_clipper_irq_handler(void *data)
 					me->buffer_underrun = true;
 				}
 
-				if (done_buf && done_buf->cb_buf_done) {
-					done_buf->consumer_index++;
-					done_buf->cb_buf_done(done_buf);
-				}
+				if (done_buf)
+					add_buffer_to_handler(me, done_buf);
 			} else {
 				int buf_count
 					= nx_video_get_buffer_count(&me->vbuf_obj);
@@ -1223,7 +1274,7 @@ static void set_vip(struct nx_clipper *me)
  */
 static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	int ret;
+	int ret = 0;
 	struct nx_clipper *me = v4l2_get_subdevdata(sd);
 	struct v4l2_subdev *remote;
 #ifdef CONFIG_VIDEO_NEXELL_CLIPPER
@@ -1273,9 +1324,12 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 					nx_vip_is_running(me->module, VIP_CLIPPER)) {
 				pr_err("VIP%d Clipper is already running\n",
 						me->module);
+				nx_video_clear_buffer(&me->vbuf_obj);
+				ret = -EBUSY;
 				goto UP_AND_OUT;
 			}
-			if (me->crop.width == 0 || me->crop.height == 0) {
+
+			if ((me->crop.width == 0) || (me->crop.height == 0)) {
 				me->crop.left = 0;
 				me->crop.top = 0;
 				me->crop.width = me->width;
@@ -1315,6 +1369,7 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 				goto UP_AND_OUT;
 			}
 			alloc_dma_buffer(me);
+			init_buffer_handler(me);
 			nx_vip_run(me->module, VIP_CLIPPER);
 			NX_ATOMIC_SET_MASK(STATE_MEM_RUNNING, &me->state);
 		} else
@@ -1338,11 +1393,11 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 
 			NX_ATOMIC_CLEAR_MASK(STATE_MEM_STOPPING,
 						&me->state);
-#endif
 			unregister_irq_handler(me);
-			free_dma_buffer(me);
 			me->buffer_underrun = false;
+			free_dma_buffer(me);
 			nx_video_clear_buffer(&me->vbuf_obj);
+			deinit_buffer_handler(me);
 			NX_ATOMIC_CLEAR_MASK(STATE_MEM_RUNNING, &me->state);
 		}
 		memset(&me->crop, 0, sizeof(me->crop));
@@ -1383,15 +1438,30 @@ static int nx_clipper_g_crop(struct v4l2_subdev *sd,
 			     struct v4l2_crop *crop)
 {
 	struct nx_clipper *me = v4l2_get_subdevdata(sd);
-	/* crop->c = me->crop; */
-	memcpy(&crop->c, &me->crop, sizeof(struct v4l2_rect));
-	return 0;
+	struct v4l2_subdev *remote = get_remote_source_subdev(me);
+	int err;
+
+	err = v4l2_subdev_call(remote, video, g_crop, crop);
+	if (!err) {
+		pr_debug("[%s] crop %d:%d:%d:%d\n", __func__, crop->c.left,
+				crop->c.top, crop->c.width, crop->c.height);
+	}
+	return err;
 }
 
 static int nx_clipper_s_crop(struct v4l2_subdev *sd,
 			     const struct v4l2_crop *crop)
 {
 	struct nx_clipper *me = v4l2_get_subdevdata(sd);
+
+	if ((NX_ATOMIC_READ(&me->state) &
+				(STATE_MEM_RUNNING | STATE_CLIP_RUNNING))) {
+		if ((me->crop.width != crop->c.width) ||
+				(me->crop.height != crop->c.height) ||
+				(me->crop.left != crop->c.left) ||
+				(me->crop.top != crop->c.top))
+			return -EINVAL;
+	}
 
 	if (crop->c.left >= me->width || crop->c.top >= me->height)
 		return -EINVAL;
@@ -1565,7 +1635,6 @@ static int nx_clipper_set_fmt(struct v4l2_subdev *sd,
 		me->mem_fmt = nx_mem_fmt;
 		me->width = format->format.width;
 		me->height = format->format.height;
-
 		memset(&fmt, 0, sizeof(fmt));
 		fmt.format.width = me->width;
 		fmt.format.height = me->height;

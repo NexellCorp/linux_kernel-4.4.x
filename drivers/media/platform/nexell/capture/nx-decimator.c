@@ -29,6 +29,8 @@
 #include <linux/semaphore.h>
 #include <linux/v4l2-mediabus.h>
 #include <linux/delay.h>
+#include <linux/init.h>
+#include <linux/interrupt.h>
 
 #include <linux/dma-mapping.h>
 #include <media/media-device.h>
@@ -76,6 +78,8 @@ struct nx_decimator {
 
 	struct platform_device *pdev;
 
+	struct tasklet_struct work;
+	struct list_head done_bufs;
 	struct nx_video_buffer_object vbuf_obj;
 	struct nx_v4l2_irq_entry *irq_entry;
 	u32 mem_fmt;
@@ -131,6 +135,53 @@ static void free_dma_buffer(struct nx_decimator *me)
 		me->buf.stride[0] = me->buf.stride[1] = 0;
 		me->buf.addr = NULL;
 	}
+}
+
+static int handle_buffer_done(struct nx_decimator *me)
+{
+	struct nx_video_buffer *buf = NULL;
+
+	while (!list_empty(&me->done_bufs)) {
+		buf = list_first_entry(&me->done_bufs,
+				struct nx_video_buffer, list);
+		if (buf && buf->cb_buf_done) {
+			buf->consumer_index++;
+			buf->cb_buf_done(buf);
+			list_del_init(&buf->list);
+		}
+	}
+	return 0;
+}
+
+static void init_buffer_handler(struct nx_decimator *me)
+{
+	INIT_LIST_HEAD(&me->done_bufs);
+	tasklet_init(&me->work, (void*)handle_buffer_done,
+			(long unsigned int)me);
+}
+
+static void add_buffer_to_handler(struct nx_decimator *me,
+		struct nx_video_buffer *done_buf)
+{
+	list_add_tail(&done_buf->list, &me->done_bufs);
+	tasklet_schedule(&me->work);
+}
+
+static void deinit_buffer_handler(struct nx_decimator *me)
+{
+	struct nx_video_buffer *buf = NULL;
+
+	tasklet_kill(&me->work);
+	while (!list_empty(&me->done_bufs)) {
+		buf = list_entry(me->done_bufs.next,
+					struct nx_video_buffer, list);
+		if (buf) {
+			buf->cb_buf_done(buf);
+			list_del_init(&buf->list);
+		} else
+			break;
+	}
+	list_del_init(&me->done_bufs);
 }
 
 static int handle_buffer_underrun(struct nx_decimator *me)
@@ -195,10 +246,8 @@ static irqreturn_t nx_decimator_irq_handler(void *data)
 				handle_buffer_underrun(me);
 				me->buffer_underrun = true;
 			}
-			if (done && done->cb_buf_done) {
-				done->consumer_index++;
-				done->cb_buf_done(done);
-			}
+			if (done)
+				add_buffer_to_handler(me, done);
 		} else {
 			int buf_count =
 				nx_video_get_buffer_count(&me->vbuf_obj);
@@ -272,12 +321,6 @@ static void set_vip(struct nx_decimator *me, u32 clip_width, u32 clip_height)
 	nx_vip_set_decimator_format(me->module, me->mem_fmt);
 }
 
-static int get_decimator_crop(struct v4l2_subdev *remote,
-			    struct v4l2_crop *crop)
-{
-	return v4l2_subdev_call(remote, video, g_crop, crop);
-}
-
 static int setup_link(struct media_pad *src, struct media_pad *dst)
 {
 	struct media_link *link;
@@ -294,7 +337,7 @@ static int setup_link(struct media_pad *src, struct media_pad *dst)
  */
 static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	int ret;
+	int ret = 0;
 	struct nx_decimator *me = v4l2_get_subdevdata(sd);
 	u32 module = me->module;
 	struct v4l2_subdev *remote;
@@ -324,11 +367,11 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 			}
 		}
 		if (!(NX_ATOMIC_READ(&me->state) & STATE_RUNNING)) {
-			struct v4l2_crop crop;
-
 			if (nx_vip_is_running(me->module, VIP_DECIMATOR)) {
 				pr_err("VIP%d Decimator is already running\n",
 						me->module);
+				nx_video_clear_buffer(&me->vbuf_obj);
+				ret = -EBUSY;
 				goto UP_AND_OUT;
 			}
 			hostdata_back = v4l2_get_subdev_hostdata(remote);
@@ -340,13 +383,7 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 				goto UP_AND_OUT;
 			}
 
-			ret = get_decimator_crop(remote, &crop);
-			if (ret) {
-				WARN_ON(1);
-				goto UP_AND_OUT;
-			}
-
-			set_vip(me, crop.c.width, crop.c.height);
+			set_vip(me, me->width, me->height);
 			ret = register_irq_handler(me);
 			if (ret) {
 				WARN_ON(1);
@@ -354,6 +391,7 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 			}
 			update_buffer(me);
 			alloc_dma_buffer(me);
+			init_buffer_handler(me);
 			nx_vip_run(me->module, VIP_DECIMATOR);
 			NX_ATOMIC_SET_MASK(STATE_RUNNING, &me->state);
 		}
@@ -368,10 +406,10 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 			NX_ATOMIC_CLEAR_MASK(STATE_STOPPING,
 						&me->state);
 			unregister_irq_handler(me);
-			free_dma_buffer(me);
 			me->buffer_underrun = false;
+			free_dma_buffer(me);
 			nx_video_clear_buffer(&me->vbuf_obj);
-
+			deinit_buffer_handler(me);
 			hostdata_back = v4l2_get_subdev_hostdata(remote);
 			v4l2_set_subdev_hostdata(remote, NX_DECIMATOR_DEV_NAME);
 			v4l2_subdev_call(remote, video, s_stream, 0);
@@ -384,7 +422,7 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 UP_AND_OUT:
 	up(&me->s_stream_sem);
 
-	return 0;
+	return ret;
 }
 
 /**
@@ -504,21 +542,26 @@ static int nx_decimator_g_crop(struct v4l2_subdev *sd,
 			     struct v4l2_crop *crop)
 {
 	struct nx_decimator *me = v4l2_get_subdevdata(sd);
+	struct v4l2_subdev *remote = get_remote_source_subdev(me);
+	int err;
 
-	crop->c.left = 0;
-	crop->c.top = 0;
-	crop->c.width = me->width;
-	crop->c.height = me->height;
-
-	return 0;
+	err = v4l2_subdev_call(remote, video, g_crop, crop);
+	if (!err) {
+		pr_debug("[%s] crop %d:%d:%d:%d\n", __func__, crop->c.left,
+				crop->c.top, crop->c.width, crop->c.height);
+	}
+	return err;
 }
 
 static int nx_decimator_s_crop(struct v4l2_subdev *sd,
 			     const struct v4l2_crop *crop)
 {
 	struct nx_decimator *me = v4l2_get_subdevdata(sd);
+	struct v4l2_subdev *remote = get_remote_source_subdev(me);
+	int ret;
 
-	if (me->width < crop->c.width || me->height < crop->c.height) {
+	if (me->width < (crop->c.width - crop->c.left) ||
+			me->height < (crop->c.height - crop->c.top)) {
 		dev_err(&me->pdev->dev, "Invalid scaledown size.\n");
 		dev_err(&me->pdev->dev, "The size must be less than");
 		dev_err(&me->pdev->dev, " w(%d)xh(%d)\n",
@@ -527,9 +570,13 @@ static int nx_decimator_s_crop(struct v4l2_subdev *sd,
 		return -EINVAL;
 	}
 
-	me->width = crop->c.width;
-	me->height = crop->c.height;
-
+	ret = v4l2_subdev_call(remote, video, s_crop, crop);
+	if (!ret) {
+		pr_debug("[%s] crop %d:%d:%d:%d\n", __func__, crop->c.left,
+				crop->c.top, crop->c.width, crop->c.height);
+		me->width = crop->c.width;
+		me->height = crop->c.height;
+	}
 	return 0;
 }
 
