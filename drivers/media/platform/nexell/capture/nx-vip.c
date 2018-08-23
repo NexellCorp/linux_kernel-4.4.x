@@ -77,6 +77,8 @@ struct nx_vip {
 
 static struct nx_vip *_nx_vip_object[NUMBER_OF_VIP_MODULE];
 
+static void hw_child_enable(struct nx_vip *me, u32 child);
+
 /**
  * static functions
  */
@@ -158,6 +160,7 @@ static irqreturn_t vip_irq_handler(int irq, void *desc)
 
 	spin_unlock_irqrestore(&me->lock, flags);
 
+	hw_child_enable(me, NX_ATOMIC_READ(&me->running_bitmap));
 	return IRQ_HANDLED;
 }
 
@@ -181,22 +184,8 @@ static void hw_child_enable(struct nx_vip *me, u32 child)
 		} else {
 			nx_vip_set_interrupt_enable_all(me->module, false);
 			nx_vip_clear_interrupt_pending_all(me->module);
-			if (me->clipper_enable || me->decimator_enable) {
-				int timeout = 0;
-
-				while(nx_vip_get_interrupt_pending(me->module, VIP_OD_INT) == 0) {
-					udelay(1000);
-					timeout++;
-					if (timeout == 1000) {
-						pr_err("enable timeout\n");
-						break;
-					}
-				}
-			}
 			nx_vip_set_vipenable(me->module, true, true,
 						clipper_enable, decimator_enable);
-			if (me->clipper_enable || me->decimator_enable)
-				nx_vip_clear_interrupt_pending_all(me->module);
 			nx_vip_set_interrupt_enable(me->module,
 							VIP_OD_INT, true);
 		}
@@ -362,8 +351,10 @@ int nx_vip_run(u32 module, u32 child)
 		return -ENODEV;
 	}
 	me = _nx_vip_object[module];
+
 	NX_ATOMIC_SET_MASK(child, &me->running_bitmap);
-	hw_child_enable(me, NX_ATOMIC_READ(&me->running_bitmap));
+	if (!me->clipper_enable && !me->decimator_enable)
+		hw_child_enable(me, NX_ATOMIC_READ(&me->running_bitmap));
 
 #ifdef DUMP_REGISTER
 	nx_vip_dump_register(module);

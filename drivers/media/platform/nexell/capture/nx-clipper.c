@@ -1072,9 +1072,10 @@ static irqreturn_t nx_clipper_irq_handler(void *data)
 	}
 
 	if (do_process) {
-		if (NX_ATOMIC_READ(&me->state) & STATE_MEM_STOPPING)
+		if (NX_ATOMIC_READ(&me->state) & STATE_MEM_STOPPING) {
+			nx_vip_stop(me->module, VIP_CLIPPER);
 			complete(&me->stop_done);
-		else {
+		} else {
 			if (!me->buffer_underrun) {
 				struct nx_video_buffer *done_buf = NULL;
 				struct nx_video_buffer_object *obj = &me->vbuf_obj;
@@ -1327,28 +1328,14 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 #ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 		if (is_host_video &&
 		    (NX_ATOMIC_READ(&me->state) & STATE_MEM_RUNNING)) {
-#if 0
-			if (!me->buffer_underrun) {
-				NX_ATOMIC_SET_MASK(STATE_MEM_STOPPING,
-						   &me->state);
-				if (!wait_for_completion_timeout(&me->stop_done,
-								 2*HZ)) {
-					pr_warn("timeout for waiting clipper stop\n");
-					nx_vip_stop(module, VIP_CLIPPER);
-				}
-
-				NX_ATOMIC_CLEAR_MASK(STATE_MEM_STOPPING,
-						     &me->state);
-			} else
-				nx_vip_stop(module, VIP_CLIPPER);
-#else
 			NX_ATOMIC_SET_MASK(STATE_MEM_STOPPING,
 						&me->state);
 			if (!wait_for_completion_timeout(&me->stop_done,
 								2*HZ)) {
 				pr_warn("timeout for waiting clipper stop\n");
+				nx_vip_stop(module, VIP_CLIPPER);
 			}
-			nx_vip_stop(module, VIP_CLIPPER);
+
 			NX_ATOMIC_CLEAR_MASK(STATE_MEM_STOPPING,
 						&me->state);
 #endif
