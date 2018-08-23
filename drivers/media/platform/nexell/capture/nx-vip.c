@@ -151,10 +151,11 @@ static irqreturn_t vip_irq_handler(int irq, void *desc)
 	decimator = me->decimator_enable;
 
 	spin_lock_irqsave(&me->lock, flags);
-	if (clipper && me->clipper->handler)
+	if (clipper && me->clipper)
 		me->clipper->handler(me->clipper->priv);
-	if (decimator && me->decimator->handler)
+	if (decimator && me->decimator)
 		me->decimator->handler(me->decimator->priv);
+
 	spin_unlock_irqrestore(&me->lock, flags);
 
 	return IRQ_HANDLED;
