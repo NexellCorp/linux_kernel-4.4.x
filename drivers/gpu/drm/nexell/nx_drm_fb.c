@@ -29,11 +29,16 @@
 #define PREFERRED_BPP		32
 
 static bool fb_format_bgr;
+static bool fb_format_argb;
 
 MODULE_PARM_DESC(fb_bgr, "frame buffer BGR pixel format");
 module_param_named(fb_bgr, fb_format_bgr, bool, 0600);
 
+MODULE_PARM_DESC(fb_argb, "frame buffer ARGB pixel format");
+module_param_named(fb_argb, fb_format_argb, bool, 0600);
+
 static uint fb_pan_crtcs = 0xff;
+static uint fb_conn_num = 0xf;
 
 #ifdef CONFIG_DRM_NX_FB_PAN_DISPLAY
 static int fb_buffer_count = 1;
@@ -47,6 +52,9 @@ module_param_named(fb_vblank, fb_vblank_wait, bool, 0600);
 
 MODULE_PARM_DESC(fb_pan_crtcs, "frame buffer pan display possible crtcs");
 module_param_named(fb_pan_crtcs, fb_pan_crtcs, uint, 0600);
+
+MODULE_PARM_DESC(fb_conns, "frame buffer connector counts");
+module_param_named(fb_conns, fb_conn_num, int, 0600);
 #endif
 
 #ifdef CONFIG_FB_PRE_INIT_FB
@@ -818,7 +826,7 @@ struct drm_framebuffer *nx_drm_fb_mode_create(struct drm_device *drm,
 	return nx_drm_fb_create(drm, file_priv, mode_cmd);
 }
 
-static uint32_t nx_drm_mode_fb_format(uint32_t bpp, uint32_t depth, bool bgr)
+static uint32_t nx_drm_mode_fb_format(uint32_t bpp, uint32_t depth, bool bgr, bool argb)
 {
 	uint32_t fmt;
 
@@ -836,7 +844,7 @@ static uint32_t nx_drm_mode_fb_format(uint32_t bpp, uint32_t depth, bool bgr)
 		fmt = bgr ? DRM_FORMAT_BGR888 : DRM_FORMAT_RGB888;
 		break;
 	case 32:
-		if (depth == 24)
+		if ((!argb) && (depth == 24))
 			fmt = bgr ? DRM_FORMAT_XBGR8888 : DRM_FORMAT_XRGB8888;
 		else
 			fmt = bgr ? DRM_FORMAT_ABGR8888 : DRM_FORMAT_ARGB8888;
@@ -876,7 +884,7 @@ static int nx_drm_fb_helper_probe(struct drm_fb_helper *fb_helper,
 	mode_cmd.height = sizes->surface_height;
 	mode_cmd.pitches[0] = sizes->surface_width * bytes_per_pixel;
 	mode_cmd.pixel_format = nx_drm_mode_fb_format(sizes->surface_bpp,
-		sizes->surface_depth, fb_format_bgr);
+		sizes->surface_depth, fb_format_bgr, fb_format_argb);
 
 	/* for double buffer */
 	size = mode_cmd.pitches[0] * (mode_cmd.height * buffers);
@@ -963,7 +971,8 @@ static int nx_drm_framebuffer_dev_init(struct drm_device *drm,
 	struct nx_drm_private *private = drm->dev_private;
 	struct nx_drm_fbdev *nx_fbdev;
 	struct drm_fb_helper *fb_helper;
-	int ret;
+	struct drm_connector *connector;
+	int conn = 0,ret;
 
 	nx_fbdev = kzalloc(sizeof(*nx_fbdev), GFP_KERNEL);
 	if (!nx_fbdev)
@@ -991,11 +1000,24 @@ static int nx_drm_framebuffer_dev_init(struct drm_device *drm,
 		goto err_free;
 	}
 
+#if 0
 	ret = drm_fb_helper_single_add_all_connectors(fb_helper);
+#else
+	mutex_lock(&drm->mode_config.mutex);
+	drm_for_each_connector(connector, drm) {
+		ret = drm_fb_helper_add_one_connector(fb_helper, connector);
+		if (ret)
+			break;
+
+		if (++conn >= fb_conn_num)
+			break;
+	}
+	mutex_unlock(&drm->mode_config.mutex);
+#endif
+
 	if (ret < 0) {
 		DRM_ERROR("Failed to add connectors.\n");
 		goto err_drm_fb_helper_fini;
-
 	}
 
 	ret = drm_fb_helper_initial_config(fb_helper, preferred_bpp);
