@@ -276,6 +276,13 @@ config S3C2410_WATCHDOG
 	  The driver can be built as a module by choosing M, and will
 	  be called s3c2410_wdt
 
+config S5P6818_WATCHDOG_ATBOOT
+	bool "Nexell S5P6818 watchdog timer at boot"
+	depends on S3C2410_WATCHDOG
+	help
+	  This will enable watchdog timer from the boot and will kick
+	  watchdog every 5 seconds to avoid system hang.
+
 config SA1100_WATCHDOG
 	tristate "SA1100/PXA2xx watchdog"
 	depends on ARCH_SA1100 || ARCH_PXA
