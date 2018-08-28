@@ -221,13 +221,32 @@ static void nx_spi_qos_update(int val)
 }
 #endif
 
-static void flush_fifo(struct s3c64xx_spi_driver_data *sdd)
+static void flush_fifo(struct s3c64xx_spi_driver_data *sdd, int rx_valid)
 {
-	unsigned long loops;
-	u32 val, tmp;
 
+#if 1
+	u32 val;
+	void __iomem *regs = sdd->regs;
+	__raw_writel(0, regs+S3C64XX_SPI_PACKET_CNT);
+
+	val = __raw_readl(regs+S3C64XX_SPI_CH_CFG);
+	val &= ~(S3C64XX_SPI_CH_RXCH_ON | S3C64XX_SPI_CH_TXCH_ON | S3C64XX_SPI_CH_HS_EN);
+	val |= S3C64XX_SPI_CH_SW_RST;
+	__raw_writel(val, regs+S3C64XX_SPI_CH_CFG);
+
+	//
+
+	val = __raw_readl(regs+S3C64XX_SPI_CH_CFG);
+	val &= ~S3C64XX_SPI_CH_SW_RST;
+	__raw_writel(val, regs+S3C64XX_SPI_CH_CFG);
+
+	val = __raw_readl(regs+S3C64XX_SPI_MODE_CFG);
+	val &= ~(S3C64XX_SPI_MODE_TXDMA_ON | S3C64XX_SPI_MODE_RXDMA_ON);
+	__raw_writel(val, regs+S3C64XX_SPI_MODE_CFG);
+#else
 	regmap_write(sdd->regmap, S3C64XX_SPI_PACKET_CNT, 0);
 
+#if 0
 	regmap_read(sdd->regmap, S3C64XX_SPI_CH_CFG, &val);
 	val &= ~(S3C64XX_SPI_CH_RXCH_ON | S3C64XX_SPI_CH_TXCH_ON);
 	regmap_write(sdd->regmap, S3C64XX_SPI_CH_CFG, val);
@@ -236,29 +255,40 @@ static void flush_fifo(struct s3c64xx_spi_driver_data *sdd)
 	val |= S3C64XX_SPI_CH_SW_RST;
 	val &= ~S3C64XX_SPI_CH_HS_EN;
 	regmap_write(sdd->regmap, S3C64XX_SPI_CH_CFG, val);
+#else
+	regmap_update_bits(sdd->regmap, S3C64XX_SPI_CH_CFG, 
+			S3C64XX_SPI_CH_RXCH_ON | S3C64XX_SPI_CH_TXCH_ON | S3C64XX_SPI_CH_SW_RST | S3C64XX_SPI_CH_HS_EN,
+			S3C64XX_SPI_CH_SW_RST);
+#endif
 
+#if 0
+	unsigned long loops;
+	u32 val, tmp;
 	/* Flush TxFIFO*/
 	loops = msecs_to_loops(1);
 	do {
 		regmap_read(sdd->regmap, S3C64XX_SPI_STATUS, &val);
-	} while (TX_FIFO_LVL(val, sdd) && loops--);
+	} while (S3C64XX_SPI_ST_TX_DONE(val, sdd) && loops--);
 
 	if (loops == 0)
 		dev_warn(&sdd->pdev->dev, "Timed out flushing TX FIFO\n");
 
-	/* Flush RxFIFO*/
-	loops = msecs_to_loops(1);
-	do {
-		regmap_read(sdd->regmap, S3C64XX_SPI_STATUS, &val);
-		if (RX_FIFO_LVL(val, sdd))
-			regmap_read(sdd->regmap, S3C64XX_SPI_RX_DATA, &tmp);
-		else
-			break;
-	} while (loops--);
+	if(rx_valid) {
+		/* Flush RxFIFO*/
+		loops = msecs_to_loops(1);
+		do {
+			regmap_read(sdd->regmap, S3C64XX_SPI_STATUS, &val);
+			if (RX_FIFO_LVL(val, sdd))
+				regmap_read(sdd->regmap, S3C64XX_SPI_RX_DATA, &tmp);
+			else
+				break;
+		} while (loops--);
+		if (loops == 0)
+			dev_warn(&sdd->pdev->dev, "Timed out flushing RX FIFO\n");
+	}
+#endif
 
-	if (loops == 0)
-		dev_warn(&sdd->pdev->dev, "Timed out flushing RX FIFO\n");
-
+#if 0
 	regmap_read(sdd->regmap, S3C64XX_SPI_CH_CFG, &val);
 	val &= ~S3C64XX_SPI_CH_SW_RST;
 	regmap_write(sdd->regmap, S3C64XX_SPI_CH_CFG, val);
@@ -266,6 +296,15 @@ static void flush_fifo(struct s3c64xx_spi_driver_data *sdd)
 	regmap_read(sdd->regmap, S3C64XX_SPI_MODE_CFG, &val);
 	val &= ~(S3C64XX_SPI_MODE_TXDMA_ON | S3C64XX_SPI_MODE_RXDMA_ON);
 	regmap_write(sdd->regmap, S3C64XX_SPI_MODE_CFG, val);
+#else
+	regmap_update_bits(sdd->regmap, S3C64XX_SPI_CH_CFG, 
+			S3C64XX_SPI_CH_SW_RST,
+			0);
+	regmap_update_bits(sdd->regmap, S3C64XX_SPI_MODE_CFG, 
+			S3C64XX_SPI_MODE_TXDMA_ON | S3C64XX_SPI_MODE_RXDMA_ON,
+			0);
+#endif
+#endif
 }
 
 static void s3c64xx_spi_dmacb(void *data)
@@ -676,15 +715,30 @@ static int s3c64xx_spi_prepare_message(struct spi_master *master,
 	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
 	struct spi_device *spi = msg->spi;
 	struct s3c64xx_spi_csinfo *cs = spi->controller_data;
+	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 
 	/* If Master's(controller) state differs from that needed by Slave */
-	if (sdd->cur_speed != spi->max_speed_hz
-			|| sdd->cur_mode != spi->mode
-			|| sdd->cur_bpw != spi->bits_per_word) {
-		sdd->cur_bpw = spi->bits_per_word;
-		sdd->cur_speed = spi->max_speed_hz;
-		sdd->cur_mode = spi->mode;
-		s3c64xx_spi_config(sdd);
+	if(!sci->not_queued_transfer) {
+		if (sdd->cur_speed != spi->max_speed_hz
+				|| sdd->cur_mode != spi->mode
+				|| sdd->cur_bpw != spi->bits_per_word) {
+			sdd->cur_bpw = spi->bits_per_word;
+			sdd->cur_speed = spi->max_speed_hz;
+			sdd->cur_mode = spi->mode;
+			s3c64xx_spi_config(sdd);
+		}
+	}
+	else {
+		struct spi_transfer *xfer = list_first_entry(&msg->transfers, typeof(*xfer), transfer_list);
+		u8 bpw = xfer->bits_per_word;
+		u32 speed = xfer->speed_hz;
+
+		if (bpw != sdd->cur_bpw || speed != sdd->cur_speed || spi->mode != sdd->cur_mode) {
+			sdd->cur_bpw = bpw;
+			sdd->cur_speed = speed;
+			sdd->cur_mode = spi->mode;
+			s3c64xx_spi_config(sdd);
+		}
 	}
 
 	/* Configure feedback delay */
@@ -699,6 +753,7 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 				    struct spi_transfer *xfer)
 {
 	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
+	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 	int status;
 	u32 speed;
 	u8 bpw;
@@ -722,15 +777,17 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 
 	reinit_completion(&sdd->xfer_completion);
 
-	/* Only BPW and Speed may change across transfers */
-	bpw = xfer->bits_per_word;
-	speed = xfer->speed_hz;
+	if(!sci->not_queued_transfer) {
+		/* Only BPW and Speed may change across transfers */
+		bpw = xfer->bits_per_word;
+		speed = xfer->speed_hz;
 
-	if (bpw != sdd->cur_bpw || speed != sdd->cur_speed || spi->mode != sdd->cur_mode) {
-		sdd->cur_bpw = bpw;
-		sdd->cur_speed = speed;
-		sdd->cur_mode = spi->mode;
-		s3c64xx_spi_config(sdd);
+		if (bpw != sdd->cur_bpw || speed != sdd->cur_speed || spi->mode != sdd->cur_mode) {
+			sdd->cur_bpw = bpw;
+			sdd->cur_speed = speed;
+			sdd->cur_mode = spi->mode;
+			s3c64xx_spi_config(sdd);
+		}
 	}
 
 	/* Polling method for xfers not bigger than FIFO capacity */
@@ -780,7 +837,6 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 				dmaengine_terminate_all(sdd->rx_dma.ch);
 		}
 	}
-	flush_fifo(sdd);
 
 #ifdef CONFIG_ARCH_S5P6818
 	{
@@ -792,10 +848,47 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 	}
 #endif
 
+	flush_fifo(sdd, xfer->rx_buf != NULL);
+
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
 	nx_spi_qos_update(NX_BUS_CLK_IDLE_KHZ);
 #endif
 	gpio_set_value(dbg_gpio, 0);
+
+	return status;
+}
+
+static void spi_set_cs(struct spi_device *spi, bool enable)
+{
+	if (spi->mode & SPI_CS_HIGH)
+		enable = !enable;
+
+	if (gpio_is_valid(spi->cs_gpio))
+		gpio_set_value(spi->cs_gpio, !enable);
+	else if (spi->master->set_cs)
+		spi->master->set_cs(spi, !enable);
+}
+
+static int s3c64xx_spi_transfer(struct spi_device *spi, struct spi_message *msg)
+{
+	int status = 0;
+	struct spi_master *master = spi->master;
+	struct spi_transfer *xfer;
+
+	list_for_each_entry(xfer, &msg->transfers, transfer_list) {
+		spi_set_cs(spi, true);
+		status = s3c64xx_spi_transfer_one(master, spi, xfer);
+	}
+
+	if (msg->status == -EINPROGRESS)
+		msg->status = status;
+
+	msg->state = NULL;
+
+	if (msg->complete)
+		msg->complete(msg->context);
+
+	spi_set_cs(spi, false);
 
 	return status;
 }
@@ -1037,7 +1130,7 @@ static void s3c64xx_spi_hwinit(struct s3c64xx_spi_driver_data *sdd, int channel)
 	val |= (S3C64XX_SPI_TRAILCNT << S3C64XX_SPI_TRAILCNT_OFF);
 	regmap_write(sdd->regmap, S3C64XX_SPI_MODE_CFG, val);
 
-	flush_fifo(sdd);
+	flush_fifo(sdd, 1);
 }
 
 #ifdef CONFIG_OF
@@ -1068,6 +1161,11 @@ static struct s3c64xx_spi_info *s3c64xx_spi_parse_dt(struct device *dev)
 		sci->hierarchy = SSP_MASTER;
 	else
 		sci->hierarchy = hierarchy;
+
+	if (of_property_read_u32(dev->of_node, "not-queued-transfer", &temp))
+		sci->not_queued_transfer = 0;
+	else
+		sci->not_queued_transfer = temp;
 
 	return sci;
 }
@@ -1188,7 +1286,10 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 	master->cleanup = s3c64xx_spi_cleanup;
 	master->prepare_transfer_hardware = s3c64xx_spi_prepare_transfer;
 	master->prepare_message = s3c64xx_spi_prepare_message;
-	master->transfer_one = s3c64xx_spi_transfer_one;
+	if(sci->not_queued_transfer)
+		master->transfer = s3c64xx_spi_transfer;
+	else
+		master->transfer_one = s3c64xx_spi_transfer_one;
 	master->unprepare_transfer_hardware = s3c64xx_spi_unprepare_transfer;
 	master->num_chipselect = sci->num_cs;
 	master->dma_alignment = 8;

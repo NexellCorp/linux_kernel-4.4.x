@@ -40,6 +40,7 @@ struct s3c64xx_spi_info {
 	u32 hierarchy;
 	int src_clk_nr;
 	int num_cs;
+	int not_queued_transfer;
 	int (*cfg_gpio)(void);
 	dma_filter_fn filter;
 };
