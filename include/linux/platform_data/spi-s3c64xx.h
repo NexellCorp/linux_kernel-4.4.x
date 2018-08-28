@@ -26,6 +26,7 @@ struct platform_device;
  */
 struct s3c64xx_spi_csinfo {
 	u8 fb_delay;
+	int cs_per_msg;
 	unsigned line;
 };
 
