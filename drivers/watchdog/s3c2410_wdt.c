@@ -834,7 +834,20 @@ static struct platform_driver s3c2410wdt_driver = {
 	},
 };
 
+#if defined(CONFIG_S5P6818_WATCHDOG_ATBOOT)
+static int __init s3c2410wdt_init(void)
+{
+	return platform_driver_register(&s3c2410wdt_driver);
+}
+
+static void __exit s3c2410wdt_exit(void)
+{
+	platform_driver_unregister(&s3c2410wdt_driver);
+}
+arch_initcall(s3c2410wdt_init);
+#else
 module_platform_driver(s3c2410wdt_driver);
+#endif
 
 MODULE_AUTHOR("Ben Dooks <ben@simtec.co.uk>, "
 	      "Dimitry Andric <dimitry.andric@tomtom.com>");
