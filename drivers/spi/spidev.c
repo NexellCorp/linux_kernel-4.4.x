@@ -35,7 +35,6 @@
 
 #include <linux/uaccess.h>
 
-
 /*
  * This supports access to SPI devices using normal userspace I/O calls.
  * Note that while traditional UNIX/POSIX I/O semantics are half duplex,
@@ -204,6 +203,9 @@ spidev_write(struct file *filp, const char __user *buf,
 	return status;
 }
 
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
+int dbg_gpio = 42;
 static int spidev_message(struct spidev_data *spidev,
 		struct spi_ioc_transfer *u_xfers, unsigned n_xfers)
 {
@@ -499,7 +501,6 @@ spidev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 		if (!ioc)
 			break;	/* n_ioc is also 0 */
-
 		/* translate to spi_message, execute */
 		retval = spidev_message(spidev, ioc, n_ioc);
 		kfree(ioc);
@@ -622,6 +623,17 @@ static int spidev_open(struct inode *inode, struct file *filp)
 	nonseekable_open(inode, filp);
 
 	mutex_unlock(&device_list_lock);
+
+	{
+		int err;
+		err = gpio_request_one(dbg_gpio, GPIOF_OUT_INIT_LOW, "spidev_dbg");
+		if (err) {
+			dev_err(&spidev->spi->dev,
+				"Failed to get debug gpio [%d]: %d\n", dbg_gpio, err);
+		}
+	}
+
+
 	return 0;
 
 err_alloc_rx_buf:
@@ -640,6 +652,7 @@ static int spidev_release(struct inode *inode, struct file *filp)
 	spidev = filp->private_data;
 	filp->private_data = NULL;
 
+	gpio_free(dbg_gpio);
 	/* last close? */
 	spidev->users--;
 	if (!spidev->users) {
