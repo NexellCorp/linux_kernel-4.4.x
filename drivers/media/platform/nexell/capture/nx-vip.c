@@ -178,16 +178,48 @@ static void hw_child_enable(struct nx_vip *me, u32 child)
 	if (me->clipper_enable != clipper_enable ||
 			me->decimator_enable != decimator_enable) {
 		if (!clipper_enable && !decimator_enable) {
-			nx_vip_clear_interrupt_pending_all(me->module);
-			nx_vip_set_vipenable(me->module, false, false, false,
-						false);
-		} else {
 			nx_vip_set_interrupt_enable_all(me->module, false);
-			nx_vip_clear_interrupt_pending_all(me->module);
-			nx_vip_set_vipenable(me->module, true, true,
-						clipper_enable, decimator_enable);
-			nx_vip_set_interrupt_enable(me->module,
-							VIP_OD_INT, true);
+			nx_vip_set_vipenable(me->module, false, false, false, false);
+			pr_debug("[VIP %d] vip off\n", me->module);
+		} else {
+			if (clipper_enable && !decimator_enable) {
+				if (me->decimator_enable) {
+					pr_debug("[VIP %d] decimator off\n", me->module);
+				} else {
+					int timeout = 0;
+
+					nx_vip_set_vipenable(me->module, true, true, false, false);
+					while (nx_vip_get_interrupt_pending(me->module, VIP_OD_INT) == 0) {
+						udelay(1000);
+						timeout++;
+						if (timeout == 1000) {
+							pr_err("enable timeout\n");
+							break;
+						}
+					}
+					nx_vip_clear_interrupt_pending_all(me->module);
+					nx_vip_set_interrupt_enable(me->module, VIP_OD_INT, true);
+					pr_debug("[VIP %d] clipper only on\n", me->module);
+				}
+				nx_vip_set_vipenable(me->module, true, true, true, false);
+			} else if (decimator_enable && !clipper_enable) {
+				nx_vip_set_vipenable(me->module, true, true, false, true);
+				if (me->clipper_enable) {
+					pr_debug("[VIP %d] clipper off\n", me->module);
+				} else {
+					nx_vip_set_interrupt_enable(me->module, VIP_OD_INT, true);
+					pr_debug("[VIP %d] decimator only on\n", me->module);
+				}
+			} else {
+				if (!me->clipper_enable) {
+					nx_vip_set_vipenable(me->module, true, true, true, true);
+					pr_debug("[VIP %d] clipper on\n", me->module);
+				}
+				if (!me->decimator_enable) {
+					nx_vip_set_vipenable(me->module, true, true, true, true);
+					pr_debug("[VIP %d] decimator on\n", me->module);
+				}
+			}
 		}
 	}
 	/* nx_vip_dump_register(me->module); */
@@ -375,11 +407,28 @@ int nx_vip_stop(u32 module, u32 child)
 	me = _nx_vip_object[module];
 
 	NX_ATOMIC_CLEAR_MASK(child, &me->running_bitmap);
-	hw_child_enable(me, NX_ATOMIC_READ(&me->running_bitmap));
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nx_vip_stop);
+
+int nx_vip_force_stop(u32 module, u32 child)
+{
+	struct nx_vip *me;
+
+	if (module >= NUMBER_OF_VIP_MODULE) {
+		pr_err("[nx vip] invalid module num %d\n", module);
+		return -ENODEV;
+	}
+	me = _nx_vip_object[module];
+
+	pr_debug("[VIP %d] force stop child 0x%x\n", module, child);
+	NX_ATOMIC_CLEAR_MASK(child, &me->running_bitmap);
+	hw_child_enable(me, NX_ATOMIC_READ(&me->running_bitmap));
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(nx_vip_force_stop);
 
 /**
  * supported formats

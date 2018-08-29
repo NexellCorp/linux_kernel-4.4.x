@@ -61,6 +61,7 @@ int nx_vip_unregister_irq_entry(u32 module, u32 child, struct nx_v4l2_irq_entry 
 int nx_vip_is_running(u32 module, u32 child);
 int nx_vip_run(u32 module, u32 child);
 int nx_vip_stop(u32 module, u32 child);
+int nx_vip_force_stop(u32 module, u32 child);
 int nx_vip_find_nx_bus_format(u32 media_bus_fmt, u32 *found);
 int nx_vip_find_mbus_format(u32 nx_bus_fmt, u32 *found);
 int nx_vip_find_nx_mem_format(u32 media_bus_fmt, u32 *found);

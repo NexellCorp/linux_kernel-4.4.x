@@ -141,7 +141,7 @@ static int handle_buffer_done(struct nx_decimator *me)
 {
 	struct nx_video_buffer *buf = NULL;
 
-	while (!list_empty(&me->done_bufs)) {
+	if (!list_empty(&me->done_bufs)) {
 		buf = list_first_entry(&me->done_bufs,
 				struct nx_video_buffer, list);
 		if (buf && buf->cb_buf_done) {
@@ -689,7 +689,7 @@ static int register_v4l2(struct nx_decimator *me)
 			me->module, " LOGICAL", me->logical_num);
 	else
 		snprintf(dev_name, sizeof(dev_name), "VIDEO DECIMATOR%d",
-				me->module);
+			me->module);	
 	video = nx_video_create(dev_name, NX_VIDEO_TYPE_CAPTURE,
 				    nx_v4l2_get_v4l2_device(),
 				    nx_v4l2_get_alloc_ctx());

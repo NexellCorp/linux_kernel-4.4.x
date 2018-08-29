@@ -1034,7 +1034,7 @@ static int handle_buffer_done(struct nx_clipper *me)
 {
 	struct nx_video_buffer *buf = NULL;
 
-	while (!list_empty(&me->done_bufs)) {
+	if (!list_empty(&me->done_bufs)) {
 		buf = list_first_entry(&me->done_bufs,
 				struct nx_video_buffer, list);
 		if (buf && buf->cb_buf_done) {
