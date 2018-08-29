@@ -46,6 +46,12 @@
 
 #define NX_DECIMATOR_DEV_NAME	"nx-decimator"
 
+#ifdef CONFIG_DECIMATOR_USE_DQTIMER
+#include <linux/timer.h>
+#include <linux/delay.h>
+#define DQ_TIMEOUT_MS		CONFIG_DECIMATOR_DQTIMER_TIMEOUT
+#endif
+
 enum {
 	NX_DECIMATOR_PAD_SINK,
 	NX_DECIMATOR_PAD_SOURCE_MEM,
@@ -85,6 +91,11 @@ struct nx_decimator {
 	u32 mem_fmt;
 
 	bool buffer_underrun;
+
+#ifdef CONFIG_DECIMATOR_USE_DQTIMER
+	struct timer_list dq_timer;
+	spinlock_t lock;
+#endif
 };
 
 static int register_irq_handler(struct nx_decimator *me);
@@ -141,10 +152,10 @@ static int handle_buffer_done(struct nx_decimator *me)
 {
 	struct nx_video_buffer *buf = NULL;
 
-	if (!list_empty(&me->done_bufs)) {
+	while (!list_empty(&me->done_bufs)) {
 		buf = list_first_entry(&me->done_bufs,
 				struct nx_video_buffer, list);
-		if (buf && buf->cb_buf_done) {
+		if (buf) {
 			buf->consumer_index++;
 			buf->cb_buf_done(buf);
 			list_del_init(&buf->list);
@@ -212,27 +223,32 @@ static int update_buffer(struct nx_decimator *me)
 				buf->dma_addr[2], buf->stride[0],
 				buf->stride[1]);
 
+
 	return 0;
 }
 
-static void unregister_irq_handler(struct nx_decimator *me)
+static void install_timer(struct nx_decimator *me)
 {
-	if (me->irq_entry) {
-		nx_vip_unregister_irq_entry(me->module, VIP_DECIMATOR,
-				me->irq_entry);
-		kfree(me->irq_entry);
-		me->irq_entry = NULL;
-	}
+#ifdef CONFIG_DECIMATOR_USE_DQTIMER
+	mod_timer(&me->dq_timer,
+		  jiffies + msecs_to_jiffies(DQ_TIMEOUT_MS));
+#endif
 }
 
-static irqreturn_t nx_decimator_irq_handler(void *data)
+static void process_buffer(struct nx_decimator *me, bool is_timer)
 {
-	struct nx_decimator *me = data;
-
 	if (NX_ATOMIC_READ(&me->state) & STATE_STOPPING) {
-		nx_vip_stop(me->module, VIP_DECIMATOR);
+		if (is_timer)
+			nx_vip_force_stop(me->module, VIP_DECIMATOR);
 		complete(&me->stop_done);
 	} else {
+#ifdef CONFIG_DECIMATOR_USE_DQTIMER
+		unsigned long flags;
+#endif
+
+#ifdef CONFIG_DECIMATOR_USE_DQTIMER
+		spin_lock_irqsave(&me->lock, flags);
+#endif
 		if (!me->buffer_underrun) {
 			struct nx_video_buffer *done = NULL;
 			struct nx_video_buffer_object *obj = &me->vbuf_obj;
@@ -257,7 +273,41 @@ static irqreturn_t nx_decimator_irq_handler(void *data)
 				me->buffer_underrun = false;
 			}
 		}
+
+		install_timer(me);
+#ifdef CONFIG_DECIMATOR_USE_DQTIMER
+		spin_unlock_irqrestore(&me->lock, flags);
+#endif
 	}
+}
+
+#ifdef CONFIG_DECIMATOR_USE_DQTIMER
+static void handle_dq_timeout(unsigned long priv)
+{
+	struct nx_decimator *me = (struct nx_decimator *)priv;
+
+	dev_info(&me->pdev->dev,  "[DEC %d] DQTimeout\n", me->module);
+	process_buffer(me, true);
+}
+#endif
+
+
+static void unregister_irq_handler(struct nx_decimator *me)
+{
+	if (me->irq_entry) {
+		nx_vip_unregister_irq_entry(me->module, VIP_DECIMATOR,
+				me->irq_entry);
+		kfree(me->irq_entry);
+		me->irq_entry = NULL;
+	}
+}
+
+static irqreturn_t nx_decimator_irq_handler(void *data)
+{
+	struct nx_decimator *me = data;
+
+	process_buffer(me, false);
+
 	return IRQ_HANDLED;
 }
 
@@ -341,7 +391,6 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 	struct nx_decimator *me = v4l2_get_subdevdata(sd);
 	u32 module = me->module;
 	struct v4l2_subdev *remote;
-	void *hostdata_back;
 
 	remote = get_remote_source_subdev(me);
 	if (!remote) {
@@ -349,7 +398,8 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 		return -ENODEV;
 	}
 
-	pr_debug("[%s] (%s)\n", __func__, (enable) ? "start":"stop");
+	dev_info(&me->pdev->dev,  "[DEC %d] enable %d\n", me->module, enable);
+
 	ret = down_interruptible(&me->s_stream_sem);
 	if (enable) {
 		if (NX_ATOMIC_READ(&me->state) & STATE_STOPPING) {
@@ -374,14 +424,6 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 				ret = -EBUSY;
 				goto UP_AND_OUT;
 			}
-			hostdata_back = v4l2_get_subdev_hostdata(remote);
-			v4l2_set_subdev_hostdata(remote, NX_DECIMATOR_DEV_NAME);
-			ret = v4l2_subdev_call(remote, video, s_stream, 1);
-			v4l2_set_subdev_hostdata(remote, hostdata_back);
-			if (ret) {
-				WARN_ON(1);
-				goto UP_AND_OUT;
-			}
 
 			set_vip(me, me->width, me->height);
 			ret = register_irq_handler(me);
@@ -389,33 +431,37 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 				WARN_ON(1);
 				goto UP_AND_OUT;
 			}
+#ifdef CONFIG_DECIMATOR_USE_DQTIMER
+			setup_timer(&me->dq_timer, handle_dq_timeout, (long)me);
+#endif
 			update_buffer(me);
 			alloc_dma_buffer(me);
 			init_buffer_handler(me);
 			nx_vip_run(me->module, VIP_DECIMATOR);
+			install_timer(me);
 			NX_ATOMIC_SET_MASK(STATE_RUNNING, &me->state);
 		}
 	} else {
 		if (NX_ATOMIC_READ(&me->state) & STATE_RUNNING) {
+			nx_vip_stop(module, VIP_DECIMATOR);
 			NX_ATOMIC_SET_MASK(STATE_STOPPING, &me->state);
-			if (!wait_for_completion_timeout(&me->stop_done,
-								2*HZ)) {
-				pr_warn("timeout for waiting decimator stop\n");
-				nx_vip_stop(module, VIP_DECIMATOR);
+			wait_for_completion_timeout(&me->stop_done, HZ);
+#ifdef CONFIG_DECIMATOR_USE_DQTIMER
+			while (timer_pending(&me->dq_timer)) {
+				mdelay(DQ_TIMEOUT_MS);
+				dev_info(&me->pdev->dev,  "[DEC %d] wait timer done\n",
+					 me->module);
 			}
-			NX_ATOMIC_CLEAR_MASK(STATE_STOPPING,
-						&me->state);
+#endif
+			NX_ATOMIC_CLEAR_MASK(STATE_STOPPING, &me->state);
 			unregister_irq_handler(me);
 			me->buffer_underrun = false;
 			free_dma_buffer(me);
 			nx_video_clear_buffer(&me->vbuf_obj);
 			deinit_buffer_handler(me);
-			hostdata_back = v4l2_get_subdev_hostdata(remote);
-			v4l2_set_subdev_hostdata(remote, NX_DECIMATOR_DEV_NAME);
-			v4l2_subdev_call(remote, video, s_stream, 0);
-			v4l2_set_subdev_hostdata(remote, hostdata_back);
-
 			NX_ATOMIC_CLEAR_MASK(STATE_RUNNING, &me->state);
+			dev_info(&me->pdev->dev,  "[DEC %d] stop done\n",
+				 me->module);
 		}
 	}
 
@@ -798,6 +844,10 @@ static int nx_decimator_probe(struct platform_device *pdev)
 	me->buf.addr = NULL;
 	me->buffer_underrun = false;
 	platform_set_drvdata(pdev, me);
+
+#ifdef CONFIG_DECIMATOR_USE_DQTIMER
+	spin_lock_init(&me->lock);
+#endif
 	return 0;
 }
 

@@ -63,6 +63,12 @@
 #define DEBUG_SYNC_TIMEOUT_MS	(1000)
 #endif
 
+#ifdef CONFIG_CLIPPER_USE_DQTIMER
+#include <linux/timer.h>
+#include <linux/delay.h>
+#define DQ_TIMEOUT_MS		CONFIG_CLIPPER_DQTIMER_TIMEOUT
+#endif
+
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
 static struct pm_qos_request nx_clipper_qos;
 
@@ -193,18 +199,22 @@ struct nx_clipper {
 
 	struct platform_device *pdev;
 
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 	struct tasklet_struct work;
 	struct list_head done_bufs;
 	struct nx_video_buffer_object vbuf_obj;
 	struct nx_v4l2_irq_entry *irq_entry;
 	u32 mem_fmt;
 	bool buffer_underrun;
-#endif
 
 #ifdef DEBUG_SYNC
 	struct timer_list timer;
 #endif
+
+#ifdef CONFIG_CLIPPER_USE_DQTIMER
+	struct timer_list dq_timer;
+	spinlock_t lock;
+#endif
+
 	/* for suspend */
 	struct nx_video_buffer *last_buf;
 };
@@ -993,7 +1003,6 @@ static void free_dma_buffer(struct nx_clipper *me)
 	}
 }
 
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 static int update_buffer(struct nx_clipper *me)
 {
 	struct nx_video_buffer *buf;
@@ -1010,6 +1019,7 @@ static int update_buffer(struct nx_clipper *me)
 				buf->dma_addr[2], buf->stride[0],
 				buf->stride[1]);
 	me->last_buf = buf;
+
 
 #ifdef DEBUG_SYNC
 	dev_dbg(&me->pdev->dev, "%s: module : %d, crop width : %d\n",
@@ -1029,15 +1039,22 @@ static int update_buffer(struct nx_clipper *me)
 	return 0;
 }
 
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
+static void install_timer(struct nx_clipper *me)
+{
+#ifdef CONFIG_CLIPPER_USE_DQTIMER
+	mod_timer(&me->dq_timer,
+		  jiffies + msecs_to_jiffies(DQ_TIMEOUT_MS));
+#endif
+}
+
 static int handle_buffer_done(struct nx_clipper *me)
 {
 	struct nx_video_buffer *buf = NULL;
 
-	if (!list_empty(&me->done_bufs)) {
+	while (!list_empty(&me->done_bufs)) {
 		buf = list_first_entry(&me->done_bufs,
 				struct nx_video_buffer, list);
-		if (buf && buf->cb_buf_done) {
+		if (buf) {
 			buf->consumer_index++;
 			buf->cb_buf_done(buf);
 			list_del_init(&buf->list);
@@ -1046,11 +1063,16 @@ static int handle_buffer_done(struct nx_clipper *me)
 	return 0;
 }
 
-static void init_buffer_handler(struct nx_clipper *me)
+static int handle_buffer_underrun(struct nx_clipper *me)
 {
-	INIT_LIST_HEAD(&me->done_bufs);
-	tasklet_init(&me->work, (void*)handle_buffer_done,
-			(long unsigned int)me);
+	if (me->buf.addr) {
+		nx_vip_set_clipper_addr(me->module, me->mem_fmt,
+					me->crop.width, me->crop.height,
+					me->buf.handle[0], me->buf.handle[1],
+					me->buf.handle[2], me->buf.stride[0],
+					me->buf.stride[1]);
+	}
+	return 0;
 }
 
 static void add_buffer_to_handler(struct nx_clipper *me,
@@ -1058,6 +1080,70 @@ static void add_buffer_to_handler(struct nx_clipper *me,
 {
 	list_add_tail(&done_buf->list, &me->done_bufs);
 	tasklet_schedule(&me->work);
+}
+
+static void process_buffer(struct nx_clipper *me, bool is_timer)
+{
+#ifdef CONFIG_CLIPPER_USE_DQTIMER
+	unsigned long flags;
+#endif
+
+#ifdef CONFIG_CLIPPER_USE_DQTIMER
+	spin_lock_irqsave(&me->lock, flags);
+#endif
+	if (NX_ATOMIC_READ(&me->state) & STATE_MEM_STOPPING) {
+		if (is_timer)
+			nx_vip_force_stop(me->module, VIP_CLIPPER);
+		complete(&me->stop_done);
+	} else {
+		if (!me->buffer_underrun) {
+			struct nx_video_buffer *done_buf = NULL;
+			struct nx_video_buffer_object *obj = &me->vbuf_obj;
+			int buf_count;
+
+			done_buf = nx_video_get_next_buffer(obj, true);
+			buf_count = nx_video_get_buffer_count(obj);
+			if (buf_count >= 1) {
+				update_buffer(me);
+			} else {
+				handle_buffer_underrun(me);
+				me->buffer_underrun = true;
+			}
+
+			if (done_buf)
+				add_buffer_to_handler(me, done_buf);
+		} else {
+			int buf_count
+				= nx_video_get_buffer_count(&me->vbuf_obj);
+
+			if (buf_count >= 1) {
+				update_buffer(me);
+				me->buffer_underrun = false;
+			}
+		}
+
+		install_timer(me);
+	}
+#ifdef CONFIG_CLIPPER_USE_DQTIMER
+	spin_unlock_irqrestore(&me->lock, flags);
+#endif
+}
+
+#ifdef CONFIG_CLIPPER_USE_DQTIMER
+static void handle_dq_timeout(unsigned long priv)
+{
+	struct nx_clipper *me = (struct nx_clipper *)priv;
+
+	dev_info(&me->pdev->dev, "[CLI %d] DQTimeout\n", me->module);
+	process_buffer(me, true);
+}
+#endif
+
+static void init_buffer_handler(struct nx_clipper *me)
+{
+	INIT_LIST_HEAD(&me->done_bufs);
+	tasklet_init(&me->work, (void*)handle_buffer_done,
+			(long unsigned int)me);
 }
 
 static void deinit_buffer_handler(struct nx_clipper *me)
@@ -1075,19 +1161,6 @@ static void deinit_buffer_handler(struct nx_clipper *me)
 			break;
 	}
 	list_del_init(&me->done_bufs);
-}
-#endif
-
-static int handle_buffer_underrun(struct nx_clipper *me)
-{
-	if (me->buf.addr) {
-		nx_vip_set_clipper_addr(me->module, me->mem_fmt,
-					me->crop.width, me->crop.height,
-					me->buf.handle[0], me->buf.handle[1],
-					me->buf.handle[2], me->buf.stride[0],
-					me->buf.stride[1]);
-	}
-	return 0;
 }
 
 static void unregister_irq_handler(struct nx_clipper *me)
@@ -1124,38 +1197,8 @@ static irqreturn_t nx_clipper_irq_handler(void *data)
 			do_process = false;
 	}
 
-	if (do_process) {
-		if (NX_ATOMIC_READ(&me->state) & STATE_MEM_STOPPING) {
-			nx_vip_stop(me->module, VIP_CLIPPER);
-			complete(&me->stop_done);
-		} else {
-			if (!me->buffer_underrun) {
-				struct nx_video_buffer *done_buf = NULL;
-				struct nx_video_buffer_object *obj = &me->vbuf_obj;
-				int buf_count;
-
-				done_buf = nx_video_get_next_buffer(obj, true);
-				buf_count = nx_video_get_buffer_count(obj);
-				if (buf_count >= 1) {
-					update_buffer(me);
-				} else {
-					handle_buffer_underrun(me);
-					me->buffer_underrun = true;
-				}
-
-				if (done_buf)
-					add_buffer_to_handler(me, done_buf);
-			} else {
-				int buf_count
-					= nx_video_get_buffer_count(&me->vbuf_obj);
-
-				if (buf_count >= 1) {
-					update_buffer(me);
-					me->buffer_underrun = false;
-				}
-			}
-		}
-	}
+	if (do_process)
+		process_buffer(me, false);
 
 	return IRQ_HANDLED;
 }
@@ -1200,7 +1243,6 @@ static int handle_video_connection(struct nx_clipper *me, bool connected)
 
 	return ret;
 }
-#endif
 
 static struct v4l2_subdev *get_remote_source_subdev(struct nx_clipper *me)
 {
@@ -1277,32 +1319,28 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 	int ret = 0;
 	struct nx_clipper *me = v4l2_get_subdevdata(sd);
 	struct v4l2_subdev *remote;
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 	u32 module = me->module;
 	char *hostname = (char *)v4l2_get_subdev_hostdata(sd);
 	bool is_host_video = false;
 
+	dev_info(&me->pdev->dev, "[CLI %d] enable %d\n", me->module, enable);
+
 	me->irq_count = 0;
-#endif
 	remote = get_remote_source_subdev(me);
 	if (!remote) {
 		WARN_ON(1);
 		return -ENODEV;
 	}
 
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 	if (!hostname)
 		return -EEXIST;
 
 	if (!strncmp(hostname, "VIDEO", 5))
 		is_host_video = true;
 
-#endif
-
 	ret = down_interruptible(&me->s_stream_sem);
 
 	if (enable) {
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 		if (NX_ATOMIC_READ(&me->state) & STATE_MEM_STOPPING) {
 			int timeout = 50; /* 5 second */
 
@@ -1317,7 +1355,7 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 				}
 			}
 		}
-#endif
+
 		if (!(NX_ATOMIC_READ(&me->state) &
 		      (STATE_MEM_RUNNING | STATE_CLIP_RUNNING))) {
 			if (is_host_video &&
@@ -1354,7 +1392,6 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 			}
 		}
 
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 		if (is_host_video) {
 			nx_vip_set_clipper_format(module, me->mem_fmt);
 			ret = register_irq_handler(me);
@@ -1363,6 +1400,9 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 				goto UP_AND_OUT;
 			}
 
+#ifdef CONFIG_CLIPPER_USE_DQTIMER
+			setup_timer(&me->dq_timer, handle_dq_timeout, (long)me);
+#endif
 			ret = update_buffer(me);
 			if (ret) {
 				WARN_ON(1);
@@ -1371,34 +1411,37 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 			alloc_dma_buffer(me);
 			init_buffer_handler(me);
 			nx_vip_run(me->module, VIP_CLIPPER);
+			install_timer(me);
 			NX_ATOMIC_SET_MASK(STATE_MEM_RUNNING, &me->state);
 		} else
-#endif
 		NX_ATOMIC_SET_MASK(STATE_CLIP_RUNNING, &me->state);
 	} else {
 		if (!(NX_ATOMIC_READ(&me->state) &
 		      (STATE_MEM_RUNNING | STATE_CLIP_RUNNING)))
 			goto UP_AND_OUT;
 
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 		if (is_host_video &&
 		    (NX_ATOMIC_READ(&me->state) & STATE_MEM_RUNNING)) {
-			NX_ATOMIC_SET_MASK(STATE_MEM_STOPPING,
-						&me->state);
-			if (!wait_for_completion_timeout(&me->stop_done,
-								2*HZ)) {
-				pr_warn("timeout for waiting clipper stop\n");
-				nx_vip_stop(module, VIP_CLIPPER);
+			nx_vip_stop(module, VIP_CLIPPER);
+			NX_ATOMIC_SET_MASK(STATE_MEM_STOPPING, &me->state);
+			wait_for_completion_timeout(&me->stop_done, HZ);
+#ifdef CONFIG_CLIPPER_USE_DQTIMER
+			while (timer_pending(&me->dq_timer)) {
+				mdelay(DQ_TIMEOUT_MS);
+				dev_info(&me->pdev->dev,
+					 "[CLI %d] wait timer done\n", me->module);
 			}
+#endif
 
-			NX_ATOMIC_CLEAR_MASK(STATE_MEM_STOPPING,
-						&me->state);
+			NX_ATOMIC_CLEAR_MASK(STATE_MEM_STOPPING, &me->state);
 			unregister_irq_handler(me);
 			me->buffer_underrun = false;
 			free_dma_buffer(me);
 			nx_video_clear_buffer(&me->vbuf_obj);
 			deinit_buffer_handler(me);
 			NX_ATOMIC_CLEAR_MASK(STATE_MEM_RUNNING, &me->state);
+			dev_info(&me->pdev->dev, "[CLI %d] stop done\n",
+				 me->module);
 		}
 		memset(&me->crop, 0, sizeof(me->crop));
 
@@ -1406,9 +1449,6 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 			if (NX_ATOMIC_READ(&me->state) == STATE_IDLE)
 				goto UP_AND_OUT;
 
-#else
-		if (NX_ATOMIC_READ(&me->state) & STATE_CLIP_RUNNING) {
-#endif
 		if ((!nx_vip_is_running(me->module, VIP_DECIMATOR)) &&
 				(!(NX_ATOMIC_READ(&me->state) &
 				   STATE_MEM_RUNNING))) {
@@ -1423,9 +1463,6 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 			nx_clipper_qos_cpu_online_update(-1);
 #endif
 		}
-#ifndef CONFIG_VIDEO_NEXELL_CLIPPER
-		}
-#endif
 	}
 
 UP_AND_OUT:
@@ -1568,7 +1605,6 @@ static int nx_clipper_get_fmt(struct v4l2_subdev *sd,
 		format->format.width = me->width;
 		format->format.height = me->height;
 	}
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 	else if (pad == 1) {
 		/* get mem format */
 		u32 mem_fmt;
@@ -1582,7 +1618,6 @@ static int nx_clipper_get_fmt(struct v4l2_subdev *sd,
 		format->format.width = me->width;
 		format->format.height = me->height;
 	}
-#endif
 	else {
 		dev_err(&me->pdev->dev, "%d is invalid pad value for get_fmt\n",
 			pad);
@@ -1620,7 +1655,6 @@ static int nx_clipper_set_fmt(struct v4l2_subdev *sd,
 		me->width = format->format.width;
 		me->height = format->format.height;
 	}
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 	else if (pad == 1) {
 		struct v4l2_subdev_format fmt;
 		/* set memory format */
@@ -1642,7 +1676,6 @@ static int nx_clipper_set_fmt(struct v4l2_subdev *sd,
 
 		return v4l2_subdev_call(remote, pad, set_fmt, NULL, &fmt);
 	}
-#endif
 	else {
 		dev_err(&me->pdev->dev, "%d is invalid pad value for set_fmt\n",
 			pad);
@@ -1721,10 +1754,8 @@ static int nx_clipper_link_setup(struct media_entity *entity,
 				 const struct media_pad *remote,
 				 u32 flags)
 {
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 	struct v4l2_subdev *sd = media_entity_to_v4l2_subdev(entity);
 	struct nx_clipper *me = v4l2_get_subdevdata(sd);
-#endif
 
 	switch (local->index | media_entity_type(remote->entity)) {
 	case NX_CLIPPER_PAD_SINK | MEDIA_ENT_T_V4L2_SUBDEV:
@@ -1737,7 +1768,6 @@ static int nx_clipper_link_setup(struct media_entity *entity,
 			 flags & MEDIA_LNK_FL_ENABLED ?
 			 "connected" : "disconnected");
 		break;
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 	case NX_CLIPPER_PAD_SOURCE_MEM | MEDIA_ENT_T_DEVNODE:
 		pr_debug("clipper source mem %s\n",
 			 flags & MEDIA_LNK_FL_ENABLED ?
@@ -1745,7 +1775,6 @@ static int nx_clipper_link_setup(struct media_entity *entity,
 		handle_video_connection(me, flags & MEDIA_LNK_FL_ENABLED ?
 					true : false);
 		break;
-#endif
 	}
 
 	return 0;
@@ -1763,9 +1792,7 @@ static void init_me(struct nx_clipper *me)
 	NX_ATOMIC_SET(&me->state, STATE_IDLE);
 	init_completion(&me->stop_done);
 	sema_init(&me->s_stream_sem, 1);
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 	nx_video_init_vbuf_obj(&me->vbuf_obj);
-#endif
 }
 
 static int init_v4l2_subdev(struct nx_clipper *me)
@@ -2007,11 +2034,9 @@ error:
 static int register_v4l2(struct nx_clipper *me)
 {
 	int ret;
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 	char dev_name[64] = {0, };
 	struct media_entity *entity = &me->subdev.entity;
 	struct nx_video *video;
-#endif
 
 	ret = nx_v4l2_register_subdev(&me->subdev);
 	if (ret)
@@ -2023,7 +2048,6 @@ static int register_v4l2(struct nx_clipper *me)
 		return ret;
 	}
 
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 	if (me->logical)
 		snprintf(dev_name, sizeof(dev_name), "VIDEO CLIPPER%d%s%d",
 				me->module, " LOGICAL", me->logical_num);
@@ -2048,19 +2072,16 @@ static int register_v4l2(struct nx_clipper *me)
 			 &video->vdev.entity.pads[0]);
 	if (ret)
 		BUG();
-#endif
 
 	return 0;
 }
 
 static void unregister_v4l2(struct nx_clipper *me)
 {
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 	if (me->vbuf_obj.video) {
 		nx_video_cleanup(me->vbuf_obj.video);
 		me->vbuf_obj.video = NULL;
 	}
-#endif
 	v4l2_device_unregister_subdev(&me->subdev);
 }
 
@@ -2074,7 +2095,6 @@ static int nx_clipper_suspend(struct device *dev)
 
 	me = dev_get_drvdata(dev);
 	if (me) {
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 		if (NX_ATOMIC_READ(&me->state) & STATE_MEM_RUNNING) {
 			struct v4l2_subdev *remote;
 
@@ -2085,7 +2105,6 @@ static int nx_clipper_suspend(struct device *dev)
 				nx_vip_stop(me->module, VIP_CLIPPER);
 			}
 		}
-#endif
 
 		nx_vip_reset(me->module);
 		nx_vip_clock_enable(me->module, false);
@@ -2103,7 +2122,6 @@ static int nx_clipper_resume(struct device *dev)
 		nx_vip_clock_enable(me->module, true);
 		nx_vip_reset(me->module);
 
-#ifdef CONFIG_VIDEO_NEXELL_CLIPPER
 		if (NX_ATOMIC_READ(&me->state) & STATE_MEM_RUNNING) {
 			struct v4l2_subdev *remote;
 
@@ -2131,7 +2149,6 @@ static int nx_clipper_resume(struct device *dev)
 				}
 			}
 		}
-#endif
 	}
 
 	return 0;
@@ -2184,6 +2201,10 @@ static int nx_clipper_probe(struct platform_device *pdev)
 
 #ifdef DEBUG_SYNC
 	setup_timer(&me->timer, debug_sync, (long)me);
+#endif
+
+#ifdef CONFIG_CLIPPER_USE_DQTIMER
+	spin_lock_init(&me->lock);
 #endif
 	return 0;
 }

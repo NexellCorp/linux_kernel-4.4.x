@@ -6,12 +6,40 @@ config VIDEO_NEXELL_CLIPPER
 	  Clipper video device can crop source crop and has memory interface.
 	  If you want to enable only clipper subdev, don't check this.
 
+config CLIPPER_USE_DQTIMER
+	bool "Enable clipper dequeue timeout timer"
+	depends on VIDEO_NEXELL_CLIPPER
+	---help---
+	  Say y here to enable clipper dequeue timer to prevent infinite blocking
+	  of user application.
+
+config CLIPPER_DQTIMER_TIMEOUT
+	int "Clipper DQTimer Timeout Millisecond"
+	depends on CLIPPER_USE_DQTIMER
+	default 200
+	---help---
+	  Specify timeout value by millisecond unit.
+
 config VIDEO_NEXELL_DECIMATOR
 	bool "Enable capture decimator video device"
 	default n
 	---help---
 	  Say y here to enable Nexell S5Pxx18 series VIP decimator video device.
 	  Decimator video device can scale down and has memory interface.
+
+config DECIMATOR_USE_DQTIMER
+	bool "Enable decimator dequeue timeout timer"
+	depends on VIDEO_NEXELL_DECIMATOR
+	---help---
+	  Say y here to enable decimator dequeue timer to prevent infinite blocking
+	  of user application.
+
+config DECIMATOR_DQTIMER_TIMEOUT
+	int "Decimator DQTimer Timeout Millisecond"
+	depends on DECIMATOR_USE_DQTIMER
+	default 200
+	---help---
+	  Specify timeout value by millisecond unit.
 
 config VIDEO_NEXELL_REARCAM
 	bool "Enable fast preview of rear camera device"
