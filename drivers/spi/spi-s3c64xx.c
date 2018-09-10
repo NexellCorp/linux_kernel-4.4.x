@@ -1160,11 +1160,15 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 	if (pdev->dev.of_node) {
 		ret = of_alias_get_id(pdev->dev.of_node, "spi");
 		if (ret < 0) {
-			dev_err(&pdev->dev, "failed to get alias id, errno %d\n",
-				ret);
-			goto err0;
+			if (of_property_read_u32(pdev->dev.of_node,
+						"spi-id", &sdd->port_id)) {
+				dev_err(&pdev->dev,
+					"failed to get alias id,%d\n", ret);
+				goto err0;
+			};
+		} else {
+			sdd->port_id = ret;
 		}
-		sdd->port_id = ret;
 	} else {
 		sdd->port_id = pdev->id;
 	}
