@@ -15,5 +15,5 @@ ifeq ($(CONFIG_ARCH_S5P6818),y)
 endif
 
 always		:= $(dtb-y)
-subdir-y	:= $(dts-dirs)
+subdir-y	:= $(dts-dirs) overlays
 clean-files	:= *.dtb
