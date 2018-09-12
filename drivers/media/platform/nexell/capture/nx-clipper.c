@@ -1388,6 +1388,7 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 			if (ret) {
 				dev_err(&me->pdev->dev,
 					"failed to s_stream %d\n", enable);
+				nx_video_clear_buffer_queued(&me->vbuf_obj);
 				goto UP_AND_OUT;
 			}
 		}
