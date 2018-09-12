@@ -325,6 +325,12 @@ static int usb_probe_interface(struct device *dev)
 	if (driver->supports_autosuspend)
 		pm_runtime_enable(dev);
 
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818))
+	/* S5S4418and S5P6818 Soc can not use autosuspend
+	 * because EHCI and HSIC share same PHY.
+	 */
+	pm_runtime_forbid(dev);
+#endif
 	/* If the new driver doesn't allow hub-initiated LPM, and we can't
 	 * disable hub-initiated LPM, then fail the probe.
 	 *
