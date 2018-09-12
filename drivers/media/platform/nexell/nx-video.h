@@ -148,6 +148,7 @@ int nx_video_get_buffer_count(struct nx_video_buffer_object *);
 bool nx_video_done_buffer(struct nx_video_buffer_object *obj);
 struct nx_video_buffer *
 nx_video_get_next_buffer(struct nx_video_buffer_object *obj, bool remove);
+void nx_video_clear_buffer_queued(struct nx_video_buffer_object *obj);
 void nx_video_clear_buffer(struct nx_video_buffer_object *obj);
 void nx_video_init_vbuf_obj(struct nx_video_buffer_object *obj);
 void nx_video_add_buffer(struct nx_video_buffer_object *obj,
