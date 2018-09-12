@@ -1530,6 +1530,33 @@ bool nx_video_done_buffer(struct nx_video_buffer_object *obj)
 }
 EXPORT_SYMBOL_GPL(nx_video_done_buffer);
 
+void nx_video_clear_buffer_queued(struct nx_video_buffer_object *obj)
+{
+	struct nx_video_buffer *buf = NULL;
+
+	if (nx_video_get_buffer_count(obj)) {
+		unsigned long flags;
+
+		spin_lock_irqsave(&obj->slock, flags);
+		while (!list_empty(&obj->buffer_list)) {
+			buf = list_entry(obj->buffer_list.next,
+					 struct nx_video_buffer, list);
+			if (buf) {
+				struct vb2_buffer *vb = buf->priv;
+
+				vb2_buffer_done(vb, VB2_BUF_STATE_QUEUED);
+				list_del_init(&buf->list);
+			} else
+				break;
+		}
+		INIT_LIST_HEAD(&obj->buffer_list);
+		spin_unlock_irqrestore(&obj->slock, flags);
+	}
+
+	atomic_set(&obj->buffer_count, 0);
+}
+EXPORT_SYMBOL_GPL(nx_video_clear_buffer_queued);
+
 void nx_video_clear_buffer(struct nx_video_buffer_object *obj)
 {
 	struct nx_video_buffer *buf = NULL;
