@@ -30,6 +30,15 @@
 #include "nx_drm_fb.h"
 #include "nx_drm_gem.h"
 
+#define FEATURE_CREATE_SYSFS
+#ifdef FEATURE_CREATE_SYSFS
+#include <linux/kthread.h>
+#include "s5pxx18/s5pxx18_soc_mlc.h"
+
+static struct kobject *g_kobj;
+struct task_struct *g_thread;
+#endif
+
 struct nx_drm_commit {
 	struct drm_device *drm;
 	struct drm_atomic_state *state;
@@ -438,6 +447,66 @@ static struct drm_panel_driver {
 #endif
 };
 
+#ifdef FEATURE_CREATE_SYSFS
+static ssize_t layer0_en_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	unsigned int val;
+	int error;
+
+	error = kstrtouint(buf, 10, &val);
+	if (error)
+		return error;
+
+	if (val == 1)
+		nx_mlc_set_layer_enable(0, 0, 1);
+	else if (val == 0)
+		nx_mlc_set_layer_enable(0, 0, 0);
+
+	nx_mlc_set_dirty_flag(0, 0);
+
+	return count;
+
+}
+static DEVICE_ATTR(layer0, 0664, NULL, layer0_en_store);
+
+static int create_sysfs(void)
+{
+	int	ret = 0;
+
+	g_kobj = kobject_create_and_add("nx_drm_drv", NULL);
+	if (g_kobj == NULL) {
+		printk(KERN_ERR "g_kobj:" "kobject_create_and_add failed\n");
+		ret = -ENOMEM;
+		return ret;
+	}
+
+	ret = sysfs_create_file(g_kobj, &dev_attr_layer0.attr);
+	if (ret) {
+		printk(KERN_ERR "layer0:" "sysfs_create_group failed\n");
+		kobject_del(g_kobj);
+		return ret;
+	}
+
+	return ret;
+}
+
+static void remove_test_mode_sysfs_files(void)
+{
+	sysfs_remove_file(g_kobj, &dev_attr_layer0.attr);
+	kobject_del(g_kobj);
+}
+
+static int create_sysfs_thread_drm(void *args)
+{
+	create_sysfs();
+	kthread_stop(g_thread);
+
+	return 0;
+}
+#endif
+
 static int nx_drm_probe(struct platform_device *pdev)
 {
 	struct component_match *match = NULL;
@@ -472,6 +541,11 @@ static int nx_drm_probe(struct platform_device *pdev)
 
 	dev->coherent_dma_mask = DMA_BIT_MASK(32);
 
+#ifdef FEATURE_CREATE_SYSFS
+	if(g_thread == NULL)
+		g_thread = kthread_run(create_sysfs_thread_drm, NULL, "create_sysfs_drm");
+#endif
+
 	/* call master bind */
 	return component_master_add_with_match(dev,
 				&nx_drm_component_ops, match);
@@ -481,6 +555,9 @@ static int nx_drm_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 
+#ifdef FEATURE_CREATE_SYSFS
+	remove_test_mode_sysfs_files();
+#endif
 	component_master_del(dev, &nx_drm_component_ops);
 	return 0;
 }
@@ -589,6 +666,10 @@ static int __init nx_drm_init(void)
 {
 	int i;
 
+#ifdef CONFIG_DRM_DEBUG
+	    printk(KERN_ALERT "0424: [%s]  +++\n",__func__);
+#endif
+
 	for (i = 0; i < ARRAY_SIZE(drm_panel_drivers); i++) {
 		struct drm_panel_driver *pn = &drm_panel_drivers[i];
 
@@ -596,6 +677,10 @@ static int __init nx_drm_init(void)
 		if (pn->init)
 			pn->init();
 	}
+
+#ifdef CONFIG_DRM_DEBUG
+	    printk(KERN_ALERT "0424: [%s]  ---\n",__func__);
+#endif
 
 	return platform_driver_register(&nx_drm_drviver);
 }
@@ -615,7 +700,11 @@ static void __exit nx_drm_exit(void)
 	}
 }
 
+#ifdef CONFIG_DRM_INIT_LEVEL_UP
+fs_initcall(nx_drm_init);
+#else
 module_init(nx_drm_init);
+#endif
 module_exit(nx_drm_exit);
 
 MODULE_AUTHOR("jhkim <jhkim@nexell.co.kr>");
