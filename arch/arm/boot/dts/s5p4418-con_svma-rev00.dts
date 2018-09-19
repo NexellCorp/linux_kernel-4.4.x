@@ -17,7 +17,7 @@
  */
 
 /dts-v1/;
-#include "s5p4418-svm_ref-common.dtsi"
+#include "s5p4418-con_svma-common.dtsi"
 /**********************************************************************
 #include "s5p4418-audio-dfs-pll3.dtsi"
 / {
@@ -85,7 +85,7 @@
 
 	sound {
 		compatible = "nexell,simple-audio-card";
-		simple-audio-card,name = "s5p4418 svm_ref rev00 Audio";
+		simple-audio-card,name = "s5p4418 con_svma rev00 Audio";
 		/delete-property/ simple-audio-card,mclk-fs;
 
 		simple-audio-card,dai-link@0 {

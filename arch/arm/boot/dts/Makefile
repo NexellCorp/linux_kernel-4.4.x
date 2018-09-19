@@ -804,7 +804,8 @@ dtb-$(CONFIG_ARCH_S5P4418) += \
 	s5p4418-svm_ref-rev00.dtb \
 	s5p4418-daudio_cona-rev00.dtb \
 	s5p4418-cluster_ref-rev00.dtb	\
-	s5p4418-convergence_svmc-rev00.dtb
+	s5p4418-convergence_svmc-rev00.dtb	\
+	s5p4418-con_svma-rev00.dtb
 endif
 
 ifeq ($(CONFIG_ARCH_S5P4418),y)

@@ -24,7 +24,7 @@
 / {
 	memory {
 		device_type = "memory";
-		reg = <0x40000000 0x40000000>;
+		reg = <0x40000000 0x80000000>;
 	};
 
 	psci {
@@ -100,7 +100,7 @@
 
 		serial4:serial@c006d000 {
 			status ="okay";
-		};
+		};		
 
 		amba {
 			pl08xdma0:pl08xdma@c0000000 {
@@ -219,6 +219,28 @@
 				nexell,pin-strength = <0>;
 			};
 
+			/* MMC0 */
+			sdmmc0_cclk: sdmmc0-cclk {
+				nexell,pins = "gpioa-29";
+				nexell,pin-function = <NX_PIN_FUNC1>;
+				nexell,pin-pull = <NX_PIN_PULL_NONE>;
+				nexell,pin-strength = <NX_PIN_STR2>;
+			};
+
+			sdmmc0_cmd: sdmmc0-cmd {
+				nexell,pins = "gpioa-31";
+				nexell,pin-function = <NX_PIN_FUNC1>;
+				nexell,pin-pull = <NX_PIN_PULL_NONE>;
+				nexell,pin-strength = <NX_PIN_STR2>;
+			};
+
+			sdmmc0_bus4: sdmmc0-bus-width4 {
+				nexell,pins = "gpiob-1", "gpiob-3", "gpiob-5", "gpiob-7";
+				nexell,pin-function = <NX_PIN_FUNC1>;
+				nexell,pin-pull = <NX_PIN_PULL_NONE>;
+				nexell,pin-strength = <NX_PIN_STR2>;
+			};
+
 			/* backgear:backgear {
 				nexell,pins = "gpioc-4";
 				nexell,pin-function = <1>;
@@ -269,8 +291,8 @@
 
 	i2c_gpio4: i2c@4 {
 		compatible = "i2c-gpio";
-		gpios=<&gpio_e 2 0 /* SDA */
-				&gpio_e 3 0>;    /* SCL */
+		gpios=<&gpio_d 6 0 /* SDA */
+				&gpio_d 7 0>;    /* SCL */
 		i2c-gpio,delay-us = <5>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -288,7 +310,7 @@
 		usb2514: usb2514@2c {
 			compatible = "smsc,usb2514";
 			reg = <0x2c>;
-			reset-gpios = <&gpio_d 31 1>;
+			reset-gpios = <&gpio_b 22 1>;
 			initial-mode = <1>;
 		};
 	};
@@ -305,8 +327,8 @@
 
 	i2c_gpio7: i2c@7 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio_b 6 0 /* sda */
-		    &gpio_b 4 0 /* scl */
+		gpios = <&gpio_c 1 0 /* sda */
+		    &gpio_c 0 0 /* scl */
 		    >;
 		i2c-gpio,delay-us = <5>;
 		#address-cells = <1>;
@@ -416,7 +438,7 @@
 
 &clipper_0 {
 	interface_type = <NX_CAPTURE_INTERFACE_MIPI_CSI>;
-	gpios = <&gpio_b 9 0 &gpio_c 13 0>;
+	gpios = <&gpio_b 12 0 &gpio_c 13 0>;
 	data_order = <NX_VIN_CBY0CRY1>;	
 	interlace = <0>;
 	status = "okay";
@@ -452,7 +474,7 @@
 	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&vid2_data_clk &tp2825_reset>;
-	gpios = <&gpio_b 8 0>;
+	gpios = <&gpio_c 2 0>;
 	data_order = <NX_VIN_CBY0CRY1>;
 	port = <1>;
 	external_sync = <0>;
@@ -512,6 +534,8 @@
 		port@0 {
 			reg = <0>;
 			back_color = < 0x0 >;
+/*			color_key = < 0x0 >;	*/
+/*			plane-names = "video", "rgb", "primary";	*/
 			color_key = < 0xff00ff >;
 			plane-names =  "primary", "rgb", "video";
 		};
@@ -609,7 +633,7 @@
 	clock-frequency = <100000000>;
 	card-detect-delay = <200>;
 	disable-wp;
-	nexell,drive_dly = <0x0>;
+	nexell,drive_dly = <0x00>;
 	nexell,drive_shift = <0x03>;
 	nexell,sample_dly = <0x00>;
 	nexell,sample_shift = <0x02>;
