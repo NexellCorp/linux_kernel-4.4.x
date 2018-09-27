@@ -205,13 +205,6 @@
 				nexell,pin-strength = <0>;
 			};
 
-			toutchpanel_irq: touchpanel-irq {
-				nexell,pins = "gpiod-8";
-				nexell,pin-function = <0>;
-				nexell,pin-pull = <2>;
-				nexell,pin-strength = <0>;
-			};
-
 			tp2825_reset:tp2825_reset {
 				nexell,pins = "gpioc-2";
 				nexell,pin-function = <1>;
@@ -317,8 +310,8 @@
 
 	i2c_gpio6: i2c@6 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio_d 30 0 /* sda */
-		    &gpio_d 29 0 /* scl */
+		gpios = <&gpio_e 1 0 /* sda */
+		    &gpio_e 0 0 /* scl */
 		    >;
 		i2c-gpio,delay-us = <5>;
 		#address-cells = <1>;
@@ -670,6 +663,22 @@
 		controller-data {
 			samsung,spi-feedback-delay = <0>;
 		};
+	};
+};
+
+&i2c_gpio6 {
+	compatible = "i2c-gpio";
+	gpios=<&gpio_e 1 0	/* SDA */
+	      &gpio_e 0 0>;	/* SCL */
+	status = "okay";
+
+	goodix@5d {
+		compatible = "goodix,gt9271";
+		reg = <0x5d>;
+		interrupt-parent = <&gpio_e>;
+		interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
+		irq-gpios = <&gpio_e 3 0>;
+		reset-gpios = <&gpio_c 8 0>;
 	};
 };
 
