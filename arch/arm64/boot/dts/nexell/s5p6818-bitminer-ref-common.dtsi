@@ -132,6 +132,40 @@
 			};
 		};
 
+		tmuctrl_0: tmuctrl@c0096000 {
+			status = "okay";
+		};
+
+		thermal-zones {
+			cpu0_thermal: cpu0-thermal {
+				thermal-sensors = <&tmuctrl_0>;
+				polling-delay-passive = <1000>;
+				polling-delay = <1000>;
+				trips {
+					cpu_alert0: cpu-alert-0 {
+						temperature = <80000>;
+						hysteresis = <100000>;
+						type = "active";
+					};
+					cpu_alert1: cpu-alert-1 {
+						temperature = <85000>;
+						hysteresis = <100000>;
+						type = "passive";
+					};
+					cpu_alert2: cpu-alert-2 {
+						temperature = <100000>;
+						hysteresis = <100000>;
+						type = "passive";
+					};
+					cpu-crit-0 {
+						temperature = <115000>;
+						hysteresis = <100000>;
+						type = "critical";
+					};
+				};
+			};
+		};
+
 		dw_mmc_2:dw_mmc@c0069000 {
 			num-slots = <1>;
 			bus-width = <8>;
