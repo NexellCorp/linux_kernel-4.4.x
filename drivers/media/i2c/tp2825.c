@@ -36,6 +36,29 @@
 #define vmsg(a...)
 #endif
 
+struct nx_resolution {
+	uint32_t width;
+	uint32_t height;
+	uint32_t interval[2];
+};
+
+static struct nx_resolution supported_resolutions[] = {	
+/*
+	{
+		.width	= 1920,
+		.height = 1080,
+		.interval[0] = 25,
+		.interval[1] = 30,
+	},
+*/
+	{
+		.width	= 1280,
+		.height = 720,
+		.interval[0] = 25,
+		.interval[1] = 30,
+	}
+};
+
 struct tp2825_state {
 	struct media_pad pad;
 	struct v4l2_subdev sd;
@@ -1031,8 +1054,53 @@ static int tp2825_s_fmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int tp2825_enum_frame_size(struct v4l2_subdev *sd,
+				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_frame_size_enum *frame)
+{
+	vmsg("%s, index:%d\n", __func__, frame->index);
+
+	if (frame->index >= ARRAY_SIZE(supported_resolutions))
+		return -ENODEV;
+
+	frame->max_width = supported_resolutions[frame->index].width;
+	frame->max_height = supported_resolutions[frame->index].height;
+
+	vmsg("%s, max_width:%d, max_height:%d\n", __func__, 
+		frame->max_width, frame->max_height);
+
+	return 0;
+}
+
+static int tp2825_enum_frame_interval(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_frame_interval_enum
+				      *frame)
+{
+	int i;
+
+	vmsg("%s, %s interval\n", __func__, (frame->index) ? "max" : "min");
+
+	for (i = 0; i < ARRAY_SIZE(supported_resolutions); i++) {
+		if ((frame->width == supported_resolutions[i].width) &&
+		    (frame->height == supported_resolutions[i].height)) {
+			frame->interval.numerator = 1;
+			frame->interval.denominator =
+				supported_resolutions[i].interval[frame->index];
+			vmsg("[%s] width:%d, height:%d, interval:%d\n",
+			     __func__, frame->width, frame->height,
+			     frame->interval.denominator);
+			return false;
+		}
+	}
+
+	return 0;
+}
+
 static const struct v4l2_subdev_pad_ops tp2825_subdev_pad_ops = {
 	.set_fmt = tp2825_s_fmt,
+	.enum_frame_size = tp2825_enum_frame_size,
+	.enum_frame_interval = tp2825_enum_frame_interval,
 };
 
 static const struct v4l2_subdev_video_ops tp2825_subdev_video_ops = {
