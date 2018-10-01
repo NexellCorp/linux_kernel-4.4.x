@@ -53,7 +53,7 @@
 #define ADDR_MAX96705		0x80
 #define ADDR_MAX96705_ALL	(ADDR_MAX96705 + 14)  //Broadcast address
 #if FOR_CAMMSYS_MODULE
-// max9286 - max9271 - sony ISX016 sensor
+// max9286 max9271 - sony ISX016 sensor
 #define ADDR_AP_SENSOR		0x34
 #define ADDR_MAX9271		0x80
 #define ADDR_SENSOR         0x34
@@ -375,10 +375,11 @@ struct max9286_state {
     /* standard control */
     struct v4l2_ctrl *ctrl_brightness;
     char brightness;
-
+#if 0
 	struct workqueue_struct *monitor_wqueue;
     /* nexell: detect worker */
     struct delayed_work monitor_work;
+#endif
 };
 
 static const struct v4l2_fmtdesc capture_fmts[] = {
@@ -1310,237 +1311,6 @@ static int max9286_check_link(struct i2c_client *client)
 	return retval;
 }
 
-static int max9286_hardware_init_booting(struct i2c_client *client)
-{
-	int retval = 0;
-	int i, ser_sid;
-	u8 reg, sensor_addr = 0, regTest =0;
-	u8 read_val = 0;
-
-	//Disable CSI Output
-	max9286_i2c_write(client, ADDR_MAX9286, 0x15, 0x03);
-
-	//Enable PRBS test
- 	max9286_i2c_write(client, ADDR_MAX9286, 0x0E, 0x5F);
-	msleep(10);
-
-	//Enable Custom Reverse Channel & First Pulse Length
-//	max9286_i2c_write(client, ADDR_MAX9286, 0x3F, 0x4F);
-//	msleep(2);
-
-	//Reverse Channel Amplitude to mid level and transition time
-//	max9286_i2c_write(client, ADDR_MAX9286, 0x3B, 0x1E);
-//	msleep(2);
-
-	//Enable ADDR_MAX96705 Configuration Link
-	max9286_i2c_write(client, ADDR_MAX96705, 0x04, 0x47);
-	msleep(2);
-
-	//Increase serializer reverse channel input thresholds
-	//Invert VSYNC
-    max9286_i2c_write(client, ADDR_MAX96705, 0x40, 0x2F);
-    msleep(2);
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX96705, 0x40, &regTest);	// test
-//    max9286_i2c_write(client, ADDR_MAX96705, 0x97, 0x5F);
-//	msleep(2);
-
-	//Reverse Channel Amplitude level
-//	max9286_i2c_write(client, ADDR_MAX9286, 0x3B, 0x19);
-//	msleep(5);
-
-	//Set YUV422 8 bits mode, Double Data Rate, 4 data lane
-	max9286_i2c_write(client, ADDR_MAX9286, 0x12, 0xf3); // 0x3x lane D0 0xFx lane D0-D3
-//	max9286_i2c_write(client, ADDR_MAX9286, 0x12, 0x33); // 0x3x lane D0 0xFx lane D0-D3
-	msleep(5);
-
-//	max9286_i2c_write(client, ADDR_MAX9286, 0x0C, 0x91);	// ??
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX96705, 0x0C, &regTest);	// test
-
-
-	//Frame Sync
-	// - Automatic Mode
-	// - max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0x02);
-	// - Manual Mode
-//	max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0x00);	// int
-	max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0x00);	// int-manual
-//	max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0xc0);	// external
-//	max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0xe2);	// int
-
-	// external Mode
-	//max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0xA2);
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX96705, 0x1e, &regTest);	// test
-
-	max9286_i2c_write(client, ADDR_MAX9286, 0x63, 0x00);
-	max9286_i2c_write(client, ADDR_MAX9286, 0x64, 0x00);
-
-	max9286_i2c_write(client, ADDR_MAX9286, 0x06, 0x80);
-	max9286_i2c_write(client, ADDR_MAX9286, 0x07, 0xb9);
-	max9286_i2c_write(client, ADDR_MAX9286, 0x08, 0x2a);
-	msleep(100);
-
-	max9286_i2c_write(client, ADDR_MAX9286, 0x0F, 0x0b); // test
-//	max9286_i2c_write(client, ADDR_MAX9286, 0x1c, 0x04);
-
-//	max9286_i2c_write(client, ADDR_MAX9286, 0x0c, 0x91); // 0x9D
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x0c, &regTest);	// check VSYNC polarity check
-//	pr_info("max9286_mipi: check VSYNC polarity check = 0x%x.\n", regTest);
-
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x1A, &regTest);	// check VSYNC polarity check
-//	pr_info("max9286_mipi: check SRANG = 0x%x.\n", regTest);
-
-	//max9286_i2c_write(client, ADDR_MAX9286, 0x1A, 0x00);
-
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x13, &regTest);	// check VSYNC polarity check
-//	pr_info("max9286_mipi: check SRANG = 0x%x.\n", regTest);
-
-	//max9286_i2c_write(client, ADDR_MAX9286, 0x13, 0x0a);
-
-	// Detect link
-	g_sensor_num = 0;
-	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x49, &reg);
-	g_sensor_is_there = ((reg >> 4) & 0xF) | (reg & 0xF);
-	if (g_sensor_is_there & (0x1 << 0))
-		g_sensor_num += 1;
-	if (g_sensor_is_there & (0x1 << 1))
-		g_sensor_num += 1;
-	if (g_sensor_is_there & (0x1 << 2))
-		g_sensor_num += 1;
-	if (g_sensor_is_there & (0x1 << 3))
-		g_sensor_num += 1;
-	pr_info("max9286_mipi: \e[31m sensor number = %d, g_sensor_is_there = 0x%x \e[0m \n", g_sensor_num, g_sensor_is_there);
-
-	if (g_sensor_num == 0) {
-		pr_err("%s: no camera connected.\n", __func__);
-		return -1;
-	}
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX96705, 0x1e, &regTest);	// test
-
-	//Disable PRBS test
-	max9286_i2c_write(client, ADDR_MAX9286, 0x0E, 0x50);
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX96705, 0x1e, &regTest);	// test
-
-	// Set link order in MIPI CSI-2 output
-	reg = 0xE4;  //Default setting
-	if (g_sensor_num == 1) {
-		switch (g_sensor_is_there) {
-			case 0x8:
-				reg = 0x27;
-				break;
-			case 0x4:
-				reg = 0xC6;
-				break;
-			case 0x2:
-				reg = 0xE1;
-				break;
-			case 0x1:
-			default:
-				reg = 0xE4;
-				break;
-		}
-	} else if (g_sensor_num == 2) {
-		switch (g_sensor_is_there) {
-			case 0xC:
-				reg = 0x4E;
-				break;
-			case 0xA:
-				reg = 0x72;
-				break;
-			case 0x9:
-				reg = 0x78;
-				break;
-			case 0x6:
-				reg = 0xD2;
-				break;
-			case 0x5:
-				reg = 0xD8;
-				break;
-			case 0x3:
-			default:
-				reg = 0xE4;
-				break;
-		}
-	} else if (g_sensor_num == 3) {
-		switch (g_sensor_is_there) {
-			case 0xE:
-				reg = 0x93;
-				break;
-			case 0xD:
-				reg = 0x9C;
-				break;
-			case 0xB:
-				reg = 0xB4;
-				break;
-			case 0x7:
-			default:
-				reg = 0xE4;
-				break;
-		}
-	}
-	max9286_i2c_write(client, ADDR_MAX9286, 0x0B, reg);
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x0b, &regTest);	// test
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX96705, 0x1e, &regTest);	// test
-
-	//Enable all links
-	reg = 0xE0 | g_sensor_is_there;
-	max9286_i2c_write(client, ADDR_MAX9286, 0x00, reg);
-//	msleep(5);
-
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX96705, 0x1e, &regTest);	// test
-
-	//Set up links
-	reg = 0;
-	for (i=1; i<=MAX_SENSOR_NUM; i++) {
-		if (((0x1 << (i-1)) & g_sensor_is_there) == 0)
-			continue;
-
-		//Enable Link control channel
-		reg |= (0x11 << (i-1));
-		max9286_i2c_write(client, ADDR_MAX9286, 0x0A, reg);
-//		max9286_i2c_read_addr_byte(client, ADDR_MAX96705, 0x1e, &regTest);	// test
-
-		//Set ADDR_MAX96705 new address for link 0
-		ser_sid = (2 * i);
-		sensor_addr = (2 * i);
-		max9286_i2c_write(client, ADDR_MAX96705, 0x00, ADDR_MAX96705+ser_sid);
-		msleep(2);
-
-		//Set ADDR_MAX96705: Double Mode, PCLK latched on Rising Edge, HS/VS encoding
-		max9286_i2c_write(client, ADDR_MAX96705+ser_sid, 0x07, 0x84);
-		msleep(2);
-
-		max9286_i2c_write(client, ADDR_MAX96705+ser_sid, 0x01, ADDR_MAX9286);
-		max9286_i2c_write(client, ADDR_MAX96705+ser_sid, 0x09, ADDR_AP_SENSOR + sensor_addr);
-		max9286_i2c_write(client, ADDR_MAX96705+ser_sid, 0x0A, ADDR_AP_SENSOR);
-		max9286_i2c_write(client, ADDR_MAX96705+ser_sid, 0x0B, ADDR_MAX96705_ALL);
-		max9286_i2c_write(client, ADDR_MAX96705+ser_sid, 0x0C, (ADDR_MAX96705 + ser_sid));
-
-		msleep(1);
-	}
-//	max9286_i2c_read_addr_byte(client, ADDR_MAX96705+ser_sid, 0x1e, &regTest);	// test
-	max9286_i2c_write(client, ADDR_MAX9286, 0x0A, reg);
-	max9286_i2c_write(client, ADDR_MAX9286, 0x0A, reg);
-	pr_info("## [ADDR_MAX9286] write addr:0x0A, val:0x%02x\n", reg);
-
-	//Disable Local Auto I2C ACK
-	max9286_i2c_write(client, ADDR_MAX9286, 0x34, 0x36);
-#if 1
-	//Initialize Camera Sensor
-	if (g_sensor_is_there & (0x1 << 0))
-		AR0140AT_farmeSyncCmd(client, 2);
-	if (g_sensor_is_there & (0x1 << 1))
-		AR0140AT_farmeSyncCmd(client, 4);
-	if (g_sensor_is_there & (0x1 << 2))
-		AR0140AT_farmeSyncCmd(client, 6);
-	if (g_sensor_is_there & (0x1 << 3))
-		AR0140AT_farmeSyncCmd(client, 8);
-#endif
-	//Enable Local Auto I2C ACK
-//	max9286_i2c_write(client, ADDR_MAX9286, 0x34, 0x76);
-	max9286_i2c_write(client, ADDR_MAX9286, 0x34, 0xf6);
-
-	return retval;
-}
-
 static int max9286_hardware_run(struct i2c_client *client)
 {
 	int retval = 0;
@@ -1549,10 +1319,10 @@ static int max9286_hardware_run(struct i2c_client *client)
 	u8 read_val = 0;
 #if 1
 	// Cable Equalizer setting
-		max9286_i2c_write(client, ADDR_MAX9286, 0x1B, 0x0F);
+	max9286_i2c_write(client, ADDR_MAX9286, 0x1B, 0x0F);
 	// cable 6m, 11.7dB equalizer boost gain
-		max9286_i2c_write(client, ADDR_MAX9286, 0x32, 0xaa);
-		max9286_i2c_write(client, ADDR_MAX9286, 0x33, 0xaa);
+	max9286_i2c_write(client, ADDR_MAX9286, 0x32, 0xaa);
+	max9286_i2c_write(client, ADDR_MAX9286, 0x33, 0xaa);
 #endif
 
 	//ADDR_MAX96705: Enable Serial Links and Disable Configuration Link
@@ -1573,68 +1343,68 @@ static int max9286_hardware_run(struct i2c_client *client)
  */
 static int max9286_fsync_poll(struct i2c_client *client)
 {
-        int ret = 0;
-        int i = 0;
-        u8 val = 0;
-        client->addr = ADDR_MAX9286;
+	int ret = 0;
+	int i = 0;
+	u8 val = 0;
+	client->addr = ADDR_MAX9286;
 
-        /* Poll frame synchronization bit */
-        do {
-                max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x31, &val);
-                ret = val & (0x01 << 6);
-                if (ret) {
-                        pr_info("max9286 frame synchronization locked.\n");
-                        break;
-                }
-                i++;
-        } while (i != 5);
+	/* Poll frame synchronization bit */
+	do {
+		max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x31, &val);
+		ret = val & (0x01 << 6);
+		if (ret) {
+			pr_info("max9286 frame synchronization locked.\n");
+			break;
+		}
+		i++;
+	} while (i != 5);
 
-        if (i == 5) {
-                pr_info("max9286 frame synchronization error.\n");
-        }
+	if (i == 5) {
+		pr_info("max9286 frame synchronization error.\n");
+	}
 
-        return ret;
+	return ret;
 }
 
 static int max9286_hardware_verify(struct i2c_client *client)
 {
-        int ret = 0;
-        u8 val = 0;
-        client->addr = ADDR_MAX9286;
+	int ret = 0;
+	u8 val = 0;
+	client->addr = ADDR_MAX9286;
 
-        pr_info("max9286 verify begin.\n");
-        /* Read GMSL link 0 pixel count */
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x4D, &val);
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x4E, &val);
+	pr_info("max9286 verify begin.\n");
+	/* Read GMSL link 0 pixel count */
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x4D, &val);
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x4E, &val);
 
-        /* Read GMSL link 1 pixel count */
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x51, &val);
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x52, &val);
+	/* Read GMSL link 1 pixel count */
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x51, &val);
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x52, &val);
 
-        /* Read GMSL link 2 pixel count */
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x55, &val);
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x56, &val);
+	/* Read GMSL link 2 pixel count */
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x55, &val);
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x56, &val);
 
-        /* Read GMSL link 3 pixel count */
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x59, &val);
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x5A, &val);
+	/* Read GMSL link 3 pixel count */
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x59, &val);
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x5A, &val);
 
-        /* Caculated VSYNC period based on master link in terms of PCLK */
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x5B, &val);
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x5C, &val);
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x5D, &val);
+	/* Caculated VSYNC period based on master link in terms of PCLK */
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x5B, &val);
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x5C, &val);
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x5D, &val);
 
-        /* Read frame sync error counter */
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x5E, &val);
-        max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x0C, &val);
+	/* Read frame sync error counter */
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x5E, &val);
+	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x0C, &val);
 
-        pr_info("max9286 verify end.\n");
-        return ret;
+	pr_info("max9286 verify end.\n");
+	return ret;
 }
 
 static int max9286_hardware_init(struct i2c_client *client)
 {
-	int i,jj,kk,cnt;
+	int i,jj,kk,cnt, ser_sid;
 	u8 reg;
 	unsigned char g_sensor_is_there = 0;
 	u8 val = 0;
@@ -1642,10 +1412,34 @@ static int max9286_hardware_init(struct i2c_client *client)
 	u8 val3 = 0;
 	u8 buf[32];
 	u8 *pbuf;
+	static bool isFirstRun = true;
 	/* Detect connected serial link */
 	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x49, &val);
 	g_sensor_is_there = ((val >> 4) & 0xF) | (val & 0xF);
-	pr_info("g_sensor_is_there = 0x%x\n", g_sensor_is_there);
+	pr_info("g_sensor_is_there = 0x%x, isFirstRun = %d\n", g_sensor_is_there, isFirstRun);
+
+	if(isFirstRun == true && g_sensor_is_there == 0x0f) {
+		/* check init value it depend on MUC */
+		max9286_i2c_read_addr_byte(client, ADDR_MAX9271+ 2, 0x0b, &val);
+		if(val == 0x8A) {
+			pr_info("max9286_hardware_init already setting done so run~.\n");
+			/* Enable MIPI output */
+			max9286_i2c_write(client, ADDR_MAX9286, 0x15, 0x8B);
+			msleep(20);
+
+			/* Reg 0x27 Data: Bit[D7], [D1], [D0] = Value[1] ==> Normal */
+			//max9286_read_reg(client, 0x27, &val);
+			max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x27, &val);
+			max9286_fsync_poll(client);
+			max9286_hardware_verify(client);
+			isFirstRun = false;
+
+			pr_info("max9286_hardware_init end.\n");
+
+			return 0;
+		}
+	}
+
 	/* Set up new address for serial links */
 	reg = 0;
 	for (i = 1; i <= MAX_SENSOR_NUM; i++) {
@@ -1656,28 +1450,32 @@ static int max9286_hardware_init(struct i2c_client *client)
 		reg = 0x11 << (i-1);
 		max9286_i2c_write(client, ADDR_MAX9286, 0x0A, reg);
 
+		ser_sid = (2 * i);
+
 		msleep(2);
 		/* Set MAX9271 new address for link */
 		//max9271_write_reg(client, 0, 0x00, (ADDR_MAX9271+ i) << 1);
-		max9286_i2c_write(client, ADDR_MAX9271, 0x00, (ADDR_MAX9271+ i) << 1);
+		max9286_i2c_write(client, ADDR_MAX9271, 0x00, (ADDR_MAX9271+ ser_sid));
 		msleep(2);
 
 		//max9271_write_reg(client, 1, 0x07, 0x94);
-		max9286_i2c_write(client, (ADDR_MAX9271+ i) << 1, 0x07, 0x84);
+		max9286_i2c_write(client, (ADDR_MAX9271+ ser_sid), 0x07, 0x84);
 		msleep(2);
+
+		pr_info("i = %d, (ADDR_MAX9271+ %d) << 1 = 0x%x\n", i, i, (ADDR_MAX9271+ ser_sid));
 
 		/*Set Sensor i2c source id :0x62~68*/
 		//max9271_write_reg(client, i, 0x09, (ADDR_SENSOR+ i) << 1);
-		max9286_i2c_write(client, (ADDR_MAX9271+ i) << 1, 0x09, (ADDR_SENSOR+ i) << 1);
+		max9286_i2c_write(client, (ADDR_MAX9271+ ser_sid), 0x09, (ADDR_SENSOR+ i) << 1);
 		/*Set Sensor i2c destination id :0x60*/
 		//max9271_write_reg(client, i, 0x0A, (ADDR_SENSOR) << 1);
-		max9286_i2c_write(client, (ADDR_MAX9271+ i) << 1, 0x0A, (ADDR_SENSOR) << 1);
+		max9286_i2c_write(client, (ADDR_MAX9271+ ser_sid), 0x0A, (ADDR_SENSOR) << 1);
 		/*Set MAX9271 broadcast source i2c id :0x8A*/
 		//max9271_write_reg(client, i, 0x0B, 0x8A);
-		max9286_i2c_write(client, (ADDR_MAX9271+ i) << 1, 0x0B, 0x8A);
+		max9286_i2c_write(client, (ADDR_MAX9271+ ser_sid), 0x0B, 0x8A);
 		/*Set MAX9271 broadcast destination i2c id :0x8A*/
 		//max9271_write_reg(client, i, 0x0C, (ADDR_MAX9271+ i) << 1);
-		max9286_i2c_write(client, (ADDR_MAX9271+ i) << 1, 0x0C, (ADDR_MAX9271+ i) << 1);
+		max9286_i2c_write(client, (ADDR_MAX9271+ ser_sid), 0x0C, (ADDR_MAX9271+ ser_sid));
 
 		msleep(20);
 
@@ -1701,46 +1499,41 @@ static int max9286_hardware_init(struct i2c_client *client)
 //	max9286_i2c_write(client, ADDR_MAX9286, 0x18, 0x50);
 //	max9286_i2c_write(client, ADDR_MAX9286, 0x19, 0x30);
 
-	if (1/*fsync_internal == FSYNCMODE*/) {
-			/* Widows off */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x63, 0x00);
-			/* Widows off */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x64, 0x00);
+	/* Widows off */
+	max9286_i2c_write(client, ADDR_MAX9286, 0x63, 0x00);
+	/* Widows off */
+	max9286_i2c_write(client, ADDR_MAX9286, 0x64, 0x00);
 
-			/* FRSYNC Diff off */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x62, 0x1F);
+	/* FRSYNC Diff off */
+	max9286_i2c_write(client, ADDR_MAX9286, 0x62, 0x1F);
 
-			/* AUTO mode */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0xC0);
+	/* AUTO mode */
+	max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0xC0);
 
-			/* FSYNC-period-High */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x08, 0x25);
-			/* FSYNC-period-Mid */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x07, 0xC3);
-			/* FSYNC-period-Low */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x06, 0xF8);
+	/* FSYNC-period-High */
+	max9286_i2c_write(client, ADDR_MAX9286, 0x08, 0x25);
+	/* FSYNC-period-Mid */
+	max9286_i2c_write(client, ADDR_MAX9286, 0x07, 0xC3);
+	/* FSYNC-period-Low */
+	max9286_i2c_write(client, ADDR_MAX9286, 0x06, 0xF8);
 
-			/* Port dectected used */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x00, (0xE0 | g_sensor_is_there));
-			msleep(10);
+	/* Port dectected used */
+	max9286_i2c_write(client, ADDR_MAX9286, 0x00, (0xE0 | g_sensor_is_there));
+	msleep(10);
 
-			/* Auto mask & comabck enable */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x69, 0xF0);
-			msleep(5);
+	/* Auto mask & comabck enable */
+	max9286_i2c_write(client, ADDR_MAX9286, 0x69, 0xF0);
+	msleep(5);
 
-			/* FSYNC manual mode */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0x60);
-			msleep(5);
-			max9286_i2c_write(client, ADDR_MAX9286, 0x0C, 0x9f);
-			msleep(5);
+	/* FSYNC manual mode */
+	max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0x60);
+	msleep(5);
+	max9286_i2c_write(client, ADDR_MAX9286, 0x0C, 0x9f);
+	msleep(5);
 
-			/* All forward channel enable */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x0A, (0xF0 | g_sensor_is_there));
-			msleep(10);
-
-	} else {
-			pr_info("unsupported sync mode.\n");
-	}
+	/* All forward channel enable */
+	max9286_i2c_write(client, ADDR_MAX9286, 0x0A, (0xF0 | g_sensor_is_there));
+	msleep(10);
 
 	/* GPI to GPI disable, FSYNC uses manual mode */
 	max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0x00);
@@ -1754,6 +1547,8 @@ static int max9286_hardware_init(struct i2c_client *client)
 	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x27, &val);
 	max9286_fsync_poll(client);
 	max9286_hardware_verify(client);
+
+	isFirstRun = false;
 
 	pr_info("max9286_hardware_init end.\n");
 
@@ -2518,6 +2313,7 @@ static const struct v4l2_subdev_internal_ops max9286_v4l2_internal_ops = {
 	.unregistered = max9286_subdev_unregistered,
 };
 
+#if 0
 static void max9286_monitor_work(struct work_struct *work)
 {
 	struct max9286_state *state = container_of(work, struct max9286_state, monitor_work.work);
@@ -2526,7 +2322,7 @@ static void max9286_monitor_work(struct work_struct *work)
 
 	queue_delayed_work(state->monitor_wqueue, &state->monitor_work, 10*HZ);
 }
-
+#endif
 
 /*
  * max9286_probe
@@ -2576,18 +2372,9 @@ static int max9286_probe(struct i2c_client *client,
     }
     state->i2c_client = client;
 #if 0
-	printk("%s: max9286_hardware_init_booting start >>>> \n", __func__);
-	ret = max9286_hardware_init_booting(client);
-	if (ret < 0) {
-        printk(KERN_ERR "%s: failed to max9286 initialize \n", __func__);
-    }
-	if (ret == 0)
-		state->initialized = true;
-	printk("%s: max9286_hardware_init_booting end <<<< \n", __func__);
-#endif
 	state->monitor_wqueue = create_singlethread_workqueue("max9286_monitor_wqueue");
 	INIT_DELAYED_WORK(&state->monitor_work, max9286_monitor_work);
-
+#endif
     return 0;
 }
 
@@ -2596,11 +2383,11 @@ static int max9286_remove(struct i2c_client *client)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct max9286_state *state =
 		container_of(sd, struct max9286_state, sd);
-
+#if 0
 	cancel_delayed_work(&state->monitor_work);
 	flush_workqueue(state->monitor_wqueue);
 	destroy_workqueue(state->monitor_wqueue);
-
+#endif
 	v4l2_device_unregister_subdev(sd);
 	mutex_destroy(&state->ctrl_lock);
 	kfree(state);
