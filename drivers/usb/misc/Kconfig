@@ -245,6 +245,7 @@ config USB_EZUSB_FX2
 config USB_HUB_USB2514
 	tristate "USB Hub USB2514 support"
 	depends on I2C
+	select REGMAP_I2C
 	help
          This option enables support for SMSC USB2514 USB 2.0 HUB Driver.
 
