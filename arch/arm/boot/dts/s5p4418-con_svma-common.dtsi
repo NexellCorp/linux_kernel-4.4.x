@@ -241,6 +241,13 @@
 				nexell,pin-strength = <0>;
 			};
 			*/
+
+			bt_cfg_en:bt_cfg_en {
+				nexell,pins = "gpiob-23";
+				nexell,pin-function = <1>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
 		};
 
 		i2c_1:i2c@c00a5000 {
@@ -411,6 +418,14 @@
 		default-brightness-level = <200>;
 		status = "okay";
 	};
+
+	bt_control {
+		compatible = "broadcom,bcm434545bt";
+		gpios = <&gpio_b 23 0>;   /* GPIOB23 = BT_EN, output */
+		pinctrl-names = "default";
+		pinctrl-0 = <&bt_cfg_en>;
+		status = "okay";
+	};
 };
 
 &vip_0 {
@@ -432,7 +447,7 @@
 &clipper_0 {
 	interface_type = <NX_CAPTURE_INTERFACE_MIPI_CSI>;
 	gpios = <&gpio_b 12 0 &gpio_c 13 0>;
-	data_order = <NX_VIN_CBY0CRY1>;	
+	data_order = <NX_VIN_CBY0CRY1>;
 	interlace = <0>;
 	status = "okay";
 	external_sync = <1>;
