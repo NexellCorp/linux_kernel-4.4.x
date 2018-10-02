@@ -326,6 +326,7 @@ struct nx_hdmi_dev {
 
 struct nx_tvout_dev {
 	struct nx_control_dev control;
+	bool is_first;
 };
 
 /*

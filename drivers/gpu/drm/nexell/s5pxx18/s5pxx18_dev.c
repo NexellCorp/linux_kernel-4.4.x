@@ -352,8 +352,10 @@ void nx_soc_dp_cont_power_on(struct nx_control_dev *control, bool on)
 			nx_dpc_set_clock_divisor_enable(module, 1);
 		}
 	} else {
-		nx_dpc_set_dpc_enable(module, 0);
-		nx_dpc_set_clock_divisor_enable(module, 0);
+		if (control->panel_type != NX_PANEL_TYPE_TV) {
+			nx_dpc_set_dpc_enable(module, 0);
+			nx_dpc_set_clock_divisor_enable(module, 0);
+		}
 	}
 
 	/*

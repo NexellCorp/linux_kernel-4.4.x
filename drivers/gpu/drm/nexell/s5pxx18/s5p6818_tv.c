@@ -251,17 +251,19 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 	DRM_DEBUG_KMS("[TVOUT] cbw %d\n", param->cbw);
 	DRM_DEBUG_KMS("[TVOUT] pedestal %d\n", param->pedestal);
 
-	enable_clock_source(display, true);
+	if (tvout->is_first) {
+		enable_clock_source(display, true);
 
-	nx_dpc_set_clock_divisor_enable(module, false);
-	nx_dpc_set_clock_out_enb(module, 0, false);
-	nx_dpc_set_clock_out_enb(module, 1, false);
-	nx_dpc_set_clock_divisor(module, 0, ctrl->clk_div_lv0);
-	nx_dpc_set_clock_source(module, 0, ctrl->clk_src_lv0);
-	nx_dpc_set_clock_out_inv(module, 0, ctrl->clk_inv_lv0);
-	nx_dpc_set_clock_divisor(module, 1, ctrl->clk_div_lv1);
-	nx_dpc_set_clock_source(module, 1, ctrl->clk_src_lv1);
-	nx_dpc_set_clock_out_enb(module, 1, true);
+		nx_dpc_set_clock_divisor_enable(module, false);
+		nx_dpc_set_clock_out_enb(module, 0, false);
+		nx_dpc_set_clock_out_enb(module, 1, false);
+		nx_dpc_set_clock_divisor(module, 0, ctrl->clk_div_lv0);
+		nx_dpc_set_clock_source(module, 0, ctrl->clk_src_lv0);
+		nx_dpc_set_clock_out_inv(module, 0, ctrl->clk_inv_lv0);
+		nx_dpc_set_clock_divisor(module, 1, ctrl->clk_div_lv1);
+		nx_dpc_set_clock_source(module, 1, ctrl->clk_src_lv1);
+		nx_dpc_set_clock_out_enb(module, 1, true);
+	}
 
 	nx_dpc_set_mode(module, out_format, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0);
 	nx_dpc_set_hsync(module, 720, param->hsw, param->hfp, param->hbp, 0);
@@ -315,19 +317,14 @@ static int tvout_ops_enable(struct nx_drm_display *display)
 	dac_set_full_scale_output_voltage(0); /* Ratio 60/60, 100% */
 	dac_power_control(1);
 
+	tvout->is_first = false;
+
 	return 0;
 }
 
 static int tvout_ops_disable(struct nx_drm_display *display)
 {
-	struct nx_tvout_dev *tvout = display->context;
-	int module = tvout->control.module;
-
-	nx_dpc_set_dpc_enable(module, 0);
-	nx_dpc_set_clock_divisor_enable(module, 0);
-	enable_clock_source(display, false);
 	dac_power_control(0);
-
 	return 0;
 }
 
