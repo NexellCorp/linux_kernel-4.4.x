@@ -176,6 +176,37 @@
 			status = "okay";
 		};
 
+		tmuctrl_0: tmuctrl@c0096000 {
+			status = "okay";
+		};
+
+		thermal-zones {
+			cpu0_thermal: cpu0-thermal {
+				thermal-sensors = <&tmuctrl_0>;
+				polling-delay-passive = <1000>;
+				polling-delay = <1000>;
+				trips {
+					cpu_alert0: cpu-alert-0 {
+						temperature = <85000>;
+						hysteresis = <10000>;
+						type = "active";
+					};
+					cpu-crit-0 {
+						temperature = <115000>;
+						hysteresis = <100000>;
+						type = "critical";
+					};
+				};
+
+				cooling-maps {
+					map0 {
+						trip = <&cpu_alert0>;
+						cooling-device = <&cpu0 6 10>;
+					};
+				};
+			};
+		};
+
 		spdif_tx: spdiftx@c0059000 {
 			#sound-dai-cells = <1>;
 			pcm-bit = <16>;
