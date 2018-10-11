@@ -2258,7 +2258,7 @@ static void _set_mlc_video(struct nx_rearcam *me)
 		dst_height, hf, hf, vf, vf);
 	nx_mlc_set_position(module, MLC_LAYER_VIDEO, 0, 0, dst_width-1,
 		dst_height-1);
-	nx_mlc_set_layer_priority(module, 1);
+	nx_mlc_set_layer_priority(module, nx_mlc_priority_videosecond);
 	nx_mlc_set_dirty_flag(module, MLC_LAYER_VIDEO);
 }
 
@@ -2329,16 +2329,6 @@ static void _mlc_rgb_overlay_draw(struct nx_rearcam *me)
 					rgb_buf->virt_rgb);
 }
 
-static void _set_mlc_layer_priority(struct nx_rearcam *me)
-{
-	struct plane_top_format format = {
-		.module = me->mlc_module,
-		.video_priority = 1,
-		.mask = NX_PLANE_FORMAT_VIDEO_PRIORITY,
-	};
-	nx_soc_dp_plane_top_prev_format(&format);
-}
-
 static void _set_enable_mlc(struct nx_rearcam *me)
 {
 	int module = me->mlc_module;
@@ -2377,7 +2367,7 @@ static void _set_mlc(struct nx_rearcam *me)
 
 	nx_mlc_set_screen_size(module, sync->h_active_len, sync->v_active_len);
 	nx_mlc_set_background(module, bgcolor & 0x00FFFFFF);
-	nx_mlc_set_layer_priority(module, MLC_LAYER_VIDEO);
+	nx_mlc_set_layer_priority(module, nx_mlc_priority_videofourth);
 	nx_mlc_set_top_dirty_flag(module);
 
 	_set_mlc_video(me);
@@ -2653,7 +2643,7 @@ static void _turn_on(struct nx_rearcam *me)
 	if (me->is_on)
 		return;
 
-	_set_mlc_layer_priority(me);
+	nx_mlc_set_layer_priority(me->mlc_module, nx_mlc_priority_videosecond);
 
 	me->is_on = true;
 
@@ -3410,7 +3400,7 @@ static int _alloc_rgb_memory(struct nx_rearcam *me)
 
 	buf = &me->frame_set.rgb_buf;
 	buf->page_size = size;
-	buf->virt_rgb = dma_alloc_coherent(NULL, size, &buf->dma_buf,
+	buf->virt_rgb = dma_alloc_coherent(dev, size, &buf->dma_buf,
 				GFP_KERNEL);
 	if (!buf->virt_rgb) {
 		dev_err(dev, "Not able to allocate the DMA buffer.\n");
@@ -4009,6 +3999,8 @@ static int init_me(struct nx_rearcam *me)
 
 static int deinit_me(struct nx_rearcam *me)
 {
+	tasklet_kill(&me->work);
+
 	if (me->init_data != NULL) {
 		kfree(me->init_data);
 		me->init_data = NULL;
@@ -4058,7 +4050,7 @@ static ssize_t _stop_rearcam(struct kobject *kobj,
 	}
 
 	nx_mlc_set_layer_priority(me->mlc_module,
-		me->dp_drm_port_video_prior[me->mlc_module]);
+			me->dp_drm_port_video_prior[me->mlc_module]);
 	nx_mlc_set_top_dirty_flag(me->mlc_module);
 
 	nx_rearcam_remove(me->pdev);
