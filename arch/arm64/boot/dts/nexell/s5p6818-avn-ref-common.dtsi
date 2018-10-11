@@ -566,6 +566,40 @@
 	};
 };
 
+#include "tw9900_rearcam_regset.dtsi"
+&rearcam {
+	rotation = <0>;
+	rear_cam_dev = <&clipper_0>;
+	sensor_reg = <&sensor_tw9900>;
+	display = <&dp_drm>;
+	dp_drm_dev = <&dp_drm_lvds>;
+	width = <704>;
+	height = <480>;
+	skip_frame = <0>;
+	status = "okay";
+
+	gpio {
+		event-gpio = <&alive_0 3 0>;
+		active_high = <0>;
+		detect_delay = <0>;
+	};
+
+	deinterlace {
+		use = <0>;
+		divide_frame = <0>;
+		is_odd_first = <1>;
+	};
+
+	mlc {
+		module = <0>;
+		format = <0x06530000>;
+	};
+
+	dpc {
+		module = <0>;
+	};
+};
+
 &dp_drm {
 	status = "okay";
 	ports {
@@ -573,7 +607,7 @@
 			reg = <0>;
 			back_color = < 0x0 >;
 			color_key = < 0x0 >;
-			plane-names = "video", "primary", "rgb";
+			plane-names = "rgb", "primary", "video";
 		};
 		port@1 {
 			reg = <1>;
