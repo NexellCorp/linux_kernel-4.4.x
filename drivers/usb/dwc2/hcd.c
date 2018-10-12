@@ -3453,8 +3453,12 @@ host:
 		if (count > 250)
 			dev_err(hsotg->dev,
 				"Connection id status change timed out\n");
-		hsotg->op_state = OTG_STATE_A_HOST;
 
+		spin_lock_irqsave(&hsotg->lock, flags);
+		dwc2_hsotg_disconnect(hsotg);
+		spin_unlock_irqrestore(&hsotg->lock, flags);
+
+		hsotg->op_state = OTG_STATE_A_HOST;
 		/* Initialize the Core for Host mode */
 		dwc2_core_init(hsotg, false);
 		dwc2_enable_global_interrupts(hsotg);
