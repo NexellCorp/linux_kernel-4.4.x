@@ -39,6 +39,7 @@ static int tvout_ops_open(struct nx_drm_display *display, int pipe)
 	struct nx_control_res *res = &tvout->control.res;
 
 	hdmi_base = res->sub_bases[0];
+	tvout->is_first = true;
 	return 0;
 }
 
