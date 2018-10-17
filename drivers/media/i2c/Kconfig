@@ -718,6 +718,15 @@ config VIDEO_ZN240
 	  CMOS Image Sensor with an embedded SoC image signal
 	  processor.
 
+config VIDEO_S5K231Y
+	tristate "Samsung S5K231Y sensor support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  This is a V4L2 sensor-level driver for Samsung S5K231Y
+	  Dynamic Vision Sensor.
+	  The main feature of this sensor is VGA (640x480),
+	  1/3.33 inch, and 2000fps.
+
 source "drivers/media/i2c/smiapp/Kconfig"
 
 config VIDEO_S5C73M3
