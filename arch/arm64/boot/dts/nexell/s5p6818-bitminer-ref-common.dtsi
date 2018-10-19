@@ -36,15 +36,10 @@
 / {
 	memory {
 		device_type = "memory";
-		reg = <0x40000000 0x7db00000>;
+		reg = <0x40000000 0x0db00000>;
 	};
 
 	aliases {
-/*		i2c1 = &i2c_gpio1; */
-/*		i2c3 = &i2c_gpio3; */
-		i2c5 = &i2c_gpio5;
-/*		i2c6 = &i2c_gpio6; */
-		i2c7 = &i2c_gpio7;
 	};
 
 	soc {
@@ -168,38 +163,20 @@
 
 		dw_mmc_2:dw_mmc@c0069000 {
 			num-slots = <1>;
-			bus-width = <8>;
-			mmc-ddr-1_8v;
+			bus-width = <4>;
 			pinctrl-0 = <&sdmmc2_cclk &sdmmc2_cmd
-						&sdmmc2_bus4 &sdmmc2_bus8>;
-			soc,tieoff = <NX_TIEOFF_MMC_8BIT 1>;
+						&sdmmc2_bus4>;
 			cap-mmc-highspeed;
 			broken-cd;
 			non-removable;
-			clock-frequency = <200000000>;
+			clock-frequency = <50000000>;
 			card-detect-delay = <200>;
 			disable-wp;
 			status = "okay";
 			nexell,drive_dly = <0x0>;
-			nexell,drive_shift = <0x03>;
+			nexell,drive_shift = <0x01>;
 			nexell,sample_dly = <0x00>;
 			nexell,sample_shift = <0x02>;
-		};
-
-		dw_mmc_0:dw_mmc@c0062000 {
-			num-slots = <1>;
-			bus-width = <4>;
-			cap-sd-highspeed;
-			clock-frequency = <100000000>;
-			card-detect-delay = <200>;
-			disable-wp;
-			cd-gpios = <&gpio_e 31 0>;
-			cd-inverted;
-			nexell,drive_dly = <0x0>;
-			nexell,drive_shift = <0x02>;
-			nexell,sample_dly = <0x00>;
-			nexell,sample_shift = <0x01>;
-			status = "okay";
 		};
 
 		watchdog@c0019000 {
@@ -210,27 +187,31 @@
 			status = "okay";
 		};
 
-		nexell_usbphy: nexell-usbphy@c0012000 {
-			status = "okay";
-		};
+		gmac0:ethernet@c0060000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&gmac_pins>;
 
-		ehci@c0030000 {
 			status = "okay";
-			port@0 {
-				status = "okay";
+			#address-cells = <0x1>;
+			#size-cells = <0x0>;
+
+			snps,phy-addr = <3>;
+
+			boost-busfreq;
+			boost-busfreq-timeout = <100000>;
+
+			mdio {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				ethernet_phy: ethernet-phy@3 {
+					reg = <3>;
+					fixed-link {
+						speed = <1000>;
+						full-duplex;
+					};
+				};
 			};
-		};
-
-		ohci@c0020000 {
-			status = "okay";
-			port@0 {
-				status = "okay";
-			};
-		};
-
-		dwc2otg@c0040000 {
-			gpios = <&alive_0 5 0>;
-			status = "okay";
 		};
 
 		pwm:pwm@c0018000 {
@@ -241,29 +222,7 @@
 			samsung,pwm-outputs = <0>, <1>;
 			status = "okay";
 		};
-/*
-		i2s_0:i2s@c0055000 {
-			#sound-dai-cells = <1>;
-			master-mode = <1>;
-			mclk-in = <0>;
-			trans-mode = <0>;
-			frame-bit = <32>;
-			sample-rate = <48000>;
-			pre-supply-mclk = <1>;
-			status = "okay";
-		};
 
-		i2s_1:i2s@c0056000 {
-			#sound-dai-cells = <1>;
-			master-mode = <1>;
-			mclk-in = <0>;
-			trans-mode = <0>;
-			frame-bit = <32>;
-			sample-rate = <48000>;
-			pre-supply-mclk = <1>;
-			status = "okay";
-		};
-*/
 		pinctrl@C0010000 {
 			key_power:key_power {
 				nexell,pins = "alive-0";
@@ -271,7 +230,6 @@
 				nexell,pin-pull = <1>;
 				nexell,pin-strength = <0>;
 			};
-
 			key_back:key_back {
 				nexell,pins = "alive-1";
 				nexell,pin-function = <0>;
@@ -279,8 +237,15 @@
 				nexell,pin-strength = <0>;
 			};
 
+			pmic_irq:pmic_irq{
+				nexell,pins = "alive-4";
+				nexell,pin-function = <NX_PIN_FUNC0>;
+				nexell,pin-pull = <NX_PIN_PULL_UP>;
+				nexell,pin-strength = <NX_PIN_STR0>;
+			};
+
 			hash0_reset: hash0-reset {
-				nexell,pins = "gpiob-4";
+				nexell,pins = "gpiod-31";
 				nexell,pin-dir = <NX_GPIO_OUTPUT>;		\
 				nexell,pin-val = <NX_GPIO_LOW>;		\
 				nexell,pin-function = <0>;
@@ -288,158 +253,53 @@
 				nexell,pin-strength = <0>;
 			};
 			hash0g_irq: hash0g-irq {
-				nexell,pins = "gpiob-2";
+				nexell,pins = "gpiod-30";
 				nexell,pin-function = <0>;
 				nexell,pin-pull = <NX_PIN_PULL_UP>;
 				nexell,pin-strength = <0>;
 			};
 			hash0o_irq: hash0o-irq {
-				nexell,pins = "gpiob-10";
+				nexell,pins = "gpiod-29";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <NX_PIN_PULL_UP>;
+				nexell,pin-strength = <0>;
+			};
+
+			hash1_reset: hash1-reset {
+				nexell,pins = "gpioe-4";
+				nexell,pin-dir = <NX_GPIO_OUTPUT>;		\
+				nexell,pin-val = <NX_GPIO_LOW>;		\
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <NX_PIN_PULL_UP>;
+				nexell,pin-strength = <0>;
+			};
+			hash1g_irq: hash1g-irq {
+				nexell,pins = "gpioe-3";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <NX_PIN_PULL_UP>;
+				nexell,pin-strength = <0>;
+			};
+			hash1o_irq: hash1o-irq {
+				nexell,pins = "gpioe-2";
 				nexell,pin-function = <0>;
 				nexell,pin-pull = <NX_PIN_PULL_UP>;
 				nexell,pin-strength = <0>;
 			};
 		};
 
-		regulators {
-			VCC_DCDC1:dcdc2 { PMIC_PDATA_INIT( 1,
-				"nxe2000_dcdc2",
-                                1000000, 1500000,
-				1200000, 1, 0, 0x4)
-                                regulator-always-on;
-                                regulator-boot-on;};
-			}; /* regulators */
-
-		scaler@c0066000 {
-			status = "okay";
-		};
 	};	/*** soc ***/
 
-	vcc_spk: regulator-fix@2 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "SPK Vcc";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		regulator-boot-on;
-		regulator-always-on;
-
-		gpio = <&gpio_d 3 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-	};
-
-	vdd_a: regulator-fix@3 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "A Vdd";
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <1800000>;
-		regulator-boot-on;
-		regulator-always-on;
-
-		gpio = <&gpio_e 17 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-	};
-
-	vdd_db: regulator-fix@4 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "DB Vdd";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		regulator-boot-on;
-		regulator-always-on;
-
-		gpio = <&gpio_e 20 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-	};
-
-	vcc_monoamp: regulator-fix@5 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "MONOAMP Vcc";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		regulator-boot-on;
-		regulator-always-on;
-
-		gpio = <&gpio_d 24 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-	};
-
-	amp2_en: regulator-fix@6 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "AMP2 EN";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		regulator-boot-on;
-		regulator-always-on;
-
-		gpio = <&gpio_d 25 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-	};
-
-	i2c_gpio1: i2c@1 {
+	i2c_gpio10: i2c@10 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio_d 5 0 /* sda */
-		    &gpio_d 4 0 /* scl */>;
-		i2c-gpio,delay-us = <100>;
+		gpios = <&gpio_d 3 0	/* sda */
+			&gpio_d 2 0	/* scl */
+			>;
+
+		i2c-gpio,delay-us = <1>;	/* ~100kHz */
 		#address-cells = <1>;
 		#size-cells = <0>;
+		status = "okay";
 
-		rt5640: rt5640@1c {
-			#sound-dai-cells = <0>;
-			compatible = "realtek,rt5640";
-			reg = <0x1c>;
-			realtek,ldo1-en-gpios = <&gpio_c 4 GPIO_ACTIVE_HIGH>;
-		};
-	};
-
-	i2c_gpio3: i2c@3 {
-		compatible = "i2c-gpio";
-		gpios = <&gpio_b 16 0 /* sda */
-		    &gpio_b 18 0 /* scl */>;
-		i2c-gpio,delay-us = <100>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		alc5623: alc5623@1a {
-			#sound-dai-cells = <0>;
-			compatible = "realtek,alc5623";
-			reg = <0x1a>;
-		};
-	};
-
-	i2c_gpio5: i2c@5 {
-		compatible = "i2c-gpio";
-		gpios = <&gpio_c 27 0 /* sda */
-		    &gpio_c 25 0 /* scl */
-		    >;
-		i2c-gpio,delay-us = <100>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		usb2514: usb2514@2c {
-			compatible = "smsc,usb2514";
-			reg = <0x2c>;
-			reset-gpios = <&gpio_e 7 1>;
-			initial-mode = <1>;
-		};
-	};
-
-	i2c_gpio6: i2c@6 {
-		compatible = "i2c-gpio";
-		gpios = <&gpio_d 23 0 /* sda */
-		    &gpio_d 22 0 /* scl */
-		    >;
-		i2c-gpio,delay-us = <100>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-	};
-
-	i2c_gpio7: i2c@7 {
-		status = "disabled";
 	};
 
 	gpio_key: gpio_keys {
@@ -480,24 +340,51 @@
 	};
 };
 
-&spi_0 {
-	status = "okay";
-/*	cs-gpios = <&gpio_c 30 0>; */
-	not-queued-transfer = <1>;
-	spidev@0 {
-		compatible = "linux,spidev";
-		reg = <0>;
-		spi-max-frequency = <20000000>;
-		controller-data {
-			cs-per-message = <1>;
-			samsung,spi-feedback-delay = <0>;
-		};
+&i2c_gpio10 {
+	nxe2000@32 {
+		compatible = "nexell,nxe2000";
+		reg = <0x32>;
+		interrupt-parent = <&alive_0>;
+		interrupts = <0x5 IRQ_TYPE_EDGE_FALLING>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pmic_irq>;
+
+		regulators {
+			VCC_DCDC1:
+				dcdc2	{ PMIC_PDATA_INIT( 1,
+					"nxe2000_dcdc2",
+					1000000, 1500000,
+					1200000, 1, 0, 0x4)
+					regulator-always-on;
+					regulator-boot-on;};
+			VCC_LDO0:
+				ldo1	{ PMIC_PDATA_INIT( 5,
+					"nxe2000_ldo1",
+					1000000, 3500000,
+					3300000, 1, 1, 0x0)
+					regulator-always-on;
+					regulator-boot-on;};
+			VCC_LDO3:
+				ldo4	{ PMIC_PDATA_INIT( 8,
+					"nxe2000_ldo4",
+					1000000, 3500000,
+					1800000, 1, 1, 0x2)
+					regulator-always-on;
+					regulator-boot-on;};
+			VCC_LDO9:
+				ldo10	{ PMIC_PDATA_INIT(14,
+					"nxe2000_ldo10",
+					1000000, 3500000,
+					1000000, 1, 1, 0x4)
+					regulator-always-on;
+					regulator-boot-on;};
+		}; /* regulators */
 	};
 };
 
-&spi_1 {
+&spi_0 {
 	status = "okay";
-/*	cs-gpios = <&gpio_e 15 0>; */
+/*	cs-gpios = <&gpio_c 30 0>; */
 	not-queued-transfer = <1>;
 	spidev@0 {
 		compatible = "linux,spidev";
@@ -525,13 +412,3 @@
 	};
 };
 
-&vip_0 {
-	status = "okay";
-};
-
-&i2c_2 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	status = "okay";
-	rate = <400000>;
-};
