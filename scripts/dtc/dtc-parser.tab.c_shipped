@@ -1514,7 +1514,7 @@ yyreduce:
   case 8:
 #line 143 "dtc-parser.y" /* yacc.c:1646  */
     {
-			(yyval.is_plugin) = true;
+			(yyval.re) = chain_reserve_entry((yyvsp[-1].re), (yyvsp[0].re));
 		}
 #line 1520 "dtc-parser.tab.c" /* yacc.c:1646  */
     break;
@@ -1522,7 +1522,7 @@ yyreduce:
   case 9:
 #line 150 "dtc-parser.y" /* yacc.c:1646  */
     {
-			(yyval.re) = NULL;
+			(yyval.re) = build_reserve_entry((yyvsp[-2].integer), (yyvsp[-1].integer));
 		}
 #line 1528 "dtc-parser.tab.c" /* yacc.c:1646  */
     break;

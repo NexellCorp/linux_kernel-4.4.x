@@ -690,45 +690,6 @@ static void check_obsolete_chosen_interrupt_controller(struct check *c,
 WARNING(obsolete_chosen_interrupt_controller,
 	check_obsolete_chosen_interrupt_controller, NULL);
 
-static void check_auto_label_phandles(struct check *c, struct node *dt,
-				       struct node *node)
-{
-	struct label *l;
-	struct symbol *s, **sp;
-	int has_label;
-
-	if (!symbol_fixup_support)
-		return;
-
-	has_label = 0;
-	for_each_label(node->labels, l) {
-		has_label = 1;
-		break;
-	}
-
-	if (!has_label)
-		return;
-
-	/* force allocation of a phandle for this node */
-	(void)get_node_phandle(dt, node);
-
-	/* add the symbol */
-	for_each_label(node->labels, l) {
-
-		s = xmalloc(sizeof(*s));
-		s->label = l;
-		s->node = node;
-		s->next = NULL;
-
-		/* add it to the symbols list */
-		sp = &dt->symbols;
-		while (*sp)
-			sp = &((*sp)->next);
-		*sp = s;
-	}
-}
-NODE_WARNING(auto_label_phandles, NULL);
-
 static struct check *check_table[] = {
 	&duplicate_node_names, &duplicate_property_names,
 	&node_name_chars, &node_name_format, &property_name_chars,
@@ -748,8 +709,6 @@ static struct check *check_table[] = {
 
 	&avoid_default_addr_size,
 	&obsolete_chosen_interrupt_controller,
-
-	&auto_label_phandles,
 
 	&always_fail,
 };
