@@ -564,6 +564,22 @@
 		default-brightness-level = <45>;
 		status = "okay";
 	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				vendor {
+					compatible = "android,vendor";
+					dev = "/dev/block/mmcblk0p3";
+					type = "ext4";
+					mnt_flags = "rw,barrier=1,inode_readahead_blks=8";
+					fsmgr_flags = "wait";
+				};
+			};
+		};
+	};
 };
 
 &vip_0 {
