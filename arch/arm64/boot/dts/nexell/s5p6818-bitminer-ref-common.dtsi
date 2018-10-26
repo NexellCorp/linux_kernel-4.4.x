@@ -214,6 +214,10 @@
 			};
 		};
 
+		adc:adc@c0053000 {
+			status = "okay";
+		};
+
 		pwm:pwm@c0018000 {
 			clock-names = "timers", "pwm-tclk0", "pwm-tclk1";
 			clocks = <&pclk>, <&pwm0>, <&pwm1>;
@@ -242,48 +246,6 @@
 				nexell,pin-function = <NX_PIN_FUNC0>;
 				nexell,pin-pull = <NX_PIN_PULL_UP>;
 				nexell,pin-strength = <NX_PIN_STR0>;
-			};
-
-			hash0_reset: hash0-reset {
-				nexell,pins = "gpiod-31";
-				nexell,pin-dir = <NX_GPIO_OUTPUT>;		\
-				nexell,pin-val = <NX_GPIO_LOW>;		\
-				nexell,pin-function = <0>;
-				nexell,pin-pull = <NX_PIN_PULL_UP>;
-				nexell,pin-strength = <0>;
-			};
-			hash0g_irq: hash0g-irq {
-				nexell,pins = "gpiod-30";
-				nexell,pin-function = <0>;
-				nexell,pin-pull = <NX_PIN_PULL_UP>;
-				nexell,pin-strength = <0>;
-			};
-			hash0o_irq: hash0o-irq {
-				nexell,pins = "gpiod-29";
-				nexell,pin-function = <0>;
-				nexell,pin-pull = <NX_PIN_PULL_UP>;
-				nexell,pin-strength = <0>;
-			};
-
-			hash1_reset: hash1-reset {
-				nexell,pins = "gpioe-4";
-				nexell,pin-dir = <NX_GPIO_OUTPUT>;		\
-				nexell,pin-val = <NX_GPIO_LOW>;		\
-				nexell,pin-function = <0>;
-				nexell,pin-pull = <NX_PIN_PULL_UP>;
-				nexell,pin-strength = <0>;
-			};
-			hash1g_irq: hash1g-irq {
-				nexell,pins = "gpioe-3";
-				nexell,pin-function = <0>;
-				nexell,pin-pull = <NX_PIN_PULL_UP>;
-				nexell,pin-strength = <0>;
-			};
-			hash1o_irq: hash1o-irq {
-				nexell,pins = "gpioe-2";
-				nexell,pin-function = <0>;
-				nexell,pin-pull = <NX_PIN_PULL_UP>;
-				nexell,pin-strength = <0>;
 			};
 		};
 
