@@ -915,6 +915,11 @@ static int plane_set_property(struct drm_plane *plane,
 		plane_set_color(plane, NX_COLOR_COLORKEY, val);
 	}
 
+	if (property == color->yuv.transcolor) {
+		layer->color.yuv_transcolor = val;
+		plane_set_color(plane, NX_COLOR_TRANS, val);
+	}
+
 	if (property == color->rgb.transcolor) {
 		layer->color.transcolor = val;
 		plane_set_color(plane, NX_COLOR_TRANS, val);
@@ -947,6 +952,9 @@ static int plane_get_property(struct drm_plane *plane,
 
 	if (property == color->yuv.colorkey)
 		*val = layer->color.colorkey;
+
+	if (property == color->yuv.transcolor)
+		*val = layer->color.yuv_transcolor;
 
 	if (property == color->rgb.transcolor)
 		*val = layer->color.transcolor;
@@ -982,6 +990,11 @@ static void plane_ops_create_proeprties(struct drm_device *drm,
 		drm_property_create_range(drm, 0, "colorkey", 0, 0xffffffff);
 		drm_object_attach_property(&plane->base,
 			color->yuv.colorkey, layer->color.colorkey);
+
+		color->yuv.transcolor =
+		drm_property_create_range(drm, 0, "transcolor", 0, 0xffffffff);
+		drm_object_attach_property(&plane->base,
+			color->yuv.transcolor, layer->color.yuv_transcolor);
 	} else {
 		/* RGB color */
 		color->rgb.transcolor =

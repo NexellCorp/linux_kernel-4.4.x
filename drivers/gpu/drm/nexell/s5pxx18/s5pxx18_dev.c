@@ -501,7 +501,7 @@ int nx_soc_dp_plane_top_set_enable(struct nx_top_plane *top, bool on)
 	if (on) {
 		int m_lock_size = 16;
 
-#if 1 /* zh-hmdragon */
+#ifdef CONFIG_BOARD_ZH_HMDRAGON
 		nx_mlc_set_field_enable(module, 0);
 #else
 		nx_mlc_set_field_enable(module, top->interlace);
@@ -704,9 +704,9 @@ void nx_soc_dp_plane_rgb_set_color(struct nx_plane_layer *layer,
 	int module = layer->module;
 	int num = layer->num;
 
-	pr_debug("%s: %s, type:%d color:0x%x, pixel %d, %s\n",
+	pr_debug("%s: %s, type:%d color:0x%x, pixel %d, %s (%d)\n",
 		__func__, layer->name, type, color, layer->pixelbyte,
-		on ? "on" : "off");
+		on ? "on" : "off", num);
 
 	switch (type) {
 	case NX_COLOR_ALPHA:
@@ -724,12 +724,12 @@ void nx_soc_dp_plane_rgb_set_color(struct nx_plane_layer *layer,
 		break;
 
 	case NX_COLOR_TRANS:
-		if (layer->pixelbyte == 1) {
+		if (layer->num != LAYER_VIDEO && layer->pixelbyte == 1) {
 			color = R8G8B8toR3G3B2((unsigned int)color);
 			color = R3G3B2toR8G8B8((u8) color);
 		}
 
-		if (layer->pixelbyte == 2) {
+		if (layer->num != LAYER_VIDEO && layer->pixelbyte == 2) {
 			color = R8G8B8toR5G6B5((unsigned int)color);
 			color = R5G6B5toR8G8B8((u_short) color);
 		}
