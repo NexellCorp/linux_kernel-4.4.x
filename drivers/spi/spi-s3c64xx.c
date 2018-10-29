@@ -747,7 +747,6 @@ static int s3c64xx_spi_prepare_message(struct spi_master *master,
 	return 0;
 }
 
-extern int dbg_gpio;
 static int s3c64xx_spi_transfer_one(struct spi_master *master,
 				    struct spi_device *spi,
 				    struct spi_transfer *xfer)
@@ -760,7 +759,6 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 	unsigned long flags;
 	int use_dma;
 
-	gpio_set_value(dbg_gpio, 1);
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
 	/* The SPI of S5p6818 must be transmitted with updated devfreq.
 	 * Otherwise, data will be transmitted with a lower clock.
@@ -853,7 +851,6 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
 	nx_spi_qos_update(NX_BUS_CLK_IDLE_KHZ);
 #endif
-	gpio_set_value(dbg_gpio, 0);
 
 	return status;
 }
