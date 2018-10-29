@@ -2454,8 +2454,11 @@ static void __exit max9286_mod_exit(void)
 {
 	i2c_del_driver(&max9286_i2c_driver);
 }
-
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+subsys_initcall(max9286_mod_init);
+#else
 module_init(max9286_mod_init);
+#endif
 module_exit(max9286_mod_exit);
 
 MODULE_DESCRIPTION("MAX9286 Video driver");
