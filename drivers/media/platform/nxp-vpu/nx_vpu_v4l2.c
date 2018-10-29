@@ -1490,7 +1490,21 @@ static struct platform_driver nx_vpu_driver = {
 	},
 };
 
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+static int __init nx_vpu_quick_init(void)
+{
+	return platform_driver_register(&nx_vpu_driver);
+}
+
+static void __exit nx_vpu_quick_exit(void)
+{
+	platform_driver_unregister(&nx_vpu_driver);
+}
+subsys_initcall(nx_vpu_quick_init);
+module_exit(nx_vpu_quick_exit);
+#else
 module_platform_driver(nx_vpu_driver);
+#endif
 
 MODULE_AUTHOR("Kim SeongHee <kshblue@nexell.co.kr>");
 MODULE_DESCRIPTION("Nexell S5P6818 series SoC V4L2/Codec device driver");
