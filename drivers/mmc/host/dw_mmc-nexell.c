@@ -171,7 +171,11 @@ static int __init dw_mci_nexell_pltfm_init(void)
 {
 	return platform_driver_register(&dw_mci_nexell_pltfm_driver);
 }
+#ifdef CONFIG_MMC_INIT_LEVEL_UP
+subsys_initcall(dw_mci_nexell_pltfm_init)
+#else
 fs_initcall(dw_mci_nexell_pltfm_init)
+#endif
 #else
 module_platform_driver(dw_mci_nexell_pltfm_driver);
 #endif
