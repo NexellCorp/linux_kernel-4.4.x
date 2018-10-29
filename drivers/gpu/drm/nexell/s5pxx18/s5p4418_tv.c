@@ -222,7 +222,7 @@ static int tvout_ops_prepare(struct nx_drm_display *display)
 			 sync->v_front_porch, sync->v_back_porch+1);
 
 	nx_dpc_set_vsync_offset(module, vsp, vcp, even_vsp, even_vcp);
-	nx_dpc_set_delay(module, 12, 12, 12, 12);
+	nx_dpc_set_delay(module, 0, 12, 12, 12);
 	nx_dpc_set_dither(module, r_dither, g_dither, b_dither);
 
 	pr_debug("%s: %s dev.%d (x=%4d, hfp=%3d, hbp=%3d, hsw=%3d)\n",
