@@ -1351,7 +1351,11 @@ static int mali_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, 
 }
 
 
+#ifdef CONFIG_DRM_INIT_LEVEL_UP
+fs_initcall(mali_module_init);
+#else
 module_init(mali_module_init);
+#endif
 module_exit(mali_module_exit);
 
 MODULE_LICENSE(MALI_KERNEL_LINUX_LICENSE);
