@@ -242,7 +242,21 @@ static struct platform_driver nx_v4l2_driver = {
 	},
 };
 
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+static int __init nx_v4l2_init(void)
+{
+	return platform_driver_register(&nx_v4l2_driver);
+}
+
+static void __exit nx_v4l2_exit(void)
+{
+	platform_driver_unregister(&nx_v4l2_driver);
+}
+subsys_initcall(nx_v4l2_init);
+module_exit(nx_v4l2_exit)
+#else
 module_platform_driver(nx_v4l2_driver);
+#endif
 
 MODULE_AUTHOR("swpark <swpark@nexell.co.kr>");
 MODULE_DESCRIPTION("Nexell S5Pxx18 series SoC V4L2/MEDIA top device driver");
