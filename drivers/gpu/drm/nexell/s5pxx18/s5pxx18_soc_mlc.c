@@ -470,8 +470,17 @@ void nx_mlc_set_transparency(u32 module_index, u32 layer, int benb, u32 color)
 		regvalue = pregister->mlcrgblayer[layer].mlctpcolor;
 		regvalue &= ~tpcolor_mask;
 		regvalue |= (color & tpcolor_mask);
-
 		writel(regvalue, &pregister->mlcrgblayer[layer].mlctpcolor);
+	} else if (layer == 3) {
+		regvalue = pregister->mlcvideolayer.mlccontrol;
+		regvalue &= ~(tpenb_mask | dirtyflag_mask);
+		regvalue |= (benb << tpenb_pos);
+
+		writel(regvalue, &pregister->mlcvideolayer.mlccontrol);
+		regvalue = pregister->mlcvideolayer.mlctpcolor;
+		regvalue &= ~tpcolor_mask;
+		regvalue |= (color & tpcolor_mask);
+		writel(regvalue, &pregister->mlcvideolayer.mlctpcolor);
 	}
 }
 
