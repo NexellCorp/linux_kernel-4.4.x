@@ -78,6 +78,7 @@ struct plane_property {
 			struct drm_property *alphablend;
 		} rgb;
 		struct {
+			struct drm_property *transcolor;
 			struct drm_property *colorkey;
 		} yuv;
 	} color;
@@ -123,6 +124,7 @@ struct nx_plane_layer {
 			double saturation; /* def = 0, -100 <= Range <= 100 */
 			int satura;
 			int gamma;
+			u32 yuv_transcolor;
 		};
 	} color;
 
