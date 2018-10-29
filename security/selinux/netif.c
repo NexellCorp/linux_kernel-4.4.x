@@ -288,5 +288,11 @@ static __init int sel_netif_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_SELINUX_INIT_LEVEL_UP
+fs_initcall(sel_netif_init);
+#elif CONFIG_SELINUX_INIT_LEVEL_DOWN
+late_initcall(sel_netif_init);
+#else
 __initcall(sel_netif_init);
+#endif
 
