@@ -927,5 +927,9 @@ static void __exit drm_core_exit(void)
 	idr_destroy(&drm_minors_idr);
 }
 
+#ifdef CONFIG_DRM_INIT_LEVEL_UP
+fs_initcall(drm_core_init);
+#else
 module_init(drm_core_init);
+#endif
 module_exit(drm_core_exit);
