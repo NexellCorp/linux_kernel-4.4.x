@@ -2189,5 +2189,9 @@ static int __init drm_fb_helper_modinit(void)
 	return 0;
 }
 
+#ifdef CONFIG_DRM_INIT_LEVEL_UP
+fs_initcall(drm_fb_helper_modinit);
+#else
 module_init(drm_fb_helper_modinit);
+#endif
 #endif
