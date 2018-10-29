@@ -43,6 +43,7 @@
 #include <media/v4l2-subdev.h>
 
 #include <dt-bindings/media/nexell-vip.h>
+#include <linux/kthread.h>
 
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
 #include <linux/pm_qos.h>
@@ -67,6 +68,10 @@
 #include <linux/timer.h>
 #include <linux/delay.h>
 #define DQ_TIMEOUT_MS		CONFIG_CLIPPER_DQTIMER_TIMEOUT
+#endif
+
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+struct task_struct *g_ClipperThread;
 #endif
 
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
@@ -217,6 +222,11 @@ struct nx_clipper {
 
 	/* for suspend */
 	struct nx_video_buffer *last_buf;
+
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+	struct workqueue_struct *w_queue;
+	struct delayed_work w_delay;
+#endif
 };
 
 static int register_irq_handler(struct nx_clipper *me);
@@ -2175,6 +2185,54 @@ static const struct dev_pm_ops nx_clipper_pm_ops = {
 };
 #endif
 
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+static int init_clipper_th(void *args)
+{
+	int ret = 0;
+	struct nx_clipper *me = args;
+
+	if (!nx_vip_is_valid(me->module)) {
+		dev_err(&me->pdev->dev, "NX VIP %d is not valid\n", me->module);
+		return -ENODEV;
+	}
+
+	init_me(me);
+
+	ret = init_v4l2_subdev(me);
+	if (ret)
+		return ret;
+
+	ret = register_v4l2(me);
+	if (ret)
+		return ret;
+
+	return ret;
+}
+
+static void init_clipper_work(struct work_struct *work)
+{
+	struct nx_clipper *me = container_of(work,
+				struct nx_clipper, w_delay.work);
+	int ret = 0;
+
+	if (!nx_vip_is_valid(me->module)) {
+		dev_err(&me->pdev->dev, "NX VIP %d is not valid\n", me->module);
+		return -ENODEV;
+	}
+
+	init_me(me);
+
+	ret = init_v4l2_subdev(me);
+	if (ret)
+		return;
+
+	ret = register_v4l2(me);
+	if (ret)
+		return;
+
+}
+#endif
+
 /**
  * platform driver
  */
@@ -2195,7 +2253,7 @@ static int nx_clipper_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to parse dt\n");
 		return ret;
 	}
-
+#ifndef CONFIG_V4L2_INIT_LEVEL_UP
 	if (!nx_vip_is_valid(me->module)) {
 		dev_err(dev, "NX VIP %d is not valid\n", me->module);
 		return -ENODEV;
@@ -2210,6 +2268,21 @@ static int nx_clipper_probe(struct platform_device *pdev)
 	ret = register_v4l2(me);
 	if (ret)
 		return ret;
+#else
+	if (me->module == 0) {
+		if (g_ClipperThread == NULL)
+			g_ClipperThread = kthread_run(init_clipper_th,
+				me, "KthreadForNxClipper");
+	}
+
+	if (me->module == 1) {
+		me->w_queue = create_singlethread_workqueue("clipper_wqueue");
+		INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
+
+		queue_delayed_work(me->w_queue, &me->w_delay,
+							msecs_to_jiffies(2000));
+	}
+#endif
 
 	me->buffer_underrun = false;
 	me->buf.addr = NULL;
@@ -2231,6 +2304,14 @@ static int nx_clipper_remove(struct platform_device *pdev)
 
 	if (unlikely(!me))
 		return 0;
+
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+	if (me->module == 1) {
+		cancel_delayed_work(&me->w_delay);
+		flush_workqueue(me->w_queue);
+		destroy_workqueue(me->w_queue);
+	}
+#endif
 
 	unregister_v4l2(me);
 
@@ -2262,7 +2343,21 @@ static struct platform_driver nx_clipper_driver = {
 	},
 };
 
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+static int __init nx_clipper_init(void)
+{
+	return platform_driver_register(&nx_clipper_driver);
+}
+
+static void __exit nx_clipper_exit(void)
+{
+	platform_driver_unregister(&nx_clipper_driver);
+}
+subsys_initcall(nx_clipper_init);
+module_exit(nx_clipper_exit);
+#else
 module_platform_driver(nx_clipper_driver);
+#endif
 
 MODULE_AUTHOR("swpark <swpark@nexell.co.kr>");
 MODULE_DESCRIPTION("Nexell S5Pxx18 series SoC V4L2 capture clipper driver");
