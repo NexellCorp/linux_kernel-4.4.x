@@ -1165,7 +1165,22 @@ static struct i2c_driver tp2825_i2c_driver = {
 	.id_table = tp2825_id,
 };
 
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+static int __init tp2825_mod_init(void)
+{
+	return i2c_add_driver(&tp2825_i2c_driver);
+}
+
+static void __exit tp2825_mod_exit(void)
+{
+	i2c_del_driver(&tp2825_i2c_driver);
+}
+
+module_init(tp2825_mod_init);
+module_exit(tp2825_mod_exit);
+#else
 module_i2c_driver(tp2825_i2c_driver);
+#endif
 
 MODULE_DESCRIPTION("TP2825 Camera Sensor Driver");
 MODULE_AUTHOR("<jkchoi@nexell.co.kr>");
