@@ -43,6 +43,7 @@ config DECIMATOR_DQTIMER_TIMEOUT
 
 config VIDEO_NEXELL_REARCAM
 	bool "Enable fast preview of rear camera device"
+	depends on !V4L2_INIT_LEVEL_UP
 	default n
 	---help---
 	  Say y here, you cna view cmaera as soon as kernel booting, and this

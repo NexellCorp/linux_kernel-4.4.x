@@ -652,6 +652,18 @@ static void __exit nx_vip_exit(void)
 
 core_initcall_sync(nx_vip_init);
 __exitcall(nx_vip_exit);
+#elif CONFIG_V4L2_INIT_LEVEL_UP
+static int __init nx_vip_init(void)
+{
+	return platform_driver_register(&nx_vip_driver);
+}
+
+static void __exit nx_vip_exit(void)
+{
+	platform_driver_unregister(&nx_vip_driver);
+}
+subsys_initcall(nx_vip_init);
+module_exit(nx_vip_exit)
 #else
 module_platform_driver(nx_vip_driver);
 #endif
