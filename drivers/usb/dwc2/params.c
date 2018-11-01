@@ -151,6 +151,7 @@ static void dwc2_set_nexell_params(struct dwc2_hsotg *hsotg)
 	p->ahbcfg = GAHBCFG_HBSTLEN_INCR16 <<
 		GAHBCFG_HBSTLEN_SHIFT;
 	p->dma_desc_enable = true;
+	p->g_dma_desc = false;
 	p->host_channels = 16;
 	p->host_rx_fifo_size = 1024;
 	p->host_nperio_tx_fifo_size = 512;
@@ -309,11 +310,7 @@ static void dwc2_set_default_params(struct dwc2_hsotg *hsotg)
 	if ((hsotg->dr_mode == USB_DR_MODE_PERIPHERAL) ||
 	    (hsotg->dr_mode == USB_DR_MODE_OTG)) {
 		p->g_dma = dma_capable;
-#if !defined(CONFIG_USB_F_IAP) && !defined(CONFIG_USB_CONFIGFS_F_IAP)
 		p->g_dma_desc = hw->dma_desc_enable;
-#else
-		p->g_dma_desc = false;
-#endif
 
 		/*
 		 * The values for g_rx_fifo_size (2048) and
