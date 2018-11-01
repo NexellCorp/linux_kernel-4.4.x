@@ -10,6 +10,8 @@ struct alc5623_platform_data {
 	/* output to enable when jack is high       */
 	/* jack detect (gpio/nc/jack detect [12]    */
 	unsigned int jack_det_ctrl;
+    unsigned int output_mixer_ctrl;
+    unsigned int alc56xx_id;
 };
 #endif
 
