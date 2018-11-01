@@ -522,7 +522,13 @@
 		>;
 	};
 };
-#endif 
+
+&decimator_1 {
+	compatible = "nexell,nx-decimator";
+	module = <1>;
+	status = "okay";
+};
+#endif
 
 #ifdef CONFIG_VIDEO_TW9900
 // TW9900
