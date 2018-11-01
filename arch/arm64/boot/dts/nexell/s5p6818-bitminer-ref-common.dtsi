@@ -234,6 +234,7 @@
 				nexell,pin-pull = <1>;
 				nexell,pin-strength = <0>;
 			};
+
 			key_back:key_back {
 				nexell,pins = "alive-1";
 				nexell,pin-function = <0>;
@@ -277,7 +278,6 @@
 			linux,code = <KEY_POWER>;
 			gpio-key,wakeup;
 		};
-
 		back {
 			label = "Back";
 			gpios = <&alive_0 1 0>;
@@ -300,6 +300,25 @@
 			heap-type = "ion_dma";
 		};
 	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led_err {
+			label ="red";
+			gpios = <&gpio_a 4 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "timer";
+			default-state = "off";
+		};
+
+		led_ok {
+			label ="green";
+			gpios = <&gpio_a 5 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "timer";
+			default-state = "off";
+		};
+	};
+
 };
 
 &i2c_gpio10 {
