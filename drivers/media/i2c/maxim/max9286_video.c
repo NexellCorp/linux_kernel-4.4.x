@@ -21,6 +21,16 @@
  * MA 02111-1307 USA
  */
 
+/*
+ * CONFIG_VIDEO_MAX9286_MAX9271
+ * - Use max9271 and sony ISX016 senor if available
+ * - For cammsys module
+ *
+ * CONFIG_VIDEO_MAX9286_MAX96705
+ * - Use max96705 and atina ar0140at senor if available
+ * - For chemtronics module
+ */
+
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
@@ -37,27 +47,21 @@
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-async.h>
-//#include <linux/videodev2_exynos_camera.h>
-
-//#include <mach/platform.h>
-//#include <mach/devices.h>
-//#include <mach/soc.h>
 
 #include "max9286_video.h"
 #include "max9286_preset.h"
 
-#define FOR_CAMMSYS_MODULE 1
 #define MAX_SENSOR_NUM	4
 
 #define ADDR_MAX9286		0x90
 #define ADDR_MAX96705		0x80
 #define ADDR_MAX96705_ALL	(ADDR_MAX96705 + 14)  //Broadcast address
-#if FOR_CAMMSYS_MODULE
+#if CONFIG_VIDEO_MAX9286_MAX9271
 // max9286 max9271 - sony ISX016 sensor
 #define ADDR_AP_SENSOR		0x34
 #define ADDR_MAX9271		0x80
 #define ADDR_SENSOR         0x34
-#else
+#else	// CONFIG_VIDEO_MAX9286_MAX96705
 #define ADDR_AP_SENSOR		0xBA
 #endif
 
@@ -65,9 +69,9 @@ unsigned int g_sensor_num = 0;
 unsigned char g_sensor_is_there = 0;  //Bit 0~3 for 4 cameras, 0b1= is there; 0b0 = is not there.
 
 #define DEFAULT_SENSOR_WIDTH			1280//*4//5120//3840//2560//1280
-#if FOR_CAMMSYS_MODULE
+#if CONFIG_VIDEO_MAX9286_MAX9271
 #define DEFAULT_SENSOR_HEIGHT			719	// 720
-#else
+#else	// CONFIG_VIDEO_MAX9286_MAX96705
 #define DEFAULT_SENSOR_HEIGHT			799//800 // 800*4
 #endif
 #define DEFAULT_SENSOR_CODE				(MEDIA_BUS_FMT_UYVY8_2X8) //(MEDIA_BUS_FMT_YUYV8_2X8)
@@ -260,18 +264,8 @@ struct max9286_regset_table {
 }
 
 struct max9286_regs {
-//	struct max9286_regset_table ev[EV_MAX];
-//	struct max9286_regset_table metering[V4L2_EXPOSURE_METERING_MATRIX];
-//	struct max9286_regset_table iso[V4L2_ISO_SENSITIVITY_AUTO];
-//	struct max9286_regset_table effect[V4L2_IMAGE_EFFECT_MAX];
-//	struct max9286_regset_table white_balance[V4L2_WHITE_BALANCE_MAX];
 	struct max9286_regset_table preview_size[MAX9286_PREVIEW_MAX];
 	struct max9286_regset_table capture_size[MAX9286_CAPTURE_MAX];
-//	struct max9286_regset_table scene_mode[V4L2_SCENE_MODE_MAX];
-//	struct max9286_regset_table saturation[V4L2_SATURATION_MAX];
-//	struct max9286_regset_table contrast[V4L2_CONTRAST_MAX];
-//	struct max9286_regset_table sharpness[V4L2_SHARPNESS_MAX];
-//	struct max9286_regset_table fps[FRAME_RATE_MAX];
 	struct max9286_regset_table preview_return;
 	struct max9286_regset_table jpeg_quality_high;
 	struct max9286_regset_table jpeg_quality_normal;
@@ -282,9 +276,6 @@ struct max9286_regs {
 	struct max9286_regset_table af_assist_flash_end;
 	struct max9286_regset_table af_low_light_mode_on;
 	struct max9286_regset_table af_low_light_mode_off;
-//	struct max9286_regset_table aeawb_lockunlock[V4L2_AE_AWB_MAX];
-	//struct max9286_regset_table ae_awb_lock_on;
-	//struct max9286_regset_table ae_awb_lock_off;
 	struct max9286_regset_table low_cap_on;
 	struct max9286_regset_table low_cap_off;
 	struct max9286_regset_table wdr_on;
@@ -340,14 +331,12 @@ struct max9286_state {
 	struct max9286_date_info	dateinfo;
 	struct max9286_position	position;
 	struct v4l2_streamparm		strm;
-//	struct v4l2_streamparm		stored_parm;
 	struct max9286_gps_info	gps_info;
 	struct mutex			ctrl_lock;
 	struct completion		af_complete;
 	enum max9286_runmode		runmode;
 	enum max9286_oprmode		oprmode;
 	enum af_operation_status	af_status;
-// pooyi check	enum v4l2_mbus_pixelcode	code; /* for media deivce code */
     int					irq;
 	int 				res_type;
 	u8 				resolution;
@@ -375,11 +364,6 @@ struct max9286_state {
     /* standard control */
     struct v4l2_ctrl *ctrl_brightness;
     char brightness;
-#if 0
-	struct workqueue_struct *monitor_wqueue;
-    /* nexell: detect worker */
-    struct delayed_work monitor_work;
-#endif
 };
 
 static const struct v4l2_fmtdesc capture_fmts[] = {
@@ -397,208 +381,7 @@ static inline struct max9286_state *ctrl_to_me(struct v4l2_ctrl *ctrl)
     return container_of(ctrl->handler, struct max9286_state, handler);
 }
 
-#if 0
-static int max9286_i2c_read_byte(struct i2c_client *client, u8 reg, u8 *data)
-{
-	s8 i = 0;
-	s8 ret = 0;
-	u8 buf = 0;
-	struct i2c_msg msg[2];
-
-	msg[0].addr = client->addr;
-	msg[0].flags = 0;
-	msg[0].len = 1;
-	msg[0].buf = &reg;
-
-	msg[1].addr = client->addr;
-	msg[1].flags = I2C_M_RD;// | I2C_M_NO_RD_ACK;
-	msg[1].len = 1;
-	msg[1].buf = &buf;
-
-	for (i=0; i<THINE_I2C_RETRY_CNT; i++) {
-		ret = i2c_transfer(client->adapter, msg, 2);
-		if (likely(ret == 2))
-			break;
-		//mdelay(POLL_TIME_MS);
-		//dev_err(&client->dev, "\e[31mmax9286_i2c_write_byte failed reg:0x%02x retry:%d\e[0m\n", addr, i);
-	}
-
-	if (unlikely(ret != 2)) {
-		dev_err(&client->dev, "\e[31mmax9286_i2c_read_byte failed reg:0x%02x \e[0m\n", reg);
-		return -EIO;
-	}
-
-	*data = buf;
-	return 0;
-}
-
-static int max9286_i2c_write_byte(struct i2c_client *client, u8 addr, u8 val)
-{
-	s8 i = 0;
-	s8 ret = 0;
-	u8 buf[2];
-	u8 read_val = 0;
-	struct i2c_msg msg;
-
-	msg.addr = client->addr;
-	msg.flags = 0;
-	msg.len = 2;
-	msg.buf = buf;
-
-	buf[0] = addr;
-	buf[1] = val ;
-
-	for (i=0; i<THINE_I2C_RETRY_CNT; i++) {
-		ret = i2c_transfer(client->adapter, &msg, 1);
-		if (likely(ret == 1))
-			break;
-		//mdelay(POLL_TIME_MS);
-		//dev_err(&client->dev, "\e[31mmax9286_i2c_write_byte failed reg:0x%02x write:0x%04x, retry:%d\e[0m\n", addr, val, i);
-	}
-
-	if (ret != 1) {
-		max9286_i2c_read_byte(client, addr, &read_val);
-		dev_err(&client->dev, "\e[31mmax9286_i2c_write_byte failed reg:0x%02x write:0x%04x, read:0x%04x, retry:%d\e[0m\n", addr, val, read_val, i);
-		return -EIO;
-	}
-
-	return 0;
-}
-#endif
-#if 0
-static int AR0140AT_i2c_read_byte(struct i2c_client *client, int index,
-				  u16 subaddr, u8 *data)
-{
-	int err;
-//	unsigned char buf[2];
-	struct i2c_msg msg[2];
-
-//	cpu_to_be16s(&subaddr);
-
-	msg[0].addr = (ADDR_AP_SENSOR + index)>>1;
-	msg[0].flags = 0;
-	msg[0].len = 2;
-	msg[0].buf = (u8 *)&subaddr;
-
-	msg[1].addr = (ADDR_AP_SENSOR + index)>>1;
-	msg[1].flags = I2C_M_RD;
-	msg[1].len = 1;
-	msg[1].buf = data;//buf;
-
-	err = i2c_transfer(client->adapter, msg, 2);
-	if (unlikely(err != 2)) {
-		dev_err(&client->dev,
-			"%s: register read fail\n", __func__);
-		return -EIO;
-	}
-	printk(KERN_ERR "## [%s():%s:%d\t] index:0x%02x, subaddr:0x%04x, read_val:0x%04x \n", __FUNCTION__, strrchr(__FILE__, '/')+1, __LINE__, index, subaddr, data);
-
-//	*data = ((buf[0] << 8) | buf[1]);
-
-	return 0;
-}
-
-static int AR0140AT_i2c_write_byte(struct i2c_client *client, int index,
-					 u16 addr, u8 data)
-{
-	int retry_count = 5;
-	unsigned char buf[3];
-	struct i2c_msg msg = {0, 0, 3, buf};
-	int ret = 0;
-
-	msg.addr = (ADDR_AP_SENSOR + index)>>1;
-
-	buf[0] = addr >> 8;
-	buf[1] = addr;
-	buf[2] = data;
-
-
-	printk(KERN_ERR, "%s : W(0x%02X%02X%02X)\n",
-		__func__, buf[0], buf[1], buf[2]);
-
-	do {
-		ret = i2c_transfer(client->adapter, &msg, 1);
-		if (likely(ret == 1))
-			break;
-		msleep(POLL_TIME_MS);
-		dev_err(&client->dev, "%s: I2C err %d, retry %d.\n",
-			__func__, ret, retry_count);
-	} while (retry_count-- > 0);
-	if (ret != 1) {
-		dev_err(&client->dev, "%s: I2C is not working.\n", __func__);
-		return -EIO;
-	}
-
-	return 0;
-}
-
-static int AR0140AT_i2c_read_twobyte(struct i2c_client *client, int index,
-				  u16 subaddr, u16 *data)
-{
-	int err;
-	unsigned char buf[2];
-	struct i2c_msg msg[2];
-
-//	cpu_to_be16s(&subaddr);
-
-	msg[0].addr = (ADDR_AP_SENSOR + index)>>1; // pooyi need check
-	msg[0].flags = 0;
-	msg[0].len = 2;
-	msg[0].buf = (u8 *)&subaddr;
-
-	msg[1].addr = (ADDR_AP_SENSOR + index)>>1;
-	msg[1].flags = I2C_M_RD;
-	msg[1].len = 2;
-	msg[1].buf = buf;
-
-	err = i2c_transfer(client->adapter, msg, 2);
-	if (unlikely(err != 2)) {
-		dev_err(&client->dev,
-			"%s: register read fail\n", __func__);
-		return -EIO;
-	}
-
-	*data = ((buf[0] << 8) | buf[1]);
-
-	return 0;
-}
-
-static int AR0140AT_i2c_write_twobyte(struct i2c_client *client, int index,
-					 u16 addr, u16 w_data)
-{
-	int retry_count = 5;
-	unsigned char buf[4];
-	struct i2c_msg msg = {0, 0, 4, buf};
-	int ret = 0;
-
-	msg.addr = (ADDR_AP_SENSOR + index)>>1;
-
-	buf[0] = addr >> 8;
-	buf[1] = addr;
-	buf[2] = w_data >> 8;
-	buf[3] = w_data & 0xff;
-
-	printk(KERN_ERR, "%s : W(0x%02X%02X%02X%02X)\n",
-		__func__, buf[0], buf[1], buf[2], buf[3]);
-
-	do {
-		ret = i2c_transfer(client->adapter, &msg, 1);
-		if (likely(ret == 1))
-			break;
-		msleep(POLL_TIME_MS);
-		dev_err(&client->dev, "%s: I2C err %d, retry %d.\n",
-			__func__, ret, retry_count);
-	} while (retry_count-- > 0);
-	if (ret != 1) {
-		dev_err(&client->dev, "%s: I2C is not working.\n", __func__);
-		return -EIO;
-	}
-
-	return 0;
-}
-#endif
 #if 1
-
 static inline int AR0140AT_read_reg(struct i2c_client *client, int index, unsigned short reg, int len, void * pdata)
 {
 	unsigned char u8_buf[2] = {0};
@@ -699,31 +482,6 @@ static inline int AR0140AT_write_reg(struct i2c_client *client, int index, unsig
 }
 #endif
 
-
-#if 0
-static void max96705_dump_registers(struct i2c_client *client, int index)
-{
-	unsigned char i;
-	u8 read_val = 0;
-
-	printk("max96705_dump_registers: I2C ADDR = 0x%x.\r\n", ADDR_MAX96705+index);
-	for (i=0; i<0x20; i++){
-		max9286_i2c_read_addr_byte(client, ADDR_MAX96705+index, i, &read_val);
-		printk("MAX96705 Reg 0x%02x = 0x%x.\r\n", i, read_val);
-	}
-}
-
-static void max9286_dump_registers(struct i2c_client *client)
-{
-	unsigned char i;
-	u8 read_val = 0;
-
-	for (i=0; i<0x72; i++){
-		max9286_i2c_read_addr_byte(client, ADDR_MAX9286, i, &read_val);
-		printk("MAX9286 Reg 0x%02x = 0x%x.\r\n", i, read_val);
-	}
-}
-#endif
 /* AR0140AT_farmeSyncCmd
 	{ADDR_AP_SENSOR, 0xc88c, 0x03},
 	{ADDR_AP_SENSOR, 0xc88d, 0x03},
@@ -739,8 +497,6 @@ AR0140AT_i2c_write_twobyte(client, index, 0x0040, 0x8100);		// REG_CMD_HANDLER_P
 static int AR0140AT_farmeSyncCmd(struct i2c_client *client, int index)
 {
 	unsigned short reg_data = 0;
-
-
 
 	AR0140AT_write_reg(client, index, 0xc88c, 1, 0x03);		// CAM_MODE_SELECT
 	msleep(10);
@@ -1069,58 +825,7 @@ static int max9286_set_parameter(struct v4l2_subdev *sd,
 		*current_value_ptr = new_value;
 	return err;
 }
-#if 0
-static void max9286_init_parameters(struct v4l2_subdev *sd)
-{
-	struct max9286_state *state =
-		container_of(sd, struct max9286_state, sd);
-	struct sec_cam_parm *parms =
-		(struct sec_cam_parm *)&state->strm.parm.raw_data;
-	struct sec_cam_parm *stored_parms =
-		(struct sec_cam_parm *)&state->stored_parm.parm.raw_data;
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
 
-	dev_err(&client->dev, "%s: \n", __func__);
-	state->strm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	parms->capture.capturemode = 0;
-	parms->capture.timeperframe.numerator = 1;
-	parms->capture.timeperframe.denominator = 30;
-//	parms->contrast = V4L2_CONTRAST_DEFAULT;
-//	parms->effects = V4L2_IMAGE_EFFECT_NORMAL;
-	parms->brightness = V4L2_BRIGHTNESS_DEFAULT;
-	parms->flash_mode = FLASH_MODE_AUTO;
-	parms->focus_mode = V4L2_FOCUS_MODE_AUTO;
-	parms->iso = V4L2_ISO_SENSITIVITY_AUTO;
-	parms->metering = V4L2_EXPOSURE_METERING_CENTER_WEIGHTED;
-//	parms->saturation = V4L2_SATURATION_DEFAULT;
-//	parms->scene_mode = V4L2_SCENE_MODE_NONE;
-//	parms->sharpness = V4L2_SHARPNESS_DEFAULT;
-//	parms->white_balance = V4L2_WHITE_BALANCE_AUTO;
-//	parms->aeawb_lockunlock = V4L2_AE_UNLOCK_AWB_UNLOCK;
-
-//	stored_parms->effects = V4L2_IMAGE_EFFECT_NORMAL;
-//	stored_parms->brightness = V4L2_BRIGHTNESS_DEFAULT;
-//	stored_parms->iso = V4L2_ISO_SENSITIVITY_AUTO;
-//	stored_parms->metering = V4L2_EXPOSURE_METERING_CENTER_WEIGHTED;
-//	stored_parms->scene_mode = V4L2_SCENE_MODE_NONE;
-//	stored_parms->white_balance = V4L2_WHITE_BALANCE_AUTO;
-
-	state->jpeg.enable = 0;
-	state->jpeg.quality = 100;
-	state->jpeg.main_offset = 0;
-	state->jpeg.main_size = 0;
-	state->jpeg.thumb_offset = 0;
-	state->jpeg.thumb_size = 0;
-	state->jpeg.postview_offset = 0;
-
-	state->fw.major = 1;
-
-	state->one_frame_delay_ms = NORMAL_MODE_MAX_ONE_FRAME_DELAY_MS;
-
-    /* psw0523 block this */
-	/* max9286_stop_auto_focus(sd); */
-}
-#endif
 /* This function is called from the g_ctrl api
  *
  * This function should be called only after the s_fmt call,
@@ -1336,7 +1041,7 @@ static int max9286_hardware_run(struct i2c_client *client)
 	return retval;
 }
 
-#if FOR_CAMMSYS_MODULE
+#if CONFIG_VIDEO_MAX9286_MAX9271
 /*
  * Poll bit D6 of regiter of 0x31
  * Return 1 means frame synchronization is locked
@@ -1554,7 +1259,7 @@ static int max9286_hardware_init(struct i2c_client *client)
 
 	return 0;
 }
-#else
+#else	// CONFIG_VIDEO_MAX9286_MAX96705
 static int max9286_hardware_init(struct i2c_client *client)
 {
 	int retval = 0;
@@ -1923,118 +1628,6 @@ static int max9286_enum_framesizes(struct v4l2_subdev *sd,
 
 	return 0;
 }
-#if 0
-static int max9286_g_parm(struct v4l2_subdev *sd,
-			struct v4l2_streamparm *param)
-{
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct max9286_state *state = container_of(sd, struct max9286_state, sd);
-
-	dev_err(&client->dev, "%s() \n", __func__);
-
-	memcpy(param, &state->strm, sizeof(param));
-	return 0;
-}
-#endif
-#if 0
-static int max9286_s_parm(struct v4l2_subdev *sd,
-			struct v4l2_streamparm *param)
-{
-	int err = 0;
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct max9286_state *state = container_of(sd, struct max9286_state, sd);
-	struct sec_cam_parm *new_parms = (struct sec_cam_parm *)&param->parm.raw_data;
-	struct sec_cam_parm *parms = (struct sec_cam_parm *)&state->strm.parm.raw_data;
-
-	dev_err(&client->dev, "%s() \n", __func__);
-
-	if (param->parm.capture.timeperframe.numerator !=
-		parms->capture.timeperframe.numerator ||
-		param->parm.capture.timeperframe.denominator !=
-		parms->capture.timeperframe.denominator) {
-
-		int fps = 0;
-		int fps_max = 30;
-
-		if (param->parm.capture.timeperframe.numerator &&
-			param->parm.capture.timeperframe.denominator)
-			fps =
-			    (int)(param->parm.capture.timeperframe.denominator /
-				  param->parm.capture.timeperframe.numerator);
-		else
-			fps = 0;
-
-		if (fps <= 0 || fps > fps_max) {
-			dev_err(&client->dev,
-				"%s: Framerate %d not supported,"
-				" setting it to %d fps.\n",
-				__func__, fps, fps_max);
-			fps = fps_max;
-		}
-
-		/*
-		 * Don't set the fps value, just update it in the state
-		 * We will set the resolution and
-		 * fps in the start operation (preview/capture) call
-		 */
-		parms->capture.timeperframe.numerator = 1;
-		parms->capture.timeperframe.denominator = fps;
-	}
-
-	/* we return an error if one happened but don't stop trying to
-	 * set all parameters passed
-	 */
-	err = max9286_set_parameter(sd, &parms->contrast, new_parms->contrast,
-				"contrast", state->regs->contrast,
-				ARRAY_SIZE(state->regs->contrast));
-	err |= max9286_set_parameter(sd, &parms->effects, new_parms->effects,
-				"effect", state->regs->effect,
-				ARRAY_SIZE(state->regs->effect));
-	err |= max9286_set_parameter(sd, &parms->brightness,
-				new_parms->brightness, "brightness",
-				state->regs->ev, ARRAY_SIZE(state->regs->ev));
-///	err |= max9286_set_flash_mode(sd, new_parms->flash_mode);
-///	err |= max9286_set_focus_mode(sd, new_parms->focus_mode);
-	err |= max9286_set_parameter(sd, &parms->iso, new_parms->iso,
-				"iso", state->regs->iso,
-				ARRAY_SIZE(state->regs->iso));
-	err |= max9286_set_parameter(sd, &parms->metering, new_parms->metering,
-				"metering", state->regs->metering,
-				ARRAY_SIZE(state->regs->metering));
-	err |= max9286_set_parameter(sd, &parms->saturation,
-				new_parms->saturation, "saturation",
-				state->regs->saturation,
-				ARRAY_SIZE(state->regs->saturation));
-	err |= max9286_set_parameter(sd, &parms->scene_mode,
-				new_parms->scene_mode, "scene_mode",
-				state->regs->scene_mode,
-				ARRAY_SIZE(state->regs->scene_mode));
-	err |= max9286_set_parameter(sd, &parms->sharpness,
-				new_parms->sharpness, "sharpness",
-				state->regs->sharpness,
-				ARRAY_SIZE(state->regs->sharpness));
-	err |= max9286_set_parameter(sd, &parms->aeawb_lockunlock,
-				new_parms->aeawb_lockunlock, "aeawb_lockunlock",
-				state->regs->aeawb_lockunlock,
-				ARRAY_SIZE(state->regs->aeawb_lockunlock));
-	err |= max9286_set_parameter(sd, &parms->white_balance,
-				new_parms->white_balance, "white balance",
-				state->regs->white_balance,
-				ARRAY_SIZE(state->regs->white_balance));
-	err |= max9286_set_parameter(sd, &parms->fps,
-				new_parms->fps, "fps",
-				state->regs->fps,
-				ARRAY_SIZE(state->regs->fps));
-
-	if (parms->scene_mode == SCENE_MODE_NIGHTSHOT)
-		state->one_frame_delay_ms = NIGHT_MODE_MAX_ONE_FRAME_DELAY_MS;
-	else
-		state->one_frame_delay_ms = NORMAL_MODE_MAX_ONE_FRAME_DELAY_MS;
-
-	dev_dbg(&client->dev, "%s: returning %d\n", __func__, err);
-	return err;
-}
-#endif
 
 static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 {
@@ -2058,13 +1651,6 @@ static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 }
 
 static const struct v4l2_subdev_video_ops max9286_video_ops = {
-	//.g_mbus_fmt 		= max9286_g_mbus_fmt,
-// pooyi check .set_fmt	.s_mbus_fmt 		= max9286_s_mbus_fmt,
-// pooyi check .enum_frame_size	.enum_framesizes 	= max9286_enum_framesizes,
-	//.enum_fmt 		= max9286_enum_fmt,
-	//.try_fmt 		= max9286_try_fmt,
-//	.g_parm 		= max9286_g_parm,
-//	.s_parm 		= max9286_s_parm,
 	.s_stream 		= max9286_s_stream,
 };
 
@@ -2228,13 +1814,6 @@ static int max9286_set_fmt(struct v4l2_subdev *sd,
 
 		/* find adaptable resolution */
 		state->resolution 		= resolution;
-#if 0
-#ifndef CONFIG_VIDEO_MAX9286_SENSOR_JPEG
-		state->code 			= MEDIA_BUS_FMT_YUYV8_2X8;
-#else
-		state->code 			= format->code;
-#endif
-#endif
 		state->res_type 		= type;
 
 		/* for set foramat */
@@ -2313,17 +1892,6 @@ static const struct v4l2_subdev_internal_ops max9286_v4l2_internal_ops = {
 	.unregistered = max9286_subdev_unregistered,
 };
 
-#if 0
-static void max9286_monitor_work(struct work_struct *work)
-{
-	struct max9286_state *state = container_of(work, struct max9286_state, monitor_work.work);
-
-	max9286_check_link(state->i2c_client);
-
-	queue_delayed_work(state->monitor_wqueue, &state->monitor_work, 10*HZ);
-}
-#endif
-
 /*
  * max9286_probe
  * Fetching platform data is being done with s_config subdev call.
@@ -2371,10 +1939,7 @@ static int max9286_probe(struct i2c_client *client,
         return ret;
     }
     state->i2c_client = client;
-#if 0
-	state->monitor_wqueue = create_singlethread_workqueue("max9286_monitor_wqueue");
-	INIT_DELAYED_WORK(&state->monitor_work, max9286_monitor_work);
-#endif
+
     return 0;
 }
 
@@ -2383,11 +1948,7 @@ static int max9286_remove(struct i2c_client *client)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct max9286_state *state =
 		container_of(sd, struct max9286_state, sd);
-#if 0
-	cancel_delayed_work(&state->monitor_work);
-	flush_workqueue(state->monitor_wqueue);
-	destroy_workqueue(state->monitor_wqueue);
-#endif
+
 	v4l2_device_unregister_subdev(sd);
 	mutex_destroy(&state->ctrl_lock);
 	kfree(state);
@@ -2395,23 +1956,6 @@ static int max9286_remove(struct i2c_client *client)
 
 	return 0;
 }
-
-#if 0// def CONFIG_PM
-static int max9286_suspend(struct i2c_client *client, pm_message_t state)
-{
-	int ret = 0;
-
-	return ret;
-}
-
-static int max9286_resume(struct i2c_client *client)
-{
-	int ret = 0;
-
-	return ret;
-}
-
-#endif
 
 static const struct i2c_device_id max9286_id[] = {
 	{ MAX9286_DRIVER_NAME, 0 },
