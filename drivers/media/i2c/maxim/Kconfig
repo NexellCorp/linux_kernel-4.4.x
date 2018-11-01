@@ -1,9 +1,27 @@
+#
+# MAX9286 device configuration
+#
 
 config VIDEO_MAX9286
-    tristate "MAX9286 video decoder(nexell work)"
+    bool "MAX9286 video decoder(nexell work)"
     depends on I2C && VIDEO_V4L2
-    ---help---
+    help
 	  Support for the Maxim MAX9286 video decoder.
+
+choice
+	prompt "MAXIM GMSL Serializer type" if VIDEO_MAX9286
+	default VIDEO_MAX9286_MAX9271
+
+config VIDEO_MAX9286_MAX9271
+	bool "Use max9271 and sony ISX016 senor if available"
+	help
+	  max9286 - max9271 - sony ISX016 sensor
+
+config VIDEO_MAX9286_MAX96705
+	bool "Use max96705 and atina ar0140at senor if available"
+	help
+	  max9286 - max96705 - atina ar0140at sensor
+endchoice
 
 config MAX9286_BACKWARD
 	bool "backward camera"
