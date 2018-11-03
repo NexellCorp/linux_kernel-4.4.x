@@ -2217,7 +2217,7 @@ static void init_clipper_work(struct work_struct *work)
 
 	if (!nx_vip_is_valid(me->module)) {
 		dev_err(&me->pdev->dev, "NX VIP %d is not valid\n", me->module);
-		return -ENODEV;
+		return;
 	}
 
 	init_me(me);
