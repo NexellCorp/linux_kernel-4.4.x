@@ -651,6 +651,14 @@ config MMC_DW_NEXELL
 	  Synopsys DesignWare Memory Card Interface driver. Select this option
 	  for platforms based on s5p6818 and s5p6818 SoC's.
 
+config MMC_DW_NEXELL_SDIO1
+	tristate "Nexell specific extensions for Synopsys DW Memory Card Interface(Only SDIO CH1)"
+	depends on MMC_DW
+	help
+	  This selects support for Nexell s5pxx18 SoC specific extensions to the
+	  Synopsys DesignWare Memory Card Interface driver. Select this option
+	  for platforms based on s5p6818 and s5p6818 SoC's.
+
 config MMC_DW_K3
 	tristate "K3 specific extensions for Synopsys DW Memory Card Interface"
 	depends on MMC_DW
