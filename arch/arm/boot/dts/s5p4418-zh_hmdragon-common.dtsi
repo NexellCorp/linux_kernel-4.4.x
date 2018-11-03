@@ -178,13 +178,13 @@
 			dma-names = "tx", "rx";
 			pinctrl-0 = <&serial1_pin>, <&serial1_flow_cts>,
 			    <&serial1_flow_rts>;
-			status ="disabled";
+			status ="okay";
 		};
 
 		serial2:serial@c00a2000 {
 			dmas = <&pl08xdma0 4 0>, <&pl08xdma0 5 0>;
 			dma-names = "tx", "rx";
-			status ="disabled";
+			status ="okay";
 		};
 
 		serial3:serial@c00a3000 {
@@ -192,7 +192,7 @@
 		};
 
 		serial4:serial@c006d000 {
-			status ="disabled";
+			status ="okay";
 		};
 
 		dynamic-freq@bb000 {
@@ -280,8 +280,8 @@
 			mclk-in = <0>;
 			trans-mode = <0>;
 			frame-bit = <32>;
-			sample-rate = <48000>;
-			pre-supply-mclk = <1>;
+			sample-rate = <44100>;
+			pre-supply-mclk = <0>;
 			status = "okay";
 		};
 
@@ -291,8 +291,8 @@
 			mclk-in = <0>;
 			trans-mode = <0>;
 			frame-bit = <32>;
-			sample-rate = <48000>;
-			pre-supply-mclk = <1>;
+			sample-rate = <44100>;
+			pre-supply-mclk = <0>;
 			status = "okay";
 		};
 
@@ -635,7 +635,8 @@
 		i2c_adapter = <5>;
 		addr = <0x44>;
 		/* gpio_reset = <&gpio_b 14 0>; */
-		out_port = <2>; /* VD1: 1, VD2: 2 */
+		out_port = <2>; /* 1: VD1, 2: VD2 */
+		vdelay = <0>; /* 0: default */
 	};
 
 	power {
@@ -761,7 +762,9 @@
     nexell,sample_shift = <0x01>;
     status = "okay";
 };
+
 &dw_mmc_1 {
+	compatible = "nexell,s5p6818-dw-mshc-sdio1";
 	num-slots = <1>;
 	bus-width = <4>;
 	cap-mmc-highspeed;
@@ -789,7 +792,6 @@
 		nx,set_init_uV = <_set_init_uV>;	\
 		nx,sleep_slots = <_slp_slots>;
 
-
 &i2c_gpio3 {
 	compatible = "i2c-gpio";
 	gpios = <&gpio_e 8 0		/* SDA */
@@ -803,7 +805,7 @@
 		compatible = "nexell,nxe2000";
 		reg = <0x32>;
 		interrupt-parent = <&gpio_e>;
-		interrupts = <0x5 IRQ_TYPE_EDGE_FALLING>;
+		interrupts = <10 IRQ_TYPE_EDGE_FALLING>;
 
 		regulators {
 			VCC_DCDC0:
