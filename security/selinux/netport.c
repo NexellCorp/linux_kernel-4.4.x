@@ -251,7 +251,7 @@ static __init int sel_netport_init(void)
 
 #ifdef CONFIG_SELINUX_INIT_LEVEL_UP
 fs_initcall(sel_netport_init);
-#elif CONFIG_SELINUX_INIT_LEVEL_DOWN
+#elif defined(CONFIG_SELINUX_INIT_LEVEL_DOWN)
 late_initcall(sel_netport_init);
 #else
 __initcall(sel_netport_init);
