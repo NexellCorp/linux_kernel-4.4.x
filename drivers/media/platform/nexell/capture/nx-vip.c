@@ -652,7 +652,7 @@ static void __exit nx_vip_exit(void)
 
 core_initcall_sync(nx_vip_init);
 __exitcall(nx_vip_exit);
-#elif CONFIG_V4L2_INIT_LEVEL_UP
+#elif defined(CONFIG_V4L2_INIT_LEVEL_UP)
 static int __init nx_vip_init(void)
 {
 	return platform_driver_register(&nx_vip_driver);
