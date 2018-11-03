@@ -1875,7 +1875,7 @@ static int __init init_sel_fs(void)
 
 #ifdef CONFIG_SELINUX_INIT_LEVEL_UP
 fs_initcall(init_sel_fs);
-#elif CONFIG_SELINUX_INIT_LEVEL_DOWN
+#elif defined(CONFIG_SELINUX_INIT_LEVEL_DOWN)
 late_initcall(init_sel_fs);
 #else
 __initcall(init_sel_fs);
