@@ -66,6 +66,10 @@ config SELINUX_INIT_LEVEL_UP
 	bool "selinux mount init level up"
 	depends on ARCH_S5P4418 && REDUCE_BOOT_TIME
 
+config SELINUX_INIT_LEVEL_DOWN
+    bool "selinux mount init level down"
+    depends on ARCH_S5P4418 && REDUCE_BOOT_TIME
+
 config IPV6_INIT_LEVEL_UP
 	bool "IPv6 init level up"
 	depends on ARCH_S5P4418 && REDUCE_BOOT_TIME
