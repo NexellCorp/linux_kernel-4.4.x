@@ -317,7 +317,7 @@ static __init int sel_netnode_init(void)
 
 #ifdef CONFIG_SELINUX_INIT_LEVEL_UP
 fs_initcall(sel_netnode_init);
-#elif CONFIG_SELINUX_INIT_LEVEL_DOWN
+#elif defined(CONFIG_SELINUX_INIT_LEVEL_DOWN)
 late_initcall(sel_netnode_init);
 #else
 __initcall(sel_netnode_init);
