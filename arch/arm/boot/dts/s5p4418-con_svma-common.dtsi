@@ -35,7 +35,6 @@
 
 	aliases {
 		i2c3 = &i2c_gpio3;
-		i2c4 = &i2c_gpio4;
 		i2c5 = &i2c_gpio5;
 		i2c6 = &i2c_gpio6;
 		i2c7 = &i2c_gpio7;
@@ -304,6 +303,12 @@
 			status = "okay";
 		};
 
+		i2c_2:i2c@c00a6000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+		};
+
 		scaler@c0066000 {
 			status = "okay";
 		};
@@ -327,15 +332,6 @@
             alc56xx-id = <0x21>;
         };
     };
-
-	i2c_gpio4: i2c@4 {
-		compatible = "i2c-gpio";
-		gpios=<&gpio_d 6 0 /* SDA */
-				&gpio_d 7 0>;    /* SCL */
-		i2c-gpio,delay-us = <5>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-	};
 
 	i2c_gpio5: i2c@5 {
 		compatible = "i2c-gpio";
@@ -552,7 +548,7 @@
 	sensor {
 		type = <NX_CAPTURE_SENSOR_I2C>;
 		i2c_name = "max9286";
-		i2c_adapter = <4>;
+		i2c_adapter = <2>;
 		addr = <0x48>;
 	};
 
@@ -778,6 +774,8 @@
 	status = "okay";
 };
 
+#if defined(CONFIG_BT_BCM434545) && defined(CONFIG_BCMDHD_SDIO)
+/* for BT/WIFI */
 &dw_mmc_1 {
 	num-slots = <1>;
 	bus-width = <4>;
@@ -800,6 +798,24 @@
 
 	status = "okay";
 };
+#else
+/* for sdmmc */
+&dw_mmc_1 {
+	num-slots = <1>;
+	bus-width = <4>;
+	cap-sd-highspeed;
+	clock-frequency = <100000000>;
+	card-detect-delay = <200>;
+	disable-wp;
+	cd-gpios = <&gpio_e 31 0>;
+	cd-inverted;
+	nexell,drive_dly = <0x0>;
+	nexell,drive_shift = <0x02>;
+	nexell,sample_dly = <0x00>;
+	nexell,sample_shift = <0x01>;
+	status = "okay";
+};
+#endif
 
 &spi_2 {
 	status = "okay";
