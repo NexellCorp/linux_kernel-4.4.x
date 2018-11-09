@@ -66,6 +66,18 @@
 			};
 
 			spi2:spi@c00a7000  { clock-frequency = <20000000>; };
+
+            i2s0:i2s@c00b2000 {
+                clk-input = <I_PLL2>;
+            };
+
+            i2s1:i2s@c00b3000 {
+                clk-input = <I_PLL2>;
+            };
+
+            i2s2:i2s@c00b4000 {
+                clk-input = <I_EXTCLK1>;
+            };
 		};
 
 		l2:l2-cache-controller@cf000000 {
@@ -176,6 +188,32 @@
 			status = "okay";
 		};
 
+        i2s_0:i2s@c0055000 {
+            /*dfs;
+            dfs-pll = <3>;*/
+            #sound-dai-cells = <1>;
+            master-mode = <1>;
+            mclk-in = <0>;
+            trans-mode = <0>;
+            frame-bit = <32>;
+            sample-rate = <48000>;
+            pre-supply-mclk = <1>;
+            status = "okay";
+        };
+
+        i2s_1:i2s@c0056000 {
+            /*dfs;
+            dfs-pll = <3>;*/
+            #sound-dai-cells = <1>;
+            master-mode = <0>;
+            mclk-in = <1>;
+            trans-mode = <0>;
+            frame-bit = <32>;
+            sample-rate = <16000>;
+            pre-supply-mclk = <1>;
+            status = "okay";
+        };
+
 		pwm:pwm@c0018000 {
 			clock-names = "timers", "pwm-tclk0", "pwm-tclk3";
 			clocks =  <&pclk>, <&pwm0>, <&pwm3>;
@@ -276,20 +314,24 @@
 		};
 	};	/*** soc ***/
 
-	i2c_gpio3: i2c@3 {
-		compatible = "i2c-gpio";
-		gpios = <&gpio_b 16 0 /* sda */
-		    &gpio_b 18 0 /* scl */>;
-		i2c-gpio,delay-us = <5>;
-		#address-cells = <1>;
-		#size-cells = <0>;
+    i2c_gpio3: i2c@3 {
+        compatible = "i2c-gpio";
+        gpios = <&gpio_c 26 0 /* sda */
+            &gpio_e 30 0 /* scl */>;
+        i2c-gpio,delay-us = <1>;
+        #address-cells = <1>;
+        #size-cells = <0>;
 
-		alc5623: alc5623@1a {
-			#sound-dai-cells = <0>;
-			compatible = "realtek,alc5623";
-			reg = <0x1a>;
-		};
-	};
+        alc5621_1: alc5621_1@1a {
+            #sound-dai-cells = <0>;
+            compatible = "realtek,alc5623";
+            reg = <0x1a>;
+            add-ctrl = <0x3700>;
+            jack-det-ctrl = <0x4810>;
+            output-mixer-ctrl = <0xAF00>;
+            alc56xx-id = <0x21>;
+        };
+    };
 
 	i2c_gpio5: i2c@5 {
 		compatible = "i2c-gpio";
@@ -347,6 +389,37 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 	}; /* HDMI */
+
+    sound {
+        compatible = "simple-audio-card";
+        simple-audio-card,name = "s5p4418 Convergence Car Audio";
+        simple-audio-card,mclk-fs = <256>;
+        simple-audio-card,widgets =
+            "Headphone", "Out Jack",
+            "Microphone", "In Jack";
+        status = "okay";
+
+        simple-audio-card,dai-link@0 {
+            format = "i2s";
+            cpu {
+                sound-dai = <&i2s_0 0>;
+            };
+
+            codec {
+                sound-dai = <&alc5621_1>;
+            };
+        };
+        simple-audio-card,dai-link@2 {
+            format = "spdif";
+            cpu {
+                sound-dai = <&spdif_tx 0>;
+            };
+
+            codec {
+                sound-dai = <&spdif_out>;
+            };
+        };
+    };
 
 	spdif_out: spdif-out {
 		#sound-dai-cells = <0>;
