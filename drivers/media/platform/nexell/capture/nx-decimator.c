@@ -443,9 +443,10 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 		}
 	} else {
 		if (NX_ATOMIC_READ(&me->state) & STATE_RUNNING) {
-			nx_vip_stop(module, VIP_DECIMATOR);
 			NX_ATOMIC_SET_MASK(STATE_STOPPING, &me->state);
+			nx_vip_stop(module, VIP_DECIMATOR);
 			wait_for_completion_timeout(&me->stop_done, HZ);
+			NX_ATOMIC_CLEAR_MASK(STATE_STOPPING, &me->state);
 #ifdef CONFIG_DECIMATOR_USE_DQTIMER
 			while (timer_pending(&me->dq_timer)) {
 				mdelay(DQ_TIMEOUT_MS);
@@ -453,7 +454,6 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 					 me->module);
 			}
 #endif
-			NX_ATOMIC_CLEAR_MASK(STATE_STOPPING, &me->state);
 			unregister_irq_handler(me);
 			me->buffer_underrun = false;
 			free_dma_buffer(me);
