@@ -417,12 +417,12 @@ static int goodix_reset(struct goodix_ts_data *ts)
 		return error;
 
 	usleep_range(6000, 10000);		/* T4: > 5ms */
-#if 0	// FOR [1st Convergence Car Board], DO NOT set the Reset pin to input mode	
+
 	/* end select I2C slave addr */
 	error = gpiod_direction_input(ts->gpiod_rst);
 	if (error)
 		return error;
-#endif
+
 	error = goodix_int_sync(ts);
 	if (error)
 		return error;
