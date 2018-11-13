@@ -204,8 +204,8 @@
         };
 
         i2s_1:i2s@c0056000 {
-            /*dfs;
-            dfs-pll = <3>;*/
+            dfs;
+            dfs-pll = <2>;
             #sound-dai-cells = <1>;
             master-mode = <1>;
             mclk-in = <0>;
@@ -452,6 +452,7 @@
 
         simple-audio-card,dai-link@0 {
             format = "i2s";
+/*
             cpu {
                 sound-dai = <&i2s_0 0>;
             };
@@ -459,16 +460,33 @@
             codec {
                 sound-dai = <&alc5621_1>;
             };
-        };
-
-        simple-audio-card,dai-link@1 {
-            format = "i2s";
+*/
             cpu {
                 sound-dai = <&i2s_1 0>;
             };
 
             codec {
                 sound-dai = <&alc5621_2>;
+            };
+        };
+
+        simple-audio-card,dai-link@1 {
+            format = "i2s";
+/*
+            cpu {
+                sound-dai = <&i2s_1 0>;
+            };
+
+            codec {
+                sound-dai = <&alc5621_2>;
+            };
+*/
+            cpu {
+                sound-dai = <&i2s_0 0>;
+            };
+
+            codec {
+                sound-dai = <&alc5621_1>;
             };
         };
 
