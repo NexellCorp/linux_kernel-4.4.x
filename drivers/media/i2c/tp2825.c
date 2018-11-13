@@ -1218,17 +1218,15 @@ static int tp2825_parse_dt(struct device *dev, struct tp2825_state *pdata)
 	if (!of_property_read_u32(np, "out_port", &val))
 		pdata->out_port = (int)val;
 	else
-		dev_err(dev, "failed to get out_port\n");
+		pdata->out_port = 0;
 
 	if (!of_property_read_u32(np, "vdelay", &val))
 		pdata->vdelay = (int)val;
 	else
-		dev_err(dev, "failed to get vdelay\n");
+		pdata->vdelay = 0;
 
-	/*
-	* vmsg("## %s() out_port:%d\n", __func__, pdata->out_port);
-	* vmsg("## %s() vdelay:%d\n", __func__, pdata->vdelay);
-	*/
+	vmsg("## %s() out_port:%d\n", __func__, pdata->out_port);
+	vmsg("## %s() vdelay:%d\n", __func__, pdata->vdelay);
 
 	return 0;
 }
