@@ -403,6 +403,9 @@ static int panel_hdmi_wait_fb_bound(struct hdmi_context *ctx)
 	fb_helper = &private->fbdev->fb_helper;
 	ops = ctx_to_display(ctx)->ops;
 
+	if (fb_helper == NULL)
+		return 0;
+
 	if (!ctx->skip_boot_connect) {
 		/*
 		 * check clone mode, refer to drm_target_cloned
