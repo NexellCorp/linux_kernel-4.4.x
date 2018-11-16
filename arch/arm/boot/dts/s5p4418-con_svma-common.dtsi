@@ -784,11 +784,17 @@
 		out_format = <3>;
 	};
 };
-#ifdef CONFIG_DRM_NX_LVDS
+
+&dp_drm_hdmi {
+	ddc-i2c-bus = <&i2c_gpio9>;
+	skip-boot-connect;
+	status = "ok";
+};
+
+/*
 &dp_drm_lvds {
 	status = "ok";
 
-	/* crtcs-possible-mask = <0x2>; */
 	voltage_level = <0x3f>;
 
 	display-timing {
@@ -821,15 +827,7 @@
 		yc_order = <0>;
 	};
 };
-#endif
-
-#ifdef CONFIG_DRM_NX_HDMI
-&dp_drm_hdmi {
-	ddc-i2c-bus = <&i2c_gpio9>;
-	skip-boot-connect;
-	status = "ok";
-};
-#endif
+*/
 
 &dw_mmc_0 {
 	num-slots = <1>;
