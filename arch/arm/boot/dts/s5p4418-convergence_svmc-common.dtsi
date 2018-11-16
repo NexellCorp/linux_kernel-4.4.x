@@ -35,6 +35,7 @@
 
 	aliases {
 		i2c3 = &i2c_gpio3;
+		i2c4 = &i2c_gpio4;
 		i2c5 = &i2c_gpio5;
 		i2c6 = &i2c_gpio6;
 		i2c7 = &i2c_gpio7;
@@ -203,17 +204,29 @@
         };
 
         i2s_1:i2s@c0056000 {
-            /*dfs;
-            dfs-pll = <3>;*/
+            dfs;
+            dfs-pll = <2>;
+            #sound-dai-cells = <1>;
+            master-mode = <1>;
+            mclk-in = <0>;
+            trans-mode = <0>;
+            frame-bit = <32>;
+            sample-rate = <48000>;
+            pre-supply-mclk = <1>;
+            status = "okay";
+        };
+
+		i2s_2:i2s@c0057000 {
             #sound-dai-cells = <1>;
             master-mode = <0>;
             mclk-in = <1>;
             trans-mode = <0>;
             frame-bit = <32>;
             sample-rate = <16000>;
-            pre-supply-mclk = <1>;
+            pre-supply-mclk = <0>;
+			dfs;
             status = "okay";
-        };
+		};
 
 		pwm:pwm@c0018000 {
 			clock-names = "timers", "pwm-tclk0", "pwm-tclk3";
@@ -334,6 +347,25 @@
         };
     };
 
+	i2c_gpio4: i2c@4 {
+		compatible = "i2c-gpio";
+		gpios = <&gpio_b 14 0 /* sda */
+			&gpio_b 16 0 /* scl */>;
+		i2c-gpio,delay-us = <1>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		alc5621_2: alc5621_2@1a {
+			#sound-dai-cells = <0>;
+			compatible = "realtek,alc5623";
+			reg = <0x1a>;
+			add-ctrl = <0x3700>;
+			jack-det-ctrl = <0x4810>;
+			output-mixer-ctrl = <0xAF00>;
+			alc56xx-id = <0x21>;
+		};
+    };
+
 	i2c_gpio5: i2c@5 {
 		compatible = "i2c-gpio";
 		gpios = <&gpio_c 27 0 /* sda */
@@ -401,6 +433,14 @@
 		#size-cells = <0>;
 	}; /* Apple CP Chip */
 
+	snd_null: snd_null@10 {
+		#sound-dai-cells = <0>;
+		compatible = "nexell,snd-null";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0 0>;
+	};
+
     sound {
         compatible = "simple-audio-card";
         simple-audio-card,name = "s5p4418 Convergence Car Audio";
@@ -413,14 +453,34 @@
         simple-audio-card,dai-link@0 {
             format = "i2s";
             cpu {
-                sound-dai = <&i2s_0 0>;
+                sound-dai = <&i2s_1 0>;
             };
 
             codec {
-                sound-dai = <&alc5621_1>;
+                sound-dai = <&alc5621_2>;
             };
         };
-        simple-audio-card,dai-link@2 {
+        simple-audio-card,dai-link@1 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_0 0>;
+			};
+
+			codec {
+				sound-dai = <&alc5621_1>;
+			};
+		};
+		simple-audio-card,dai-link@2 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_2 0>;
+			};
+
+			codec {
+				sound-dai = <&snd_null>;
+			};
+		};
+        simple-audio-card,dai-link@3 {
             format = "spdif";
             cpu {
                 sound-dai = <&spdif_tx 0>;
