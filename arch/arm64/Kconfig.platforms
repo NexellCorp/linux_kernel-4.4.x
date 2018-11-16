@@ -163,6 +163,11 @@ config ION_INIT_LEVEL_UP
 	bool "ion init level up"
 	depends on ARCH_S5P6818 && REDUCE_BOOT_TIME
 
+config DWC_INIT_LEVEL_UP
+	bool "otg and related devices init level up"
+	depends on ARCH_S5P6818 && REDUCE_BOOT_TIME
+	select EXT4_FS_INIT_LEVEL_UP
+
 config ARCH_NXP5540
 	bool "NEXELL NXP5540"
 	select ARCH_REQUIRE_GPIOLIB
