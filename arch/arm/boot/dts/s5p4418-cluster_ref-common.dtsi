@@ -524,15 +524,12 @@
 	};
 };
 
+
 &dp_drm_rgb {
 	status = "ok";
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp_rgb_vclk &dp_rgb_vsync &dp_rgb_hsync
 	&dp_rgb_de &dp_rgb_R &dp_rgb_G &dp_rgb_B>;
-	/* enable-gpios = <&gpio_c 2 0>; */
-	/* remote-endpoint = <&rgb_panel>; */
-	/* panel-mpu = <0>; */
-	/* crtcs-possible-mask = <0x1>; */
 
 	display-timing {
 		clock-frequency = <88000000>;
@@ -566,9 +563,6 @@
 &dp_drm_lvds {
 	status = "ok";
 
-	/* crtcs-possible-mask = <0x2>; */
-	voltage_level = <0x3f>;
-
 	display-timing {
 		clock-frequency = <30000000>;
 		hactive = <800>;
@@ -589,14 +583,11 @@
 	};
 
 	dp_control {
-		clk_src_lv0 = <2>;
-		clk_div_lv0 = <20>;
+		clk_src_lv0 = <3>;
+		clk_div_lv0 = <26>;
 		clk_src_lv1 = <7>;
 		clk_div_lv1 = <1>;
 		out_format = <2>;
-		swap_rb = <3>;
-		invert_field = <1>;
-		yc_order = <0>;
 	};
 };
 
