@@ -41,6 +41,9 @@ Required properties for display soc panel driver:
    - ev_start_offset: start even veritcal sync offset
    - ev_end_offset: end even veritcal sync offset
    - vck_select: specifies the pixel clock polarity
+   - voltage_level : TX driver output differential voltage level control pin
+   - fc_code : Vos control pin
+   - format: VESA/JEIDA/User Programmable data packing format
 
 Example:
 
@@ -60,6 +63,9 @@ Board Specific portion:
 &dp_drm_lvds {
 	remote-endpoint = <&lvds_panel>;
 	panel-mpu = <0>;
+    voltage_level = <0x3f>; /* CNT_VOD_H */
+    fc_code = <0x1>; /* Vos  */
+    format = <0x1>; /* JEIDA */
 
 	display-timing {
 	        clock-frequency = <65000000>;
