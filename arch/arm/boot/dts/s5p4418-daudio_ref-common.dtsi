@@ -567,7 +567,7 @@
 
 #include "tw9900_rearcam_regset.dtsi"
 &rearcam {
-	pinctrl-names = "default";
+	pinctrl-names = "rear_cam_clk";
 	pinctrl-0 = <&vid2_data_clk>;
 	rotation = <0>;
 	rear_cam_dev = <&clipper_1>;
@@ -576,6 +576,7 @@
 	dp_drm_dev = <&dp_drm_lvds>;
 	width = <704>;
 	height = <480>;
+	skip_frame = <0>;
 	status = "okay";
 
 	gpio {
@@ -634,8 +635,8 @@
 	};
 
 	dp_control {
-		clk_src_lv0 = <0>;
-		clk_div_lv0 = <16>;
+		clk_src_lv0 = <3>;
+		clk_div_lv0 = <12>;
 		clk_src_lv1 = <7>;
 		clk_div_lv1 = <1>;
 		out_format = <2>;
