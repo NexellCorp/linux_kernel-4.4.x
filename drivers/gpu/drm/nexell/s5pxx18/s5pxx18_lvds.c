@@ -25,6 +25,7 @@
 #include "s5pxx18_drv.h"
 
 #define	DEF_VOLTAGE_LEVEL	(0x20)
+#define	DEF_FC_CODE	(0x4)
 
 static int lvds_phy_reset(struct reset_control *rsc[], int num)
 {
@@ -84,9 +85,10 @@ static int lvds_ops_prepare(struct nx_drm_display *display)
 	struct nx_lvds_dev *lvds = display->context;
 	struct nx_control_res *res = &lvds->control.res;
 	struct nx_control_info *ctrl = &lvds->control.ctrl;
-	enum nx_lvds_format format = NX_LVDS_FORMAT_JEIDA;
+	enum nx_lvds_format format = lvds->lvds_format;
 	int clkid = NX_CLOCK_LVDS;
-	u32 voltage = DEF_VOLTAGE_LEVEL;
+	u32 voltage = lvds->voltage_level;
+	u32 fc_code = lvds->fc_code;
 	u32 val;
 	int err;
 
@@ -123,8 +125,6 @@ static int lvds_ops_prepare(struct nx_drm_display *display)
 		return -EINVAL;
 	}
 
-	format = lvds->lvds_format;
-	voltage = lvds->voltage_level;
 	pr_debug("%s: format: %d\n", __func__, format);
 
 	/*
@@ -199,7 +199,7 @@ static int lvds_ops_prepare(struct nx_drm_display *display)
 		| (0<<22) /* SRC_TRH, source termination resistor select pin */
 		| (voltage<<14)
 		| (0x01<<6) /* CNT_PEN_H, TX pre-emphasis level control */
-		| (0x4<<3) /* FC_CODE, vos control pin */
+		| (fc_code<<3) /* FC_CODE, vos control pin */
 		| (0<<2) /* OUTCON, TX Driver state pin, 0:Hi-z, 1:Low */
 		| (0<<1) /* LOCK_CNT, Lock signal selection pin, enable */
 		| (0<<0) /* AUTO_DSK_SEL, auto deskew selection pin, normal */
@@ -329,6 +329,7 @@ void *nx_drm_display_lvds_get(struct device *dev,
 	struct nx_lvds_dev *lvds;
 	u32 format;
 	u32 voltage;
+	u32 fc_code;
 
 	lvds = kzalloc(sizeof(*lvds), GFP_KERNEL);
 	if (!lvds)
@@ -336,9 +337,18 @@ void *nx_drm_display_lvds_get(struct device *dev,
 
 	if (!of_property_read_u32(node, "format", &format))
 		lvds->lvds_format = format;
+	else
+		lvds->lvds_format = NX_LVDS_FORMAT_JEIDA;
 
 	if (!of_property_read_u32(node, "voltage_level", &voltage))
 		lvds->voltage_level = voltage;
+	else
+		lvds->voltage_level = DEF_VOLTAGE_LEVEL;
+
+	if (!of_property_read_u32(node, "fc_code", &fc_code))
+		lvds->fc_code = fc_code;
+	else
+		lvds->fc_code = DEF_FC_CODE;
 
 	display->context = lvds;
 	display->ops = &lvds_ops;
