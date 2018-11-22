@@ -1010,5 +1010,16 @@
 			resets = <&nexell_reset RESET_ID_VR>;
 			reset-names = "vr-reset";
 		};
+
+		deinterlacer: deinterlacer@c0065000 {
+			compatible = "nexell,nx-deinterlacer";
+			reg = <PHYS_BASE_DEINTERLACE 0x1000>;
+			interrupts = <0 IRQ_DEINTERLACE 0>;
+			clock-names = "deinterlace";
+			clocks = <&deinterlace>;
+			reset-names = "deinterlace-reset";
+			resets = <&nexell_reset RESET_ID_DEINTERLACE>;
+			status = "disabled";
+		};
 	}; /*** soc ***/
 };
