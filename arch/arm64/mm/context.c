@@ -81,10 +81,6 @@ static void flush_context(unsigned int cpu)
 	/* Queue a TLB invalidate and flush the I-cache if necessary. */
 	cpumask_setall(&tlb_flush_pending);
 
-#ifdef CONFIG_ARM64_WORKAROUND_CCI400_DVMV7
-	flush_tlb_all();
-#endif
-
 	if (icache_is_aivivt())
 		__flush_icache_all();
 }
@@ -199,21 +195,8 @@ switch_mm_fastpath:
 	 * Defer TTBR0_EL1 setting for user threads to uaccess_enable() when
 	 * emulating PAN.
 	 */
-	if (!system_uses_ttbr0_pan()) {
+	if (!system_uses_ttbr0_pan())
 		cpu_switch_mm(mm->pgd, mm);
-#ifdef CONFIG_ARM64_WORKAROUND_CCI400_DVMV7
-		flush_tlb_all();
-#endif
-	}
-}
-
-/* Errata workaround post TTBRx_EL1 update. */
-asmlinkage void post_ttbr_update_workaround(void)
-{
-	asm(ALTERNATIVE("nop; nop; nop",
-			"ic iallu; dsb nsh; isb",
-			ARM64_WORKAROUND_CAVIUM_27456,
-			CONFIG_CAVIUM_ERRATUM_27456));
 }
 
 /* Errata workaround post TTBRx_EL1 update. */
@@ -239,11 +222,6 @@ static int asids_init(void)
 	case 2:
 		asid_bits = 16;
 	}
-
-#ifdef CONFIG_ARM64_WORKAROUND_CCI400_DVMV7
-/* In DVMv7 protocol, ASID bits must be 8 regardless of cpu core feature */
-	asid_bits = 8;
-#endif
 
 	/* If we end up with more CPUs than ASIDs, expect things to crash */
 	WARN_ON(NUM_USER_ASIDS < num_possible_cpus());

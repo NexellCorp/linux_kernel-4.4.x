@@ -483,7 +483,7 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 err_alloc_buf_struct_failed:
 	binder_update_page_range(alloc, 0,
 				 (void *)PAGE_ALIGN((uintptr_t)buffer->data),
-				 end_page_addr, NULL);
+				 end_page_addr);
 	return ERR_PTR(-ENOMEM);
 }
 
