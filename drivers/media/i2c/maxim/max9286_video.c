@@ -1122,14 +1122,14 @@ static int max9286_hardware_init(struct i2c_client *client)
 	max9286_i2c_read_addr_byte(client, ADDR_MAX9286, 0x49, &val);
 	g_sensor_is_there = ((val >> 4) & 0xF) | (val & 0xF);
 	pr_info("g_sensor_is_there = 0x%x, isFirstRun = %d\n", g_sensor_is_there, isFirstRun);
-
+#if 0	// for mcu init
 	if(isFirstRun == true && g_sensor_is_there == 0x0f) {
 		/* check init value it depend on MUC */
 		max9286_i2c_read_addr_byte(client, ADDR_MAX9271+ 2, 0x0b, &val);
 		if(val == 0x8A) {
 			pr_info("max9286_hardware_init already setting done so run~.\n");
 			/* Enable MIPI output */
-			max9286_i2c_write(client, ADDR_MAX9286, 0x15, 0x8B);
+			max9286_i2c_write(client, ADDR_MAX9286, 0x15, 0x0B);
 			msleep(20);
 
 			/* Reg 0x27 Data: Bit[D7], [D1], [D0] = Value[1] ==> Normal */
@@ -1144,7 +1144,7 @@ static int max9286_hardware_init(struct i2c_client *client)
 			return 0;
 		}
 	}
-
+#endif
 	/* Set up new address for serial links */
 	reg = 0;
 	for (i = 1; i <= MAX_SENSOR_NUM; i++) {
@@ -1244,7 +1244,7 @@ static int max9286_hardware_init(struct i2c_client *client)
 	max9286_i2c_write(client, ADDR_MAX9286, 0x01, 0x00);
 	msleep(100);
 	/* Enable MIPI output */
-	max9286_i2c_write(client, ADDR_MAX9286, 0x15, 0x8B);
+	max9286_i2c_write(client, ADDR_MAX9286, 0x15, 0x0B);
 	msleep(20);
 
 	/* Reg 0x27 Data: Bit[D7], [D1], [D0] = Value[1] ==> Normal */
@@ -1706,9 +1706,9 @@ static int __find_resolution(struct v4l2_subdev *sd,
 		}
 		fsize++;
 	}
-	dev_err(&client->dev, "LINE(%d): mf width: %d, mf height: %d, mf code: %d\n", __LINE__,
+	dev_info(&client->dev, "LINE(%d): mf width: %d, mf height: %d, mf code: %d\n", __LINE__,
 		mf->width, mf->height, stype);
-	dev_err(&client->dev, "LINE(%d): match width: %d, match height: %d, match code: %d\n", __LINE__,
+	dev_info(&client->dev, "LINE(%d): match width: %d, match height: %d, match code: %d\n", __LINE__,
 		match->width, match->height, stype);
 	if (match) {
 		mf->width  = match->width;
@@ -1717,7 +1717,7 @@ static int __find_resolution(struct v4l2_subdev *sd,
 		*type = stype;
 		return 0;
 	}
-	dev_err(&client->dev, "LINE(%d): mf width: %d, mf height: %d, mf code: %d\n", __LINE__,
+	dev_info(&client->dev, "LINE(%d): mf width: %d, mf height: %d, mf code: %d\n", __LINE__,
 		mf->width, mf->height, stype);
 
 	return -EINVAL;
@@ -1844,7 +1844,7 @@ static int max9286_link_setup(struct media_entity *entity,
 			    const struct media_pad *local,
 			    const struct media_pad *remote, u32 flags)
 {
-	printk("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	return 0;
 }
 
@@ -1858,7 +1858,7 @@ static int max9286_init_formats(struct v4l2_subdev *sd, struct v4l2_subdev_fh *f
 	struct v4l2_subdev_format format;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 
-	dev_err(&client->dev, "%s: \n", __func__);
+	dev_info(&client->dev, "%s: \n", __func__);
 	memset(&format, 0, sizeof(format));
 	format.pad = 0;
 	format.which = fh ? V4L2_SUBDEV_FORMAT_TRY : V4L2_SUBDEV_FORMAT_ACTIVE;
