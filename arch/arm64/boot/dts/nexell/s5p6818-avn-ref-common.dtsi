@@ -586,6 +586,10 @@
 	status = "okay";
 };
 
+&decimator_0 {
+	status = "okay";
+};
+
 &clipper_0 {
 	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
 	pinctrl-names = "default";
