@@ -627,6 +627,10 @@
 	status = "okay";
 };
 
+&deinterlacer {
+	status = "okay";
+};
+
 &vip_0 {
 	clk-base = <0xc00c1000>;
 	status = "okay";
