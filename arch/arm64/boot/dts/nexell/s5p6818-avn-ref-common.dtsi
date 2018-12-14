@@ -582,6 +582,10 @@
 	};
 };
 
+&deinterlacer {
+	status = "okay";
+};
+
 &vip_0 {
 	status = "okay";
 };
