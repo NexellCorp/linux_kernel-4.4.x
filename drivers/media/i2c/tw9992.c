@@ -474,8 +474,58 @@ static int tw9992_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
+static int tw9992_enum_frame_size(struct v4l2_subdev *sd,
+				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_frame_size_enum *frame)
+{
+	pr_info("%s, index:%d\n", __func__, frame->index);
+
+	if (frame->index >= ARRAY_SIZE(supported_resolutions))
+		return -ENODEV;
+
+	frame->max_width = supported_resolutions[frame->index].width;
+	frame->max_height = supported_resolutions[frame->index].height;
+
+	return 0;
+}
+
+static int tw9992_enum_frame_interval(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_frame_interval_enum
+				      *frame)
+{
+	int i;
+
+	pr_info("%s, %s interval\n", __func__, (frame->index) ? "max" : "min");
+
+	for (i = 0; i < ARRAY_SIZE(supported_resolutions); i++) {
+		if ((frame->width == supported_resolutions[i].width) &&
+		    (frame->height == supported_resolutions[i].height)) {
+			frame->interval.numerator = 1;
+			frame->interval.denominator =
+				supported_resolutions[i].interval[frame->index];
+			pr_info("[%s] width:%d, height:%d, interval:%d\n",
+			     __func__, frame->width, frame->height,
+			     frame->interval.denominator);
+			return false;
+		}
+	}
+	return -EINVAL;
+}
+
+static int tw9992_g_crop(struct v4l2_subdev *sd, struct v4l2_crop *a)
+{
+	a->c.left	= 0;
+	a->c.top	= 0;
+	a->c.width	= 704;
+	a->c.height	= 480;
+
+	return 0;
+}
+
 static const struct v4l2_subdev_video_ops tw9992_video_ops = {
 	.s_stream		= tw9992_s_stream,
+	.g_crop			= tw9992_g_crop,
 };
 
 static int tw9992_set_fmt(struct v4l2_subdev *sd,
