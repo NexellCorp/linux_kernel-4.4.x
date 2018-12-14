@@ -474,8 +474,19 @@ static int tw9992_s_stream(struct v4l2_subdev *sd, int enable)
 	return ret;
 }
 
+static int tw9992_g_crop(struct v4l2_subdev *sd, struct v4l2_crop *a)
+{
+	a->c.left	= 0;
+	a->c.top	= 0;
+	a->c.width	= 704;
+	a->c.height	= 480;
+
+	return 0;
+}
+
 static const struct v4l2_subdev_video_ops tw9992_video_ops = {
 	.s_stream		= tw9992_s_stream,
+	.g_crop			= tw9992_g_crop,
 };
 
 static int tw9992_set_fmt(struct v4l2_subdev *sd,
