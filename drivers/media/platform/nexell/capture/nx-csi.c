@@ -1117,10 +1117,26 @@ static int nx_csi_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param)
 	return v4l2_subdev_call(remote, video, s_parm, param);
 }
 
+static int nx_csi_g_crop(struct v4l2_subdev *sd,
+			     struct v4l2_crop *crop)
+{
+	struct nx_csi *me = v4l2_get_subdevdata(sd);
+	struct v4l2_subdev *remote = get_remote_subdev(me, NX_CSI_PAD_SINK);
+	int err;
+
+	err = v4l2_subdev_call(remote, video, g_crop, crop);
+	if (!err) {
+		pr_debug("[%s] crop %d:%d:%d:%d\n", __func__, crop->c.left,
+				crop->c.top, crop->c.width, crop->c.height);
+	}
+	return err;
+}
+
 static struct v4l2_subdev_video_ops nx_csi_video_ops = {
 	.s_stream = nx_csi_s_stream,
 	.g_parm = nx_csi_g_parm,
 	.s_parm = nx_csi_s_parm,
+	.g_crop = nx_csi_g_crop,
 };
 
 static struct v4l2_subdev_pad_ops nx_csi_pad_ops = {
