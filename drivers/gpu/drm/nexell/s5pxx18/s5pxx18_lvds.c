@@ -338,7 +338,7 @@ void *nx_drm_display_lvds_get(struct device *dev,
 	if (!of_property_read_u32(node, "format", &format))
 		lvds->lvds_format = format;
 	else
-		lvds->lvds_format = NX_LVDS_FORMAT_JEIDA;
+		lvds->lvds_format = NX_LVDS_FORMAT_VESA;
 
 	if (!of_property_read_u32(node, "voltage_level", &voltage))
 		lvds->voltage_level = voltage;
