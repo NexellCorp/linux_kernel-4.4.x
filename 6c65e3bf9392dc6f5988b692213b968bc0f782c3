@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0c214116_27716860",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2018-12-19T06:32:17Z",
+      "side": 1,
+      "message": "Please add commit message about\nWhy change default format\nex\u003e\nto fix lvds display image color distortion after suspend/resume",
+      "revId": "6c65e3bf9392dc6f5988b692213b968bc0f782c3",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
