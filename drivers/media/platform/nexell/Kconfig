@@ -30,6 +30,18 @@ if VIDEO_NEXELL_CAPTURE
 source "drivers/media/platform/nexell/capture/Kconfig"
 endif # VIDEO_NEXELL_CAPTURE
 
+config VIDEO_NEXELL_M2M
+	bool "Nexell M2M interface driver"
+	default n
+	help
+	  This is the interface driver for Nexell SoC for the M2M
+	  device. These are devices that read data form the source memory and
+	  then reprocess and output the result to the destinatoi memory.
+
+	  Say Y here to enable Nexell M2M deivces.
+
+source "drivers/media/platform/nexell/m2m/Kconfig"
+
 config VIDEO_NEXELL_DVB
 	bool "Nexell S5Pxx18 SoC series DVB interface"
 	depends on I2C
