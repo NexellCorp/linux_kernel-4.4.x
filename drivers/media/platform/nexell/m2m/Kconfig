@@ -1,0 +1,12 @@
+config VIDEO_NEXELL_DEINTERLACER
+	bool "Enable deinterlacer"
+	depends on ARCH_S5P6818 && VIDEO_NEXELL_M2M
+	default n
+	help
+	  This is a deinterlace driver for Nexell Soc. The deinterlace
+	  block makes a frame data by using a field(Odd/Even) data.
+	  If the current field of the iamge is an even field, the creates
+	  a new odd field by using the previous odd field
+	  and the next odd field.
+
+	  Say y here to enable deinterlacer
