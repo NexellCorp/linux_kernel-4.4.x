@@ -57,6 +57,21 @@ struct tw9992_regset {
 	u8 *data;
 };
 
+struct nx_resolution {
+	uint32_t width;
+	uint32_t height;
+	uint32_t interval[2];
+};
+
+static struct nx_resolution supported_resolutions[] = {
+	{
+		.width	= 720,
+		.height = 480,
+		.interval[0] = 15,
+		.interval[1] = 30,
+	}
+};
+
 struct tw9992_state {
 	struct media_pad		pad; /* for media device pad */
 	struct v4l2_subdev		sd;
@@ -431,7 +446,6 @@ static int tw9992_init(struct v4l2_subdev *sd, u32 val)
 
 		return ret;
 	}
-	mdelay(10);
 
 #ifdef TW9900_DEBUG
 	u8 data = 0;
@@ -498,6 +512,8 @@ static int tw9992_set_fmt(struct v4l2_subdev *sd,
 
 static struct v4l2_subdev_pad_ops tw9992_pad_ops = {
 	.set_fmt		= tw9992_set_fmt,
+	.enum_frame_size = tw9992_enum_frame_size,
+	.enum_frame_interval = tw9992_enum_frame_interval,
 };
 
 static const struct v4l2_subdev_ops tw9992_ops = {
