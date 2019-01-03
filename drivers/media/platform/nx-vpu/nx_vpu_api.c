@@ -1,19 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
 
 #ifndef UNUSED
@@ -23,17 +11,21 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 
+#ifdef CONFIG_ARCH_S5P6818
 #include <dt-bindings/tieoff/s5p6818-tieoff.h>
+#endif
 
+#ifdef CONFIG_ARCH_NXP3220_COMMON
+#include "blackbird_v3.6.25.h"
+#else
 #include "blackbird_v2.3.10.h"
+#endif
 #include "vpu_hw_interface.h"		/* Register Access */
 #include "nx_vpu_api.h"
-
 
 #define	DBG_POWER			0
 #define	DBG_CLOCK			0
 #define	INFO_MSG			0
-
 
 /*--------------------------------------------------------------------------- */
 /* Static Global Variables */
@@ -41,18 +33,17 @@ static int gstIsInitialized;
 static int gstIsVPUOn;
 static unsigned int gstVpuRegStore[64];
 
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 static uint32_t *gstCodaClockEnRegVir;
 static uint32_t *gstIsolateBase;
 static uint32_t *gstAliveBase;
-
+#endif
 
 static struct nx_vpu_codec_inst gstVpuInstance[NX_MAX_VPU_INSTANCE];
-
 
 /*--------------------------------------------------------------------------- */
 /*  Define Static Functions */
 static unsigned int VPU_IsBusy(void);
-
 
 /*----------------------------------------------------------------------------
  *		Nexell Specific VPU Hardware On/Off Logic
@@ -63,7 +54,7 @@ static unsigned int VPU_IsBusy(void);
 
 #define	POWER_PMU_VPU_MASK		0x00000002
 
-#if defined(CONFIG_ARCH_S5P6818)
+#ifdef CONFIG_ARCH_S5P6818
 /*	Async XUI Power Down
  *
  *	Step 1. Waiting until CACTIVE to High
@@ -147,10 +138,12 @@ static void NX_ASYNCXUI_PowerUp(void)
 
 void NX_VPU_HwOn(void *dev, void *pVpuBaseAddr)
 {
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 	uint32_t tmpVal;
 	uint32_t *pNPreCharge, *pNPowerUp, *pNPowerAck;
+#endif
 
-	NX_DbgMsg(DBG_POWER, ("NX_VPU_HwOn() ++\n"));
+	NX_DbgMsg(DBG_POWER, "NX_VPU_HwOn() ++\n");
 
 	/* Already Power On */
 	if (gstIsVPUOn)
@@ -160,18 +153,19 @@ void NX_VPU_HwOn(void *dev, void *pVpuBaseAddr)
 
 	InitVpuRegister(pVpuBaseAddr);
 
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 	/* Initialize ISolate Register's */
 	pNPreCharge  = gstIsolateBase + 1;
 	pNPowerUp    = gstIsolateBase + 2;
 	pNPowerAck   = gstIsolateBase + 3;
 
-	NX_DbgMsg(INFO_MSG, ("====================================\n"));
-	NX_DbgMsg(INFO_MSG, ("pVpuBaseAddr = %p\n", pVpuBaseAddr));
-	NX_DbgMsg(INFO_MSG, ("pIsolateBase = %p\n", gstIsolateBase));
-	NX_DbgMsg(INFO_MSG, ("pNPreCharge  = %p\n", pNPreCharge));
-	NX_DbgMsg(INFO_MSG, ("pNPowerUp    = %p\n", pNPowerUp));
-	NX_DbgMsg(INFO_MSG, ("pNPowerAck   = %p\n", pNPowerAck));
-	NX_DbgMsg(INFO_MSG, ("====================================\n"));
+	NX_DbgMsg(INFO_MSG, "====================================\n");
+	NX_DbgMsg(INFO_MSG, "pVpuBaseAddr = %p\n", pVpuBaseAddr);
+	NX_DbgMsg(INFO_MSG, "pIsolateBase = %p\n", gstIsolateBase);
+	NX_DbgMsg(INFO_MSG, "pNPreCharge  = %p\n", pNPreCharge);
+	NX_DbgMsg(INFO_MSG, "pNPowerUp    = %p\n", pNPowerUp);
+	NX_DbgMsg(INFO_MSG, "pNPowerAck   = %p\n", pNPowerAck);
+	NX_DbgMsg(INFO_MSG, "====================================\n");
 
 	WriteReg32(gstAliveBase,  0x3);
 
@@ -191,19 +185,21 @@ void NX_VPU_HwOn(void *dev, void *pVpuBaseAddr)
 	WriteReg32(gstIsolateBase, tmpVal);
 
 	mdelay(1);
+#endif
 
-	NX_VPU_Clock(1);
+	NX_VPU_ClockOn(dev);
 
-#if defined(CONFIG_ARCH_S5P6818)
+#ifdef CONFIG_ARCH_S5P6818
 	NX_ASYNCXUI_PowerUp();
 #endif
 
+	vpu_soc_peri_hw_on(dev);
 	vpu_soc_peri_reset_exit(dev);
 
 	gstIsVPUOn = 1;
 
 
-	NX_DbgMsg(DBG_POWER, ("NX_VPU_HwOn() --\n"));
+	NX_DbgMsg(DBG_POWER, "NX_VPU_HwOn() --\n");
 }
 
 void NX_VPU_HWOff(void *dev)
@@ -211,17 +207,20 @@ void NX_VPU_HWOff(void *dev)
 	FUNC_IN();
 
 	if (gstIsVPUOn) {
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 		unsigned int tmpVal;
 		uint32_t *pNPreCharge, *pNPowerUp, *pNPowerAck;
+#endif
 
-#if defined(CONFIG_ARCH_S5P6818)
+#ifdef CONFIG_ARCH_S5P6818
 		NX_ASYNCXUI_PowerDown();
 #endif
 		/* H/W Reset */
 		vpu_soc_peri_reset_enter(dev);
 
-		NX_DbgMsg(DBG_POWER, ("NX_VPU_HWOff() ++\n"));
+		NX_DbgMsg(DBG_POWER, "NX_VPU_HWOff() ++\n");
 
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 		/* Initialize ISolate Register's */
 		pNPreCharge = gstIsolateBase + 4;
 		pNPowerUp = gstIsolateBase + 8;
@@ -249,10 +248,12 @@ void NX_VPU_HWOff(void *dev)
 		tmpVal = ReadReg32(gstIsolateBase);
 		tmpVal &= (~POWER_PMU_VPU_MASK);
 		WriteReg32(gstIsolateBase, tmpVal);
+#endif
 
+		vpu_soc_peri_hw_off(dev);
 		gstIsVPUOn = 0;
 
-		NX_DbgMsg(DBG_POWER, ("NX_VPU_HWOff() --\n"));
+		NX_DbgMsg(DBG_POWER, "NX_VPU_HWOff() --\n");
 	}
 
 	FUNC_OUT();
@@ -263,24 +264,44 @@ int NX_VPU_GetCurPowerState(void)
 	return gstIsVPUOn;
 }
 
-void NX_VPU_Clock(int on)
+void NX_VPU_ResetEnter(void *dev)
+{
+	FUNC_IN();
+	vpu_soc_peri_reset_enter(dev);
+	FUNC_OUT();
+}
+
+void NX_VPU_ResetRelease(void *dev)
+{
+	FUNC_IN();
+	vpu_soc_peri_reset_exit(dev);
+	FUNC_OUT();
+}
+
+void NX_VPU_ClockOn(void *dev)
 {
 	FUNC_IN();
 
-	if (on) {
-		WriteReg32(gstCodaClockEnRegVir, 0x0000000F);
-		NX_DbgMsg(DBG_CLOCK, ("NX_VPU_Clock() ON\n"));
-	} else {
-		WriteReg32(gstCodaClockEnRegVir, 0x00000000);
-		NX_DbgMsg(DBG_CLOCK, ("NX_VPU_Clock() OFF\n"));
-	}
+#ifndef CONFIG_ARCH_NXP3220_COMMON
+	WriteReg32(gstCodaClockEnRegVir, 0x0000000F);
+#endif
+	vpu_soc_peri_clock_on(dev);
+	FUNC_OUT();
+}
 
+void NX_VPU_ClockOff(void *dev)
+{
+	FUNC_IN();
+#ifndef CONFIG_ARCH_NXP3220_COMMON
+	WriteReg32(gstCodaClockEnRegVir, 0x00000000);
+#endif
+	vpu_soc_peri_clock_off(dev);
 	FUNC_OUT();
 }
 
 static unsigned int VPU_IsBusy(void)
 {
-	unsigned int ret = ReadRegNoMsg(BIT_BUSY_FLAG);
+	unsigned int ret = VpuReadRegNoMsg(BIT_BUSY_FLAG);
 
 	return ret != 0;
 }
@@ -299,7 +320,7 @@ static int VPU_WaitBusBusy(int mSeconds, unsigned int busyFlagReg)
 int VPU_WaitVpuBusy(int mSeconds, unsigned int busyFlagReg)
 {
 	while (mSeconds > 0) {
-		if (ReadRegNoMsg(busyFlagReg) == 0)
+		if (VpuReadRegNoMsg(busyFlagReg) == 0)
 			return VPU_RET_OK;
 
 		DrvMSleep(1);
@@ -308,14 +329,9 @@ int VPU_WaitVpuBusy(int mSeconds, unsigned int busyFlagReg)
 	return VPU_RET_ERR_TIMEOUT;
 }
 
-void VPU_GetVersionInfo(unsigned int *versionInfo, unsigned int *revision,
-	unsigned int *productId)
+void VPU_GetVersionInfo(struct nx_vpu_version *version)
 {
-	unsigned int ver;
-	unsigned int rev;
-	unsigned int pid;
-
-	if (versionInfo && revision) {
+	if (version) {
 		VpuWriteReg(RET_FW_VER_NUM, 0);
 		VpuWriteReg(BIT_WORK_BUF_ADDR, 0);
 		VpuWriteReg(BIT_BUSY_FLAG, 1);
@@ -325,41 +341,68 @@ void VPU_GetVersionInfo(unsigned int *versionInfo, unsigned int *revision,
 		VpuWriteReg(BIT_RUN_COMMAND, FIRMWARE_GET);
 		if (VPU_RET_OK != VPU_WaitVpuBusy(VPU_BUSY_CHECK_TIMEOUT,
 			BIT_BUSY_FLAG)) {
-			NX_ErrMsg(("Version Read Failed!!!\n"));
+			NX_ErrMsg("Version Read Failed!!!\n");
 			return;
 		}
 
-		ver = VpuReadReg(RET_FW_VER_NUM);
-		rev = VpuReadReg(RET_FW_CODE_REV);
+		version->firm_version = VpuReadReg(RET_FW_VER_NUM);
+		version->firm_revision = VpuReadReg(RET_FW_CODE_REV);
 
-		*versionInfo = ver;
-		*revision = rev;
+		version->product_name = VpuReadReg(DBG_CONFIG_REPORT_0);
+		version->product_version = VpuReadReg(DBG_CONFIG_REPORT_1);
+		/*
+		version-> = VpuRegread(DBG_CONFIG_REPORT_2);
+		version-> = VpuRegread(DBG_CONFIG_REPORT_3);
+		*/
+		version->release_version = VpuReadReg(DBG_CONFIG_REPORT_4);
+		version->config_date = VpuReadReg(DBG_CONFIG_REPORT_5);
+		version->config_revision = VpuReadReg(DBG_CONFIG_REPORT_6);
+		version->config_type = VpuReadReg(DBG_CONFIG_REPORT_7);
 	}
-
-	pid = VpuReadReg(DBG_CONFIG_REPORT_1);
-	if ((pid&0xff00) == 0x3200)
-		pid = 0x3200;
-
-	if (productId)
-		*productId = pid;
 }
 
 void CheckVersion(void)
 {
-	unsigned int version;
-	unsigned int revision;
-	unsigned int productId;
+	struct  nx_vpu_version version;
+	NX_DrvMemset(&version, 0x00, sizeof(version));
 
-	VPU_GetVersionInfo(&version, &revision, &productId);
+	VPU_GetVersionInfo(&version);
 
-	NX_DbgMsg(INFO_MSG, ("Firmware Version => projectId : %x | ",
-		(unsigned int)(version>>16)));
-	NX_DbgMsg(INFO_MSG, ("version : %04d.%04d.%08d | revision : r%d\n",
-		(unsigned int)((version>>(12))&0x0f),
-		(unsigned int)((version>>(8))&0x0f),
-		(unsigned int)((version)&0xff),
-		revision));
-	NX_DbgMsg(INFO_MSG, ("Hardware Version => %04x\n", productId));
+	NX_DbgMsg(INFO_MSG,
+		"Firmware Version => "
+		"project number: %x | "
+		"version: %04d.%04d.%08d | "
+		"revision: r%d\n",
+		(version.firm_version>>16),
+		(version.firm_version>>12)&0x0F,
+		(version.firm_version>>8)&0x0F,
+		(version.firm_version>>0)&0xFF,
+		version.firm_revision);
+
+	NX_DbgMsg(INFO_MSG,
+		"Product Version => "
+		"%c%c%c%c%04X\n",
+		((version.product_name>>24)&0xFF),
+		((version.product_name>>16)&0xFF),
+		((version.product_name>> 8)&0xFF),
+		((version.product_name>> 0)&0xFF),
+		(version.product_version & 0xFFFF));
+
+	NX_DbgMsg(INFO_MSG,
+		"Release Version => %08X\n",
+		version.release_version);
+
+	NX_DbgMsg(INFO_MSG,
+		"Config Date => %d\n",
+		version.config_date);
+
+	NX_DbgMsg(INFO_MSG,
+		"Config Revision => %d\n",
+		version.config_revision);
+
+	NX_DbgMsg(INFO_MSG,
+		"Config Type => %d\n",
+		version.config_type);
 }
 
 
@@ -477,7 +520,7 @@ int NX_VpuInit(void *dev, void *baseAddr, void *firmVirAddr,
 
 	for (i = 0 ; i < 2048 ; i++) {
 		tmpData = bit_code[i];
-		WriteRegNoMsg(BIT_CODE_DOWN, (i<<16)|tmpData);
+		VpuWriteRegNoMsg(BIT_CODE_DOWN, (i<<16)|tmpData);
 	}
 
 	VpuWriteReg(BIT_PARA_BUF_ADDR, paramBufAddr);
@@ -504,15 +547,17 @@ int NX_VpuInit(void *dev, void *baseAddr, void *firmVirAddr,
 	VpuWriteReg(BIT_INT_ENABLE, tmpData);
 	VpuWriteReg(BIT_INT_CLEAR, 0x1);
 
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 	VpuWriteReg(BIT_USE_NX_EXPND, USE_NX_EXPND);
+#endif
 	VpuWriteReg(BIT_BUSY_FLAG, 0x1);
 	VpuWriteReg(BIT_CODE_RESET, 1);
 	VpuWriteReg(BIT_CODE_RUN, 1);
 
 	if (VPU_RET_OK != VPU_WaitVpuBusy(VPU_BUSY_CHECK_TIMEOUT,
 		BIT_BUSY_FLAG)) {
-		NX_ErrMsg(("NX_VpuInit() Failed. Timeout(%d)\n",
-			VPU_BUSY_CHECK_TIMEOUT));
+		NX_ErrMsg("NX_VpuInit() Failed. Timeout(%d)\n",
+			VPU_BUSY_CHECK_TIMEOUT);
 		return ret;
 	}
 
@@ -533,12 +578,12 @@ int NX_VpuInit(void *dev, void *baseAddr, void *firmVirAddr,
 int NX_VpuDeInit(void *dev)
 {
 	if (!gstIsInitialized) {
-		NX_ErrMsg(("VPU Already Denitialized!!!\n"));
+		NX_ErrMsg("VPU Already Denitialized!!!\n");
 		return VPU_RET_ERR_INIT;
 	}
 
 	if (VPU_IsBusy()) {
-		NX_ErrMsg(("NX_VpuDeInit() failed. VPU_IsBusy!!!\n"));
+		NX_ErrMsg("NX_VpuDeInit() failed. VPU_IsBusy!!!\n");
 		return VPU_RET_BUSY;
 	}
 
@@ -591,12 +636,14 @@ int NX_VpuResume(void *dev, void *pVpuBaseAddr)
 	VpuWriteReg(BIT_CODE_RESET, 1);
 	VpuWriteReg(BIT_CODE_RUN, 1);
 
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 	VpuWriteReg(BIT_USE_NX_EXPND, USE_NX_EXPND);
+#endif
 
 	if (VPU_RET_OK != VPU_WaitVpuBusy(VPU_BUSY_CHECK_TIMEOUT,
 		BIT_BUSY_FLAG)) {
-		NX_ErrMsg(("NX_VpuResume() Failed. Timeout(%d)\n",
-			VPU_BUSY_CHECK_TIMEOUT));
+		NX_ErrMsg("NX_VpuResume() Failed. Timeout(%d)\n",
+			VPU_BUSY_CHECK_TIMEOUT);
 		return VPU_RET_ERR_TIMEOUT;
 	}
 
@@ -646,6 +693,7 @@ int NX_VpuParaInitialized(void *dev)
 	gstIsInitialized = 0;
 	gstIsVPUOn = 0;
 
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 	gstCodaClockEnRegVir = (uint32_t *)devm_ioremap_nocache(dev,
 		CODA960CLKENB_REG, 4);
 	if (!gstCodaClockEnRegVir)
@@ -657,6 +705,7 @@ int NX_VpuParaInitialized(void *dev)
 		VPU_ALIVEGATE_REG, 128);
 	if (!gstIsolateBase || !gstAliveBase)
 		return -1;
+#endif
 
 	return 0;
 }

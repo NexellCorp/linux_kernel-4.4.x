@@ -1,19 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
 
 #ifndef UNUSED
@@ -26,12 +14,10 @@
 #include "nx_vpu_api.h"
 #include "nx_vpu_gdi.h"
 
-
 #define DBG_USERDATA			0
 #define DBG_REGISTER			0
 #define DBG_ES_ADDR			0
 #define	INFO_MSG			0
-
 
 /*--------------------------------------------------------------------------- */
 /* Decoder Functions */
@@ -50,11 +36,9 @@ static int VPU_DecGetOutputInfo(struct nx_vpu_codec_inst *pInst,
 static int VPU_DecCloseCommand(struct nx_vpu_codec_inst *pInst,
 	void *vpu_event_present);
 
-
 /*----------------------------------------------------------------------------
  *			Decoder APIs
  */
-
 int NX_VpuDecOpen(struct vpu_open_arg *pOpenArg, void *devHandle,
 	struct nx_vpu_codec_inst **ppInst)
 {
@@ -105,9 +89,9 @@ int NX_VpuDecOpen(struct vpu_open_arg *pOpenArg, void *devHandle,
 		hInst->codecMode = VPX_DEC;
 		hInst->auxMode = VPX_AUX_VP8;
 	} else {
-		NX_ErrMsg(("NX_VpuDecOpen() failed!!!\n"));
-		NX_ErrMsg(("Cannot support codec standard (%d)\n",
-			pOpenArg->codecStd));
+		NX_ErrMsg("NX_VpuDecOpen() failed!!!\n");
+		NX_ErrMsg("Cannot support codec standard (%d)\n",
+			pOpenArg->codecStd);
 		return VPU_RET_ERR_PARAM;
 	}
 
@@ -191,14 +175,14 @@ int NX_VpuDecOpen(struct vpu_open_arg *pOpenArg, void *devHandle,
 
 	*ppInst = hInst;
 
-	NX_DbgMsg(INFO_MSG, ("===================================\n"));
-	NX_DbgMsg(INFO_MSG, (" VPU Open Information:\n"));
-	NX_DbgMsg(INFO_MSG, ("  Instance Index : %d\n", hInst->instIndex));
-	NX_DbgMsg(INFO_MSG, ("  BitStream Mode : %d\n",
-		pDecInfo->bitStreamMode));
-	NX_DbgMsg(INFO_MSG, ("  Codec Standard : %d\n", hInst->codecMode));
-	NX_DbgMsg(INFO_MSG, ("  Codec AUX Mode : %d\n", hInst->auxMode));
-	NX_DbgMsg(INFO_MSG, ("===================================\n"));
+	NX_DbgMsg(INFO_MSG, "===================================\n");
+	NX_DbgMsg(INFO_MSG, " VPU Open Information:\n");
+	NX_DbgMsg(INFO_MSG, "  Instance Index : %d\n", hInst->instIndex);
+	NX_DbgMsg(INFO_MSG, "  BitStream Mode : %d\n",
+		pDecInfo->bitStreamMode);
+	NX_DbgMsg(INFO_MSG, "  Codec Standard : %d\n", hInst->codecMode);
+	NX_DbgMsg(INFO_MSG, "  Codec AUX Mode : %d\n", hInst->auxMode);
+	NX_DbgMsg(INFO_MSG, "===================================\n");
 
 	FUNC_OUT();
 	return VPU_RET_OK;
@@ -216,7 +200,7 @@ int NX_VpuDecSetSeqInfo(struct nx_vpu_codec_inst *pInst,
 		if (0 > FillBuffer(pInst,
 			(unsigned char *)(unsigned long)pSeqArg->seqData,
 			pSeqArg->seqDataSize)) {
-			NX_ErrMsg(("FillBuffer Error!!!\n"));
+			NX_ErrMsg("FillBuffer Error!!!\n");
 			return VPU_RET_ERROR;
 		}
 
@@ -246,7 +230,7 @@ int NX_VpuDecSetSeqInfo(struct nx_vpu_codec_inst *pInst,
 		if (0 > FillBuffer(pInst,
 			(unsigned char *)(unsigned long)pSeqArg->seqData,
 			pSeqArg->seqDataSize)) {
-			NX_ErrMsg(("FillBuffer Failed.\n"));
+			NX_ErrMsg("FillBuffer Failed.\n");
 			return VPU_RET_ERROR;
 		}
 	}
@@ -277,7 +261,7 @@ int NX_VpuDecRunFrame(struct nx_vpu_codec_inst *pInst,
 		if (0 > FillBuffer(pInst,
 			(unsigned char *)(unsigned long)pRunArg->strmData,
 			pRunArg->strmDataSize)) {
-			NX_ErrMsg(("FillBuffer Failed.\n"));
+			NX_ErrMsg("FillBuffer Failed.\n");
 			return VPU_RET_ERROR;
 		}
 
@@ -308,8 +292,8 @@ int NX_VpuDecRunFrame(struct nx_vpu_codec_inst *pInst,
 				(uint8_t *)(unsigned long)pRunArg->strmData,
 				pRunArg->strmDataSize);
 			if (ret < 0) {
-				NX_ErrMsg(("JpgHeader is failed(Error = %d)!\n",
-					ret));
+				NX_ErrMsg("JpgHeader is failed(Error = %d)!\n",
+					ret);
 				return -1;
 			}
 		}
@@ -318,7 +302,7 @@ int NX_VpuDecRunFrame(struct nx_vpu_codec_inst *pInst,
 		if (0 > FillBuffer(pInst,
 			(unsigned char *)(unsigned long)pRunArg->strmData,
 			pRunArg->strmDataSize)) {
-			NX_ErrMsg(("FillBuffer Failed.\n"));
+			NX_ErrMsg("FillBuffer Failed.\n");
 			return VPU_RET_ERROR;
 		}
 
@@ -392,16 +376,14 @@ int NX_VpuDecClose(struct nx_vpu_codec_inst *pInst,
 
 	ret = VPU_DecCloseCommand(pInst, vpu_event_present);
 	if (ret != VPU_RET_OK)
-		NX_ErrMsg(("NX_VpuDecClose() failed.(%d)\n", ret));
+		NX_ErrMsg("NX_VpuDecClose() failed.(%d)\n", ret);
 
 	return ret;
 }
 
-
 /*----------------------------------------------------------------------------
  *		Decoder Specific Static Functions
  */
-
 static int FillBuffer(struct nx_vpu_codec_inst *pInst, unsigned char *stream,
 	int size)
 {
@@ -430,12 +412,12 @@ static int FillBuffer(struct nx_vpu_codec_inst *pInst, unsigned char *stream,
 	bufSize  = pDecInfo->strmBufSize;
 
 	if (bufSize < vWriteOffset || bufSize < vReadOffset) {
-		NX_ErrMsg(("%s, stream_buffer(Addr=x0%08x, size=%d)\n",
+		NX_ErrMsg("%s, stream_buffer(Addr=x0%08x, size=%d)\n",
 			__func__, (uint32_t)pDecInfo->strmBufVirAddr,
-			pDecInfo->strmBufSize));
-		NX_ErrMsg(("InBuffer(Addr=%p, size=%d)", stream, size));
-		NX_ErrMsg(("vWriteOffset = %d, vReadOffset = %d\n",
-			vWriteOffset, vReadOffset));
+			pDecInfo->strmBufSize);
+		NX_ErrMsg("InBuffer(Addr=%p, size=%d)", stream, size);
+		NX_ErrMsg("vWriteOffset = %d, vReadOffset = %d\n",
+			vWriteOffset, vReadOffset);
 		return -1;
 	}
 
@@ -501,14 +483,14 @@ static int VPU_DecSeqComplete(struct nx_vpu_codec_inst *pInst,
 		pInfo->bitStreamMode == BS_MODE_ROLLBACK) {
 		if (val & (1<<4)) {
 			errReason = VpuReadReg(RET_DEC_SEQ_SEQ_ERR_REASON);
-			NX_ErrMsg(("Error Reason = 0x%08x\n", errReason));
+			NX_ErrMsg("Error Reason = 0x%08x\n", errReason);
 			return VPU_RET_ERROR;
 		}
 	}
 
 	if (val == 0) {
 		errReason = VpuReadReg(RET_DEC_SEQ_SEQ_ERR_REASON);
-		NX_ErrMsg(("Error Reason = 0x%08x\n", errReason));
+		NX_ErrMsg("Error Reason = 0x%08x\n", errReason);
 		return VPU_RET_ERROR;
 	}
 
@@ -636,7 +618,7 @@ static int VPU_DecSeqInitCommand(struct nx_vpu_codec_inst *pInst,
 	struct vpu_dec_info *pInfo = &pInst->codecInfo.decInfo;
 
 	if (pArg->disableOutReorder) {
-		NX_DbgMsg(INFO_MSG, ("Disable Out Reordering!!!\n"));
+		NX_DbgMsg(INFO_MSG, "Disable Out Reordering!!!\n");
 		pInfo->low_delay_info.lowDelayEn = 1;
 		pInfo->low_delay_info.numRows = 0;
 	}
@@ -644,7 +626,7 @@ static int VPU_DecSeqInitCommand(struct nx_vpu_codec_inst *pInst,
 	if (pInfo->needMoreFrame) {
 		pInfo->needMoreFrame = 0;
 		VpuWriteReg(pInfo->streamWrPtrRegAddr, pInfo->writePos);
-		NX_DbgMsg(INFO_MSG, ("Need More Buffer!!!!!\n"));
+		NX_DbgMsg(INFO_MSG, "Need More Buffer!!!!!\n");
 		goto WAIT_INTERRUPT;
 	}
 
@@ -749,15 +731,15 @@ static int VPU_DecSeqInitCommand(struct nx_vpu_codec_inst *pInst,
 	{
 		int reg;
 
-		NX_DbgMsg(DBG_REGISTER, ("[DEC_SEQ_INIT]\n"));
-		NX_DbgMsg(DBG_REGISTER, ("[Strm_CTRL : 0x10C]%x\n",
-			VpuReadReg(BIT_BIT_STREAM_CTRL)));
+		NX_DbgMsg(DBG_REGISTER, "[DEC_SEQ_INIT]\n");
+		NX_DbgMsg(DBG_REGISTER, "[Strm_CTRL : 0x10C]%x\n",
+			VpuReadReg(BIT_BIT_STREAM_CTRL));
 		for (reg = 0x180 ; reg < 0x200 ; reg += 16) {
-			NX_DbgMsg(DBG_REGISTER, ("[Addr = %3x]%x %x %x %x\n",
+			NX_DbgMsg(DBG_REGISTER, "[Addr = %3x]%x %x %x %x\n",
 				reg, VpuReadReg(BIT_BASE + reg),
 				VpuReadReg(BIT_BASE + reg + 4),
 				VpuReadReg(BIT_BASE + reg + 8),
-				VpuReadReg(BIT_BASE + reg + 12)));
+				VpuReadReg(BIT_BASE + reg + 12));
 		}
 	}
 #endif
@@ -767,13 +749,15 @@ static int VPU_DecSeqInitCommand(struct nx_vpu_codec_inst *pInst,
 WAIT_INTERRUPT:
 	reason = VPU_WaitBitInterrupt(pInst->devHandle, VPU_DEC_TIMEOUT);
 	if (!reason) {
-		NX_ErrMsg(("VPU_DecSeqInitCommand() Failed. Timeout(%d)\n",
-			VPU_BUSY_CHECK_TIMEOUT));
-		NX_ErrMsg(("WritePos = 0x%.8x, ReadPos = 0x%.8x\n",
+		NX_ErrMsg("VPU_DecSeqInitCommand() Failed. Timeout(%d)\n",
+			VPU_BUSY_CHECK_TIMEOUT);
+		NX_ErrMsg("WritePos = 0x%.8x, ReadPos = 0x%.8x\n",
 			VpuReadReg(pInfo->streamWrPtrRegAddr),
-			VpuReadReg(pInfo->streamRdPtrRegAddr)));
+			VpuReadReg(pInfo->streamRdPtrRegAddr));
 		return VPU_RET_ERR_TIMEOUT;
 	}
+
+	VPU_ClearBitInterrupt();
 
 	if (reason & (1<<VPU_INT_BIT_SEQ_INIT)) {
 		return VPU_RET_OK;
@@ -887,9 +871,9 @@ static int VPU_DecRegisterFrameBufCommand(struct nx_vpu_codec_inst
 
 	if (!ConfigDecSecAXI(pInfo->codecStd, &pInfo->sec_axi_info,
 		pInfo->width, pInfo->height, pArg->sramAddr, pArg->sramSize)) {
-		NX_ErrMsg(("ConfigDecSecAXI() failed !!!\n"));
-		NX_ErrMsg(("Width = %d, Heigth = %d\n",
-			pInfo->width, pInfo->height));
+		NX_ErrMsg("ConfigDecSecAXI() failed !!!\n");
+		NX_ErrMsg("Width = %d, Heigth = %d\n",
+			pInfo->width, pInfo->height);
 		return VPU_RET_ERR_SRAM;
 	}
 
@@ -935,20 +919,20 @@ static int VPU_DecRegisterFrameBufCommand(struct nx_vpu_codec_inst
 	{
 		int reg;
 
-		NX_DbgMsg(DBG_REGISTER, ("[DEC_SET_FRM_BUF_Reg]\n"));
+		NX_DbgMsg(DBG_REGISTER, "[DEC_SET_FRM_BUF_Reg]\n");
 		for (reg = 0x180 ; reg < 0x200 ; reg += 16) {
-			NX_DbgMsg(DBG_REGISTER, ("[Addr = %3x]%x %x %x %x\n",
+			NX_DbgMsg(DBG_REGISTER, "[Addr = %3x]%x %x %x %x\n",
 				reg, VpuReadReg(BIT_BASE + reg),
 				VpuReadReg(BIT_BASE + reg + 4),
 				VpuReadReg(BIT_BASE + reg + 8),
-				VpuReadReg(BIT_BASE + reg + 12)));
+				VpuReadReg(BIT_BASE + reg + 12));
 		}
 	}
 #endif
 
 	if (VPU_RET_OK != VPU_WaitVpuBusy(VPU_BUSY_CHECK_TIMEOUT,
 		BIT_BUSY_FLAG)) {
-		NX_ErrMsg(("Error VPU_DecRegisterFrameBufCommand failed!!!\n"));
+		NX_ErrMsg("Error VPU_DecRegisterFrameBufCommand failed!!!\n");
 		return VPU_RET_ERR_INIT;
 	}
 
@@ -1058,7 +1042,24 @@ static int VPU_DecGetOutputInfo(struct nx_vpu_codec_inst *pInst,
 		pArg->topFieldFirst = (val >> 21) & 0x0001;
 		pArg->picTypeFirst = (val & 0x38) >> 3;
 		pArg->picType  = val & 0x7;
-		pArg->npf = (val >> 15) & 1;
+
+		/* This parameter depends on bit-process firmware version. */
+#ifdef CONFIG_ARCH_NXP3220_COMMON
+		/*
+		npf: non-paired field - RET_DEC_PIC_TYPE[17:16] at v3.6.25
+		0 : paired field
+		1 : bottom ( top-field missing ) -> non-paired field
+		2 : top ( bottom-field missing ) -> non-paired field
+		*/
+		pArg->npf = (((val >> 16) & 0x3) != 0) ? 1 : 0;
+#else
+		/*
+		npf: non-paired field - RET_DEC_PIC_TYPE[15] at v2.3.10
+		0 : non-paired field
+		1 : paired field
+		*/
+		pArg->npf = (((val >> 15) & 0x1) == 0) ? 1 : 0;
+#endif
 	} else {
 		pArg->topFieldFirst     = 0;
 		pArg->picTypeFirst   = 6;
@@ -1121,7 +1122,7 @@ static int VPU_DecGetOutputInfo(struct nx_vpu_codec_inst *pInst,
 	pInfo->bytePosFrameStart = VpuReadReg(BIT_BYTE_POS_FRAME_START);
 	pInfo->bytePosFrameEnd = VpuReadReg(BIT_BYTE_POS_FRAME_END);
 
-	pArg->strmReadPos = pInfo->readPos  - pInfo->strmBufPhyAddr;
+	pArg->strmReadPos = pInfo->readPos - pInfo->strmBufPhyAddr;
 	pArg->strmWritePos = pInfo->writePos - pInfo->strmBufPhyAddr;
 
 	return VPU_RET_OK;
@@ -1136,7 +1137,7 @@ static int VPU_DecStartOneFrameCommand(struct nx_vpu_codec_inst
 	if (pInfo->needMoreFrame) {
 		pInfo->needMoreFrame = 0;
 		VpuWriteReg(pInfo->streamWrPtrRegAddr, pInfo->writePos);
-		NX_DbgMsg(INFO_MSG, ("Need More Buffer!!!!!\n"));
+		NX_DbgMsg(INFO_MSG, "Need More Buffer!!!!!\n");
 		goto WAIT_INTERRUPT;
 	}
 
@@ -1245,13 +1246,13 @@ static int VPU_DecStartOneFrameCommand(struct nx_vpu_codec_inst
 	{
 		int reg;
 
-		NX_DbgMsg(DBG_REGISTER, ("[DEC_FRAME]\n"));
+		NX_DbgMsg(DBG_REGISTER, "[DEC_FRAME]\n");
 		for (reg = 0x180 ; reg < 0x200 ; reg += 16) {
-			NX_DbgMsg(DBG_REGISTER, ("[Addr = %3x]%x %x %x %x\n",
+			NX_DbgMsg(DBG_REGISTER, "[Addr = %3x]%x %x %x %x\n",
 				reg, VpuReadReg(BIT_BASE + reg),
 				VpuReadReg(BIT_BASE + reg + 4),
 				VpuReadReg(BIT_BASE + reg + 8),
-				VpuReadReg(BIT_BASE + reg + 12)));
+				VpuReadReg(BIT_BASE + reg + 12));
 		}
 	}
 #endif
@@ -1261,9 +1262,15 @@ static int VPU_DecStartOneFrameCommand(struct nx_vpu_codec_inst
 WAIT_INTERRUPT:
 	reason = VPU_WaitBitInterrupt(pInst->devHandle, VPU_DEC_TIMEOUT);
 	if (!reason) {
-		NX_ErrMsg(("VPU_DecStartOneFrameCommand() Fail. Timeout(%d)\n",
-			VPU_BUSY_CHECK_TIMEOUT));
+		NX_ErrMsg("VPU_DecStartOneFrameCommand() Fail. Timeout(%d)\n",
+			VPU_BUSY_CHECK_TIMEOUT);
 		return VPU_RET_ERR_TIMEOUT;
+	}
+
+	if (!(reason & (1<<VPU_INT_BIT_DEC_FIELD)) ||
+		((reason & (1<<VPU_INT_BIT_DEC_FIELD)) &&
+		(pInfo->bitStreamMode == BS_MODE_PIC_END))) {
+		VPU_ClearBitInterrupt();
 	}
 
 	if (reason & (1<<VPU_INT_BIT_PIC_RUN)) {
@@ -1271,9 +1278,21 @@ WAIT_INTERRUPT:
 	} else if (reason &  (1<<VPU_INT_BIT_BIT_BUF_EMPTY)) {
 		pInfo->needMoreFrame = 1;
 		return VPU_RET_NEED_STREAM;
-	} else {
-		return VPU_RET_ERROR;
 	}
+	else if (reason & (1<<VPU_INT_BIT_DEC_FIELD)) {
+		if( pInfo->bitStreamMode == BS_MODE_PIC_END ) {
+			/*
+			do not clear interrupt until feeding next field picture.
+			*/
+			/*
+			VPU_ClearBitInterrupt();
+			*/
+			pInfo->needMoreFrame = 1;
+			return VPU_RET_NEED_STREAM;
+		}
+	}
+
+	return VPU_RET_ERROR;
 }
 
 static int VPU_DecCloseCommand(struct nx_vpu_codec_inst *pInst,
@@ -1286,8 +1305,8 @@ static int VPU_DecCloseCommand(struct nx_vpu_codec_inst *pInst,
 			BIT_BUSY_FLAG)) {
 			VpuWriteReg(BIT_INT_CLEAR, 0x1);
 			atomic_set((atomic_t *)vpu_event_present, 0);
-			NX_ErrMsg(("VPU_DecCloseCommand() Failed!!!\n"));
-			NX_ErrMsg(("Timeout(%d)\n", VPU_BUSY_CHECK_TIMEOUT));
+			NX_ErrMsg("VPU_DecCloseCommand() Failed!!!\n");
+			NX_ErrMsg("Timeout(%d)\n", VPU_BUSY_CHECK_TIMEOUT);
 			VPU_SWReset(SW_RESET_SAFETY);
 			pInst->isInitialized = 0;
 			return VPU_RET_ERR_TIMEOUT;
