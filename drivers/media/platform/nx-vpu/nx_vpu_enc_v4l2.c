@@ -1,19 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
 
 #include <linux/delay.h>
@@ -40,31 +28,28 @@
 #include "vpu_hw_interface.h"
 #include "nx_vpu_v4l2.h"
 
-
 #define INFO_MSG				0
 #define RECON_CHROMA_INTERLEAVE			0
-
 
 static int nx_vpu_enc_ctx_ready(struct nx_vpu_ctx *ctx)
 {
 	FUNC_IN();
-	NX_DbgMsg(INFO_MSG, ("src = %d, dst = %d\n", ctx->img_queue_cnt,
-		ctx->strm_queue_cnt));
+	NX_DbgMsg(INFO_MSG, "src = %d, dst = %d\n", ctx->img_queue_cnt,
+		ctx->strm_queue_cnt);
 
 	if (ctx->vpu_cmd == ENC_RUN) {
 		if (ctx->strm_queue_cnt < 1) {
-			NX_DbgMsg(INFO_MSG, ("strm_queue_cnt error\n"));
+			NX_DbgMsg(INFO_MSG, "strm_queue_cnt error\n");
 			return 0;
 		}
 		if (ctx->is_initialized && ctx->img_queue_cnt < 1) {
-			NX_DbgMsg(INFO_MSG, ("img_queue_cnt error\n"));
+			NX_DbgMsg(INFO_MSG, "img_queue_cnt error\n");
 			return 0;
 		}
 	}
 
 	return 1;
 }
-
 
 /*-----------------------------------------------------------------------------
  *      functions for Parameter controls
@@ -339,9 +324,9 @@ static int check_ctrl_val(struct nx_vpu_ctx *ctx, struct v4l2_control *ctrl)
 		return -EINVAL;
 	if (ctrl->value < c->minimum || ctrl->value > c->maximum
 	    || (c->step != 0 && ctrl->value % c->step != 0)) {
-		NX_ErrMsg(("Invalid control value\n"));
-		NX_ErrMsg(("value = %d, min = %d, max = %d, step = %d\n",
-			ctrl->value, c->minimum, c->maximum, c->step));
+		NX_ErrMsg("Invalid control value\n");
+		NX_ErrMsg("value = %d, min = %d, max = %d, step = %d\n",
+			ctrl->value, c->minimum, c->maximum, c->step);
 		return -ERANGE;
 	}
 
@@ -410,11 +395,9 @@ static int check_cb_first(unsigned int fourcc)
 
 /* -------------------------------------------------------------------------- */
 
-
 /*-----------------------------------------------------------------------------
  *      functions for vidioc_queryctrl
  *----------------------------------------------------------------------------*/
-
 /* Query a ctrl */
 static int vidioc_queryctrl(struct file *file, void *priv, struct v4l2_queryctrl
 	*qc)
@@ -463,7 +446,7 @@ static int vidioc_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
 		pix_fmt_mp->plane_fmt[2].sizeimage = ctx->chroma_size;
 
 	} else {
-		NX_ErrMsg(("invalid buf type\n"));
+		NX_ErrMsg("invalid buf type\n");
 		return -EINVAL;
 	}
 
@@ -480,13 +463,13 @@ static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	if (f->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		fmt = find_format(f);
 		if (!fmt) {
-			NX_ErrMsg(("failed to try output format(ES), %x\n",
-				pix_fmt_mp->pixelformat));
+			NX_ErrMsg("failed to try output format(ES), %x\n",
+				pix_fmt_mp->pixelformat);
 			return -EINVAL;
 		}
 
 		if (pix_fmt_mp->plane_fmt[0].sizeimage == 0) {
-			NX_ErrMsg(("must be set encoding output size\n"));
+			NX_ErrMsg("must be set encoding output size\n");
 			return -EINVAL;
 		}
 
@@ -495,19 +478,19 @@ static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	} else if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		fmt = find_format(f);
 		if (!fmt) {
-			NX_ErrMsg(("failed to try input format(IMG), %x\n",
-				pix_fmt_mp->pixelformat));
+			NX_ErrMsg("failed to try input format(IMG), %x\n",
+				pix_fmt_mp->pixelformat);
 			return -EINVAL;
 		}
 
 		if ((fmt->num_planes != pix_fmt_mp->num_planes) &&
 			(1 != pix_fmt_mp->num_planes)) {
-			NX_ErrMsg(("failed to try input format(%d, %d)\n",
-				fmt->num_planes, pix_fmt_mp->num_planes));
+			NX_ErrMsg("failed to try input format(%d, %d)\n",
+				fmt->num_planes, pix_fmt_mp->num_planes);
 			return -EINVAL;
 		}
 	} else {
-		NX_ErrMsg(("invalid buf type\n"));
+		NX_ErrMsg("invalid buf type\n");
 		return -EINVAL;
 	}
 
@@ -528,7 +511,7 @@ static int vidioc_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 		return ret;
 
 	if (ctx->vq_img.streaming || ctx->vq_strm.streaming) {
-		NX_ErrMsg(("%s queue busy\n", __func__));
+		NX_ErrMsg("%s queue busy\n", __func__);
 		ret = -EBUSY;
 		goto ERROR_EXIT;
 	}
@@ -536,7 +519,7 @@ static int vidioc_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	if (f->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		fmt = find_format(f);
 		if (!fmt) {
-			NX_ErrMsg(("failed to set capture format\n"));
+			NX_ErrMsg("failed to set capture format\n");
 			return -EINVAL;
 		}
 
@@ -552,7 +535,7 @@ static int vidioc_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 
 		fmt = find_format(f);
 		if (!fmt) {
-			NX_ErrMsg(("failed to set output format\n"));
+			NX_ErrMsg("failed to set output format\n");
 			return -EINVAL;
 		}
 
@@ -595,12 +578,12 @@ static int vidioc_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 			pix_fmt_mp->plane_fmt[2].sizeimage = ctx->chroma_size;
 		}
 	} else {
-		NX_ErrMsg(("invalid buf type\n"));
+		NX_ErrMsg("invalid buf type\n");
 		return -EINVAL;
 	}
 
 ERROR_EXIT:
-	NX_DbgMsg(INFO_MSG, ("%s End!!(ret = %d)\n", __func__, ret));
+	NX_DbgMsg(INFO_MSG, "%s End!!(ret = %d)\n", __func__, ret);
 	return ret;
 }
 
@@ -622,13 +605,13 @@ static int vidioc_reqbufs(struct file *file, void *priv,
 	if (reqbufs->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		ret = vb2_reqbufs(&ctx->vq_strm, reqbufs);
 		if (ret != 0) {
-			NX_ErrMsg(("error in vb2_reqbufs() for Stream\n"));
+			NX_ErrMsg("error in vb2_reqbufs() for Stream\n");
 			return ret;
 		}
 
 		ret = alloc_encoder_memory(ctx);
 		if (ret) {
-			NX_ErrMsg(("Failed to allocate encoding buffers.\n"));
+			NX_ErrMsg("Failed to allocate encoding buffers.\n");
 			reqbufs->count = 0;
 			ret = vb2_reqbufs(&ctx->vq_strm, reqbufs);
 			return -ENOMEM;
@@ -636,11 +619,11 @@ static int vidioc_reqbufs(struct file *file, void *priv,
 	} else if (reqbufs->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		ret = vb2_reqbufs(&ctx->vq_img, reqbufs);/* 10,  9(new) */
 		if (ret != 0) {
-			NX_ErrMsg(("error in vb2_reqbufs() for YUV\n"));
+			NX_ErrMsg("error in vb2_reqbufs() for YUV\n");
 			return ret;
 		}
 	} else {
-		NX_ErrMsg(("invalid buf type\n"));
+		NX_ErrMsg("invalid buf type\n");
 		return -EINVAL;
 	}
 
@@ -655,13 +638,13 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	FUNC_IN();
 
 	if (ctx->hInst == NULL) {
-		NX_ErrMsg(("%s : Invalid encoder handle!!!\n", __func__));
+		NX_ErrMsg("%s : Invalid encoder handle!!!\n", __func__);
 		return -EIO;
 	}
 
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		if (ctx->is_initialized == 0) {
-			NX_ErrMsg(("%s : Not initialized!!!\n",  __func__));
+			NX_ErrMsg("%s : Not initialized!!!\n",  __func__);
 			return -EIO;
 		}
 
@@ -759,7 +742,7 @@ static int get_ctrl_val(struct vpu_enc_ctx *enc_ctx, struct v4l2_control *ctrl)
 		ctrl->value = seq_para->quality;
 		break;
 	default:
-		NX_ErrMsg(("Invalid control(ID = %x)\n", ctrl->id));
+		NX_ErrMsg("Invalid control(ID = %x)\n", ctrl->id);
 		return -EINVAL;
 	}
 
@@ -846,7 +829,7 @@ static int set_enc_param(struct vpu_enc_ctx *enc_ctx, struct v4l2_control *ctrl)
 		seq_para->quality = ctrl->value;
 		break;
 	default:
-		NX_ErrMsg(("Invalid control(ID = %x)\n", ctrl->id));
+		NX_ErrMsg("Invalid control(ID = %x)\n", ctrl->id);
 		ret = -EINVAL;
 	}
 
@@ -910,7 +893,7 @@ static int set_enc_run_param(struct vpu_enc_ctx *enc_ctx,
 		seq_para->quality = ctrl->value;
 		break;
 	default:
-		NX_ErrMsg(("Invalid control(ID = %x)\n", ctrl->id));
+		NX_ErrMsg("Invalid control(ID = %x)\n", ctrl->id);
 		ret = -EINVAL;
 	}
 
@@ -943,9 +926,11 @@ static int vidioc_g_ext_ctrls(struct file *file, void *priv,
 
 	FUNC_IN();
 
+#ifdef USE_DEPRECATED_STRUCTURE
 	if ((f->ctrl_class != V4L2_CTRL_CLASS_MPEG) &&
 		(f->ctrl_class != V4L2_CID_JPEG_CLASS_BASE))
 		return -EINVAL;
+#endif
 
 	for (i = 0; i < f->count; i++) {
 		ext_ctrl = (f->controls + i);
@@ -960,8 +945,8 @@ static int vidioc_g_ext_ctrls(struct file *file, void *priv,
 			break;
 		}
 
-		NX_DbgMsg(INFO_MSG, ("[%d] id: 0x%08x, value: %d", i,
-			ext_ctrl->id, ext_ctrl->value));
+		NX_DbgMsg(INFO_MSG, "[%d] id: 0x%08x, value: %d", i,
+			ext_ctrl->id, ext_ctrl->value);
 	}
 
 	return ret;
@@ -978,9 +963,11 @@ static int vidioc_s_ext_ctrls(struct file *file, void *priv,
 
 	FUNC_IN();
 
+#ifdef USE_DEPRECATED_STRUCTURE
 	if ((f->ctrl_class != V4L2_CTRL_CLASS_MPEG) &&
 		(f->ctrl_class != V4L2_CID_JPEG_CLASS_BASE))
 		return -EINVAL;
+#endif
 
 	for (i = 0; i < f->count; i++) {
 		ext_ctrl = (f->controls + i);
@@ -1000,8 +987,8 @@ static int vidioc_s_ext_ctrls(struct file *file, void *priv,
 			break;
 		}
 
-		NX_DbgMsg(INFO_MSG, ("[%d] id: 0x%08x, value: %d\n", i,
-			ext_ctrl->id, ext_ctrl->value));
+		NX_DbgMsg(INFO_MSG, "[%d] id: 0x%08x, value: %d\n", i,
+			ext_ctrl->id, ext_ctrl->value);
 	}
 
 	return ret;
@@ -1018,9 +1005,11 @@ static int vidioc_try_ext_ctrls(struct file *file, void *priv,
 
 	FUNC_IN();
 
+#ifdef USE_DEPRECATED_STRUCTURE
 	if ((f->ctrl_class != V4L2_CTRL_CLASS_MPEG) &&
 		(f->ctrl_class != V4L2_CID_JPEG_CLASS_BASE))
 		return -EINVAL;
+#endif
 
 	for (i = 0; i < f->count; i++) {
 		ext_ctrl = (f->controls + i);
@@ -1034,8 +1023,8 @@ static int vidioc_try_ext_ctrls(struct file *file, void *priv,
 			break;
 		}
 
-		NX_DbgMsg(INFO_MSG, ("[%d] id: 0x%08x, value: %d", i,
-			ext_ctrl->id, ext_ctrl->value));
+		NX_DbgMsg(INFO_MSG, "[%d] id: 0x%08x, value: %d", i,
+			ext_ctrl->id, ext_ctrl->value);
 	}
 
 	return ret;
@@ -1118,22 +1107,22 @@ static void nx_vpu_enc_buf_queue(struct vb2_buffer *vb)
 	if (vq->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		buf->used = 0;
 
-		NX_DbgMsg(INFO_MSG, ("adding to dst: %p (%08lx, %08lx)\n", vb,
+		NX_DbgMsg(INFO_MSG, "adding to dst: %p (%08lx, %08lx)\n", vb,
 			(unsigned long)nx_vpu_mem_plane_addr(ctx, vb, 0),
-			(unsigned long)buf->planes.stream));
+			(unsigned long)buf->planes.stream);
 
 		list_add_tail(&buf->list, &ctx->strm_queue);
 		ctx->strm_queue_cnt++;
 	} else if (vq->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		buf->used = 0;
-		NX_DbgMsg(INFO_MSG, ("adding to src: %p(%08lx, %08lx)\n",
+		NX_DbgMsg(INFO_MSG, "adding to src: %p(%08lx, %08lx)\n",
 			vb, (unsigned long)nx_vpu_mem_plane_addr(ctx, vb, 0),
-			(unsigned long)nx_vpu_mem_plane_addr(ctx, vb, 1)));
+			(unsigned long)nx_vpu_mem_plane_addr(ctx, vb, 1));
 
 		list_add_tail(&buf->list, &ctx->img_queue);
 		ctx->img_queue_cnt++;
 	} else {
-		NX_ErrMsg(("unsupported buffer type (%d)\n", vq->type));
+		NX_ErrMsg("unsupported buffer type (%d)\n", vq->type);
 	}
 
 	spin_unlock_irqrestore(&dev->irqlock, flags);
@@ -1154,7 +1143,6 @@ static struct vb2_ops nx_vpu_enc_qops = {
 };
 
 /* -------------------------------------------------------------------------- */
-
 
 const struct v4l2_ioctl_ops *get_enc_ioctl_ops(void)
 {
@@ -1180,7 +1168,7 @@ int nx_vpu_enc_open(struct nx_vpu_ctx *ctx)
 	ctx->vq_img.timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	ret = vb2_queue_init(&ctx->vq_img);
 	if (ret) {
-		NX_ErrMsg(("Failed to initialize videobuf2 queue(output)\n"));
+		NX_ErrMsg("Failed to initialize videobuf2 queue(output)\n");
 		return ret;
 	}
 
@@ -1196,7 +1184,7 @@ int nx_vpu_enc_open(struct nx_vpu_ctx *ctx)
 	ctx->vq_strm.timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	ret = vb2_queue_init(&ctx->vq_strm);
 	if (ret) {
-		NX_ErrMsg(("Failed to initialize videobuf2 queue(capture)\n"));
+		NX_ErrMsg("Failed to initialize videobuf2 queue(capture)\n");
 		return ret;
 	}
 
@@ -1228,8 +1216,8 @@ int vpu_enc_open_instance(struct nx_vpu_ctx *ctx)
 		ctx->codec_mode = CODEC_STD_MJPG;
 		break;
 	default:
-		NX_ErrMsg(("Invalid codec type (%x)!!!\n",
-			ctx->strm_fmt->fourcc));
+		NX_ErrMsg("Invalid codec type (%x)!!!\n",
+			ctx->strm_fmt->fourcc);
 		ret = -1;
 		goto err_exit;
 	}
@@ -1239,7 +1227,7 @@ int vpu_enc_open_instance(struct nx_vpu_ctx *ctx)
 	ctx->instance_buf = nx_alloc_memory(&dev->plat_dev->dev, WORK_BUF_SIZE,
 		4096);
 	if (ctx->instance_buf == NULL) {
-		NX_ErrMsg(("hinstance_buf allocation failed.\n"));
+		NX_ErrMsg("hinstance_buf allocation failed.\n");
 		ret = -1;
 		goto err_exit;
 	}
@@ -1250,9 +1238,9 @@ int vpu_enc_open_instance(struct nx_vpu_ctx *ctx)
 
 	ret = NX_VpuEncOpen(&openArg, dev, &hInst);
 	if ((VPU_RET_OK != ret) || (0 == hInst)) {
-		NX_ErrMsg(("Cannot open VPU Instance!!!\n"));
-		NX_ErrMsg(("  codecStd=%d, is_encoder=%d, hInst=%p)\n",
-			openArg.codecStd, openArg.isEncoder, hInst));
+		NX_ErrMsg("Cannot open VPU Instance!!!\n");
+		NX_ErrMsg("  codecStd=%d, is_encoder=%d, hInst=%p)\n",
+			openArg.codecStd, openArg.isEncoder, hInst);
 		ret = -1;
 		goto err_exit;
 	}
@@ -1302,7 +1290,7 @@ int vpu_enc_init(struct nx_vpu_ctx *ctx)
 	FUNC_IN();
 
 	if (ctx->hInst == NULL) {
-		NX_ErrMsg(("Err : vpu is not opened\n"));
+		NX_ErrMsg("Err : vpu is not opened\n");
 		return -EAGAIN;
 	}
 
@@ -1311,15 +1299,15 @@ int vpu_enc_init(struct nx_vpu_ctx *ctx)
 	pSeqArg->strmBufSize = ctx->bit_stream_buf->size;
 
 	if ((pSeqArg->strmBufPhyAddr == 0) || (pSeqArg->strmBufSize == 0)) {
-		NX_ErrMsg(("stream buffer error(addr = %llx, size = %d)\n",
-			pSeqArg->strmBufPhyAddr, pSeqArg->strmBufSize));
+		NX_ErrMsg("stream buffer error(addr = %llx, size = %d)\n",
+			pSeqArg->strmBufPhyAddr, pSeqArg->strmBufSize);
 		return -1;
 	}
 
 	if ((pSeqArg->srcWidth == 0) || (pSeqArg->srcWidth > 1920) ||
 		(pSeqArg->srcHeight == 0) || (pSeqArg->srcHeight > 1920)) {
-		NX_ErrMsg(("resolution pamameter error(W = %d, H = %d)\n",
-			pSeqArg->srcWidth, pSeqArg->srcHeight));
+		NX_ErrMsg("resolution pamameter error(W = %d, H = %d)\n",
+			pSeqArg->srcWidth, pSeqArg->srcHeight);
 		return -1;
 	}
 
@@ -1387,15 +1375,15 @@ int vpu_enc_init(struct nx_vpu_ctx *ctx)
 			pSeqArg->chromaInterleave = 1;
 			break;
 		default:
-			NX_ErrMsg(("Color format is not supported!!"));
+			NX_ErrMsg("Color format is not supported!!");
 			return -EINVAL;
 		}
 	}
 
 	ret = NX_VpuEncSetSeqParam(ctx->hInst, pSeqArg);
 	if (ret != VPU_RET_OK) {
-		NX_ErrMsg(("NX_VpuEncSetSeqParam() failed.(ErrorCode=%d)\n",
-			ret));
+		NX_ErrMsg("NX_VpuEncSetSeqParam() failed.(ErrorCode=%d)\n",
+			ret);
 		return ret;
 	}
 
@@ -1421,15 +1409,15 @@ int vpu_enc_init(struct nx_vpu_ctx *ctx)
 
 		ret = NX_VpuEncSetFrame(ctx->hInst, &frameArg);
 		if (ret != VPU_RET_OK) {
-			NX_ErrMsg(("NX_VpuEncSetFrame() is failed!(ret = %d\n",
-				ret));
+			NX_ErrMsg("NX_VpuEncSetFrame() is failed!(ret = %d\n",
+				ret);
 			goto ERROR_EXIT;
 		}
 
 		ret = NX_VpuEncGetHeader(ctx->hInst, pHdrArg);
 		if (ret != VPU_RET_OK) {
-			NX_ErrMsg(("NX_VpuEncGetHeader() is failed!(ret = %d\n",
-				ret));
+			NX_ErrMsg("NX_VpuEncGetHeader() is failed!(ret = %d\n",
+				ret);
 			goto ERROR_EXIT;
 		}
 	}
@@ -1508,15 +1496,15 @@ int vpu_enc_encode_frame(struct nx_vpu_ctx *ctx)
 	FUNC_IN();
 
 	if (ctx->hInst == NULL) {
-		NX_ErrMsg(("Err : vpu is not opened\n"));
+		NX_ErrMsg("Err : vpu is not opened\n");
 		return -EAGAIN;
 	}
 
 	if (enc_ctx->chg_para.chgFlg) {
 		ret = NX_VpuEncChgParam(hInst, &enc_ctx->chg_para);
 		if (ret != VPU_RET_OK) {
-			NX_ErrMsg(("NX_VpuEncChgParam() failed.(Err=%d)\n",
-				ret));
+			NX_ErrMsg("NX_VpuEncChgParam() failed.(Err=%d)\n",
+				ret);
 			return ret;
 		}
 
@@ -1581,7 +1569,7 @@ int vpu_enc_encode_frame(struct nx_vpu_ctx *ctx)
 
 	ret = NX_VpuEncRunFrame(hInst, pRunArg);
 	if (ret != VPU_RET_OK) {
-		NX_ErrMsg(("NX_VpuEncRunFrame() failed.(ErrorCode=%d)\n", ret));
+		NX_ErrMsg("NX_VpuEncRunFrame() failed.(ErrorCode=%d)\n", ret);
 		return ret;
 	}
 
@@ -1624,7 +1612,7 @@ int vpu_enc_encode_frame(struct nx_vpu_ctx *ctx)
 				break;
 			default:
 				vbuf->flags = V4L2_BUF_FLAG_PFRAME;
-				NX_ErrMsg(("not defined frame type!!!\n"));
+				NX_ErrMsg("not defined frame type!!!\n");
 				break;
 		}
 		vb2_set_plane_payload(&mb_entry->vb, 0, ctx->strm_size);
@@ -1665,17 +1653,17 @@ int alloc_encoder_memory(struct nx_vpu_ctx *ctx)
 				width, height, num, format, 64);
 
 			if (enc_ctx->ref_recon_buf[i] == 0) {
-				NX_ErrMsg(("alloc(%d,%d,..) failed(recon%d)\n",
-					width, height, i));
+				NX_ErrMsg("alloc(%d,%d,..) failed(recon%d)\n",
+					width, height, i);
 				goto Error_Exit;
 			}
 
 			enc_ctx->sub_sample_buf[i] = nx_alloc_memory(drv,
 				width * height/4, 4096);
 			if (enc_ctx->sub_sample_buf[i] == 0) {
-				NX_ErrMsg(("sub_buf allocation failed\n"));
-				NX_ErrMsg(("  size = %d, align = %d)\n",
-					width * height, 16));
+				NX_ErrMsg("sub_buf allocation failed\n");
+				NX_ErrMsg("  size = %d, align = %d)\n",
+					width * height, 16);
 				goto Error_Exit;
 			}
 		}
@@ -1683,9 +1671,9 @@ int alloc_encoder_memory(struct nx_vpu_ctx *ctx)
 
 	ctx->bit_stream_buf = nx_alloc_memory(drv, STREAM_BUF_SIZE, 4096);
 	if (0 == ctx->bit_stream_buf) {
-		NX_ErrMsg(("bit_stream_buf allocation failed.\n"));
-		NX_ErrMsg(("  size = %d, align = %d)\n",
-			STREAM_BUF_SIZE, 4096));
+		NX_ErrMsg("bit_stream_buf allocation failed.\n");
+		NX_ErrMsg("  size = %d, align = %d)\n",
+			STREAM_BUF_SIZE, 4096);
 		goto Error_Exit;
 	}
 
@@ -1703,7 +1691,7 @@ int free_encoder_memory(struct nx_vpu_ctx *ctx)
 	FUNC_IN();
 
 	if (!ctx) {
-		NX_ErrMsg(("invalid encoder handle!!!\n"));
+		NX_ErrMsg("invalid encoder handle!!!\n");
 		return -1;
 	}
 
