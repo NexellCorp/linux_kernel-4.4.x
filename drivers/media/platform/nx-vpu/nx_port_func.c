@@ -1,19 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
 
 #include <linux/slab.h>
@@ -22,7 +10,6 @@
 #include <linux/delay.h>
 #include <media/videobuf2-dma-contig.h>
 #include "nx_port_func.h"
-
 
 struct nx_memory_info *nx_alloc_memory(void *drv, int32_t size, int32_t align)
 {
@@ -130,7 +117,7 @@ struct nx_vid_memory_info *nx_alloc_frame_memory(void *drv, int32_t width,
 		chroma_planes = 1;
 		break;
 	default:
-		NX_ErrMsg(("Unknown fourCC type.\n"));
+		NX_ErrMsg("Unknown fourCC type.\n");
 		goto Error_Exit;
 	}
 	cSize = cWidth * cHeight;

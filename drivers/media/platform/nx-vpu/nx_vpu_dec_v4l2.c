@@ -1,19 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
 
 #include <linux/delay.h>
@@ -39,11 +27,11 @@
 #include "vpu_hw_interface.h"
 #include "nx_vpu_v4l2.h"
 
-
 #define INFO_MSG		0
 
 #define PS_SAVE_SIZE (320 * 1024)
 
+static void decoder_flush_disp_info(struct vpu_dec_ctx *dec_ctx);
 
 static int nx_vpu_dec_ctx_ready(struct nx_vpu_ctx *ctx)
 {
@@ -51,18 +39,18 @@ static int nx_vpu_dec_ctx_ready(struct nx_vpu_ctx *ctx)
 
 	FUNC_IN();
 
-	NX_DbgMsg(INFO_MSG, ("src = %d, dst = %d, dpb = %d\n",
+	NX_DbgMsg(INFO_MSG, "src = %d, dst = %d, dpb = %d\n",
 		ctx->strm_queue_cnt, ctx->img_queue_cnt,
-		dec_ctx->dpb_queue_cnt));
+		dec_ctx->dpb_queue_cnt);
 
 	if (ctx->vpu_cmd == DEC_RUN) {
 		if (ctx->strm_queue_cnt < 1) {
-			NX_DbgMsg(INFO_MSG, ("strm_queue_cnt error\n"));
+			NX_DbgMsg(INFO_MSG, "strm_queue_cnt error\n");
 			return 0;
 		}
 	} else if (ctx->vpu_cmd == SET_FRAME_BUF) {
 		if (dec_ctx->dpb_queue_cnt < dec_ctx->frame_buffer_cnt) {
-			NX_DbgMsg(INFO_MSG, ("dpb_queue_cnt error\n"));
+			NX_DbgMsg(INFO_MSG, "dpb_queue_cnt error\n");
 			return 0;
 		}
 	}
@@ -109,9 +97,9 @@ static int check_ctrl_val(struct nx_vpu_ctx *ctx, struct v4l2_control *ctrl)
 		return -EINVAL;
 	if (ctrl->value < c->minimum || ctrl->value > c->maximum
 	    || (c->step != 0 && ctrl->value % c->step != 0)) {
-		NX_ErrMsg(("Invalid control value\n"));
-		NX_ErrMsg(("value = %d, min = %d, max = %d, step = %d\n",
-			ctrl->value, c->minimum, c->maximum, c->step));
+		NX_ErrMsg("Invalid control value\n");
+		NX_ErrMsg("value = %d, min = %d, max = %d, step = %d\n",
+			ctrl->value, c->minimum, c->maximum, c->step);
 		return -ERANGE;
 	}
 
@@ -123,7 +111,6 @@ static int check_ctrl_val(struct nx_vpu_ctx *ctx, struct v4l2_control *ctrl)
 /*-----------------------------------------------------------------------------
  *      functions for vidioc_queryctrl
  *----------------------------------------------------------------------------*/
-
 static int vidioc_g_fmt_vid_cap_mplane(struct file *file, void *priv,
 	struct v4l2_format *f)
 {
@@ -134,7 +121,7 @@ static int vidioc_g_fmt_vid_cap_mplane(struct file *file, void *priv,
 
 	if ((ctx->width == 0) || (ctx->height == 0) ||
 		(ctx->codec.dec.frame_buffer_cnt == 0)) {
-			NX_ErrMsg(("There is not cfg information!!"));
+			NX_ErrMsg("There is not cfg information!!");
 			return -1;
 	}
 
@@ -160,8 +147,8 @@ static int vidioc_g_fmt_vid_cap_mplane(struct file *file, void *priv,
 		pix_mp->reserved[2] = (__u8)ctx->codec.dec.frame_buffer_cnt;
 	}
 
-	NX_DbgMsg(INFO_MSG, ("vidioc_g_fmt_vid_cap_mplane : W = %d, H = %d\n",
-		pix_mp->width, pix_mp->height));
+	NX_DbgMsg(INFO_MSG, "vidioc_g_fmt_vid_cap_mplane : W = %d, H = %d\n",
+		pix_mp->width, pix_mp->height);
 
 	return 0;
 }
@@ -174,7 +161,7 @@ static int vidioc_g_fmt_vid_out_mplane(struct file *file, void *priv,
 
 	FUNC_IN();
 
-	NX_DbgMsg(INFO_MSG, ("f->type = %d\n", f->type));
+	NX_DbgMsg(INFO_MSG, "f->type = %d\n", f->type);
 
 	pix_mp->width = 0;
 	pix_mp->height = 0;
@@ -197,21 +184,21 @@ static int vidioc_try_fmt(struct file *file, void *priv,
 
 	if ((f->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) &&
 		(f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
-			NX_ErrMsg(("invalid buf type\n"));
+			NX_ErrMsg("invalid buf type\n");
 			return -EINVAL;
 	}
 
 	fmt = find_format(f);
 	if (!fmt) {
-		NX_ErrMsg(("failed to try format(%x)\n",
-			pix_fmt_mp->pixelformat));
+		NX_ErrMsg("failed to try format(%x)\n",
+			pix_fmt_mp->pixelformat);
 		return -EINVAL;
 	}
 
 	if ((fmt->num_planes != pix_fmt_mp->num_planes) &&
 		(1 != pix_fmt_mp->num_planes)) {
-		NX_ErrMsg(("failed to try format(num of planes error(%d, %d)\n",
-			fmt->num_planes, pix_fmt_mp->num_planes));
+		NX_ErrMsg("failed to try format(num of planes error(%d, %d)\n",
+			fmt->num_planes, pix_fmt_mp->num_planes);
 		return -EINVAL;
 	}
 
@@ -229,13 +216,13 @@ static int vidioc_s_fmt_vid_cap_mplane(struct file *file, void *priv,
 	FUNC_IN();
 
 	if (ctx->vq_img.streaming) {
-		NX_ErrMsg(("%s queue busy\n", __func__));
+		NX_ErrMsg("%s queue busy\n", __func__);
 		return -EBUSY;
 	}
 
 	ret = vidioc_try_fmt(file, priv, f);
 	if (ret) {
-		NX_ErrMsg(("failed to try output format\n"));
+		NX_ErrMsg("failed to try output format\n");
 		return ret;
 	}
 
@@ -270,7 +257,7 @@ static int vidioc_s_fmt_vid_out_mplane(struct file *file, void *priv,
 	FUNC_IN();
 
 	if (ctx->vq_strm.streaming) {
-		NX_ErrMsg(("%s queue busy\n", __func__));
+		NX_ErrMsg("%s queue busy\n", __func__);
 		return -EBUSY;
 	}
 
@@ -308,7 +295,7 @@ static int vidioc_reqbufs(struct file *file, void *priv,
 	if (reqbufs->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		ret = vb2_reqbufs(&ctx->vq_strm, reqbufs);
 		if (ret != 0) {
-			NX_ErrMsg(("error in vb2_reqbufs() for stream\n"));
+			NX_ErrMsg("error in vb2_reqbufs() for stream\n");
 			return ret;
 		}
 	} else if (reqbufs->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
@@ -317,20 +304,20 @@ static int vidioc_reqbufs(struct file *file, void *priv,
 
 		/* TBD. Additional frame buffer count */
 		if ((reqbufs->count + 2) < ctx->codec.dec.frame_buffer_cnt) {
-			NX_ErrMsg(("v4l2_requestbuffers : count error\n"));
+			NX_ErrMsg("v4l2_requestbuffers : count error\n");
 			reqbufs->count = ctx->codec.dec.frame_buffer_cnt;
 			return -ENOMEM;
 		}
 
 		ret = vb2_reqbufs(&ctx->vq_img, reqbufs);
 		if (ret != 0) {
-			NX_ErrMsg(("error in vb2_reqbufs() for Img\n"));
+			NX_ErrMsg("error in vb2_reqbufs() for Img\n");
 			return ret;
 		}
 
 		ctx->codec.dec.frame_buffer_cnt = reqbufs->count;
 	} else {
-		NX_ErrMsg(("invalid buf type\n"));
+		NX_ErrMsg("invalid buf type\n");
 		return -EINVAL;
 	}
 
@@ -345,6 +332,7 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	FUNC_IN();
 
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+		/* Decoeded Buffer */
 		if ((buf->m.planes[0].bytesused == 0)
 			&& (ctx->is_initialized)) {
 				ctx->codec.dec.flush = 1;
@@ -356,6 +344,7 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 				return vb2_qbuf(&ctx->vq_strm, buf);
 			}
 	} else {
+		/* Display Buffer */
 		if (ctx->is_initialized) {
 			struct vpu_dec_clr_dsp_flag_arg clrFlagArg;
 
@@ -363,10 +352,12 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 			NX_DrvMemset(&clrFlagArg.frameBuffer, 0,
 				sizeof(clrFlagArg.frameBuffer));
 
+			ctx->codec.dec.reliable_0_100[buf->index] = 0;
+
 			ret = NX_VpuDecClrDspFlag(ctx->hInst, &clrFlagArg);
 			if (ret != VPU_RET_OK) {
-				NX_ErrMsg(("ClrDspFlag() failed.(Error=%d)\n",
-					ret));
+				NX_ErrMsg("ClrDspFlag() failed.(Error=%d)\n",
+					ret);
 				return ret;
 			}
 		}
@@ -383,15 +374,36 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	FUNC_IN();
 
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+		/* Decoeded Buffer */
 		ret = vb2_dqbuf(&ctx->vq_strm, buf, file->f_flags & O_NONBLOCK);
+		buf->reserved = (0 <= (int32_t)buf->index) ?
+			ctx->codec.dec.reliable_0_100[buf->index] : 0;
+		buf->bytesused = (0 <= (int32_t)buf->index) ?
+			ctx->strm_size : 0;
 	} else {
-		if (ctx->codec.dec.delay_frm == 0) {
+		/* Display Buffer */
+		if (ctx->codec.dec.frame_prop == 0) {
+			/* normal frame */
 			ret = vb2_dqbuf(&ctx->vq_img, buf, file->f_flags &
 				O_NONBLOCK);
-		} else if (ctx->codec.dec.delay_frm == 1) {
+			buf->reserved = (0 <= (int32_t)buf->index) ?
+				ctx->codec.dec.reliable_0_100[buf->index] : 0;
+			buf->bytesused = (0 <= (int32_t)buf->index) ?
+				ctx->strm_size : 0;
+		} else if (ctx->codec.dec.frame_prop == 2) {
+			/* need more frame */
+			buf->index = -4;
+			ret = 0;
+		} else if (ctx->codec.dec.frame_prop == 1) {
+			/* delayed frame */
 			buf->index = -3;
 			ret = 0;
+		} else if (ctx->codec.dec.frame_prop == -2) {
+			/* skip frame */
+			buf->index = -2;
+			ret = 0;
 		} else {
+			/* no decoded frame */
 			buf->index = -1;
 			ret = 0;
 		}
@@ -420,7 +432,7 @@ static int vidioc_queryctrl(struct file *file, void *priv, struct v4l2_queryctrl
 	*qc)
 {
 	FUNC_IN();
-	NX_ErrMsg(("%s will be coded as needed!\n", __func__));
+	NX_ErrMsg("%s will be coded as needed!\n", __func__);
 	return 0;
 }
 
@@ -428,7 +440,7 @@ static int vidioc_g_ctrl(struct file *file, void *priv, struct v4l2_control
 	*ctrl)
 {
 	FUNC_IN();
-	NX_ErrMsg(("%s will be coded as needed!\n", __func__));
+	NX_ErrMsg("%s will be coded as needed!\n", __func__);
 	return 0;
 }
 
@@ -447,7 +459,7 @@ static int vidioc_s_ctrl(struct file *file, void *priv, struct v4l2_control
 	if (ctrl->id == V4L2_CID_MPEG_VIDEO_THUMBNAIL_MODE) {
 		ctx->codec.dec.thumbnailMode = ctrl->value;
 	} else {
-		NX_ErrMsg(("Invalid control(ID = %x)\n", ctrl->id));
+		NX_ErrMsg("Invalid control(ID = %x)\n", ctrl->id);
 		return -EINVAL;
 	}
 
@@ -458,7 +470,7 @@ static int vidioc_g_ext_ctrls(struct file *file, void *priv,
 	struct v4l2_ext_controls *f)
 {
 	FUNC_IN();
-	NX_ErrMsg(("%s will be coded as needed!\n", __func__));
+	NX_ErrMsg("%s will be coded as needed!\n", __func__);
 	return 0;
 }
 
@@ -488,7 +500,6 @@ static const struct v4l2_ioctl_ops nx_vpu_dec_ioctl_ops = {
 };
 
 /* -------------------------------------------------------------------------- */
-
 
 static void cleanup_dpb_queue(struct nx_vpu_ctx *ctx)
 {
@@ -554,6 +565,11 @@ static void nx_vpu_dec_stop_streaming(struct vb2_queue *q)
 		INIT_LIST_HEAD(&ctx->codec.dec.dpb_queue);
 		ctx->codec.dec.dpb_queue_cnt = 0;
 
+		decoder_flush_disp_info(&ctx->codec.dec);
+
+		ctx->codec.dec.start_Addr = 0;
+		ctx->codec.dec.end_Addr   = 0;
+
 		spin_unlock_irqrestore(&dev->irqlock, flags);
 	} else if (q->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		spin_lock_irqsave(&dev->irqlock, flags);
@@ -564,7 +580,6 @@ static void nx_vpu_dec_stop_streaming(struct vb2_queue *q)
 
 		spin_unlock_irqrestore(&dev->irqlock, flags);
 	}
-
 }
 
 static void nx_vpu_dec_buf_queue(struct vb2_buffer *vb)
@@ -632,7 +647,7 @@ static void nx_vpu_dec_buf_queue(struct vb2_buffer *vb)
 		list_add_tail(&buf->list, &ctx->codec.dec.dpb_queue);
 		dec_ctx->dpb_queue_cnt++;
 	} else {
-		NX_ErrMsg(("unsupported buffer type(%d)\n", vq->type));
+		NX_ErrMsg("unsupported buffer type(%d)\n", vq->type);
 		return;
 	}
 
@@ -655,7 +670,6 @@ static struct vb2_ops nx_vpu_dec_qops = {
 
 /* -------------------------------------------------------------------------- */
 
-
 const struct v4l2_ioctl_ops *get_dec_ioctl_ops(void)
 {
 	return &nx_vpu_dec_ioctl_ops;
@@ -676,13 +690,16 @@ int nx_vpu_dec_open(struct nx_vpu_ctx *ctx)
 	ctx->vq_strm.lock = &ctx->dev->dev_mutex;
 	ctx->vq_strm.buf_struct_size = sizeof(struct nx_vpu_buf);
 	ctx->vq_strm.io_modes = VB2_USERPTR | VB2_DMABUF;
+#ifdef CONFIG_ARCH_NXP3220_COMMON
+	ctx->vq_strm.dma_attrs = DMA_ATTR_ALLOC_SINGLE_PAGES;
+#endif
 	ctx->vq_strm.mem_ops = &vb2_dma_contig_memops;
 	/*ctx->vq_strm.allow_zero_byteused = 1; */
 	ctx->vq_strm.timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	ctx->vq_strm.ops = &nx_vpu_dec_qops;
 	ret = vb2_queue_init(&ctx->vq_strm);
 	if (ret) {
-		NX_ErrMsg(("Failed to initialize videobuf2 queue(output)\n"));
+		NX_ErrMsg("Failed to initialize videobuf2 queue(output)\n");
 		return ret;
 	}
 
@@ -692,15 +709,19 @@ int nx_vpu_dec_open(struct nx_vpu_ctx *ctx)
 	ctx->vq_img.lock = &ctx->dev->dev_mutex;
 	ctx->vq_img.buf_struct_size = sizeof(struct nx_vpu_buf);
 	ctx->vq_img.io_modes = VB2_USERPTR | VB2_DMABUF;
+#ifdef CONFIG_ARCH_NXP3220_COMMON
+	ctx->vq_img.dma_attrs = DMA_ATTR_ALLOC_SINGLE_PAGES;
+#endif
 	ctx->vq_img.mem_ops = &vb2_dma_contig_memops;
 	ctx->vq_img.timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	ctx->vq_img.ops = &nx_vpu_dec_qops;
 	ret = vb2_queue_init(&ctx->vq_img);
 	if (ret) {
-		NX_ErrMsg(("Failed to initialize videobuf2 queue(capture)\n"));
+		NX_ErrMsg("Failed to initialize videobuf2 queue(capture)\n");
 		return ret;
 	}
 
+	FUNC_OUT();
 	return 0;
 }
 
@@ -709,8 +730,12 @@ static void decoder_flush_disp_info(struct vpu_dec_ctx *dec_ctx)
 	int32_t i;
 
 	for (i = 0 ; i < VPU_MAX_BUFFERS ; i++) {
+#ifdef USE_DEPRECATED_STRUCTURE
 		dec_ctx->timeStamp[i].tv_sec = -10;
 		dec_ctx->timeStamp[i].tv_usec = -10;
+#else
+		dec_ctx->timeStamp[i] = -1;
+#endif
 		dec_ctx->frm_type[i] = -1;
 		dec_ctx->multiResolution[i] = -0;
 		dec_ctx->interlace_flg[i] = -1;
@@ -719,8 +744,12 @@ static void decoder_flush_disp_info(struct vpu_dec_ctx *dec_ctx)
 		dec_ctx->upSampledHeight[i] = 0;
 	}
 
+#ifdef USE_DEPRECATED_STRUCTURE
 	dec_ctx->savedTimeStamp.tv_sec = -1;
 	dec_ctx->savedTimeStamp.tv_usec = -1;
+#else
+	dec_ctx->savedTimeStamp = -1;
+#endif
 }
 
 int vpu_dec_open_instance(struct nx_vpu_ctx *ctx)
@@ -766,6 +795,12 @@ int vpu_dec_open_instance(struct nx_vpu_ctx *ctx)
 	case V4L2_PIX_FMT_DIV3:
 		ctx->codec_mode = CODEC_STD_DIV3;
 		break;
+	case V4L2_PIX_FMT_FLV1:
+		/* Sorenson spark */
+		ctx->codec_mode = CODEC_STD_MPEG4;
+		openArg.mp4Class = 256;
+		break;
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 	case V4L2_PIX_FMT_WMV9:
 	case V4L2_PIX_FMT_WVC1:
 		ctx->codec_mode = CODEC_STD_VC1;
@@ -774,23 +809,21 @@ int vpu_dec_open_instance(struct nx_vpu_ctx *ctx)
 	case V4L2_PIX_FMT_RV9:
 		ctx->codec_mode = CODEC_STD_RV;
 		break;
-	case V4L2_PIX_FMT_FLV1:
-		/* Sorenson spark */
-		ctx->codec_mode = CODEC_STD_MPEG4;
-		openArg.mp4Class = 256;
+	case V4L2_PIX_FMT_VP8:
+		ctx->codec_mode = CODEC_STD_VP8;
 		break;
 	case V4L2_PIX_FMT_THEORA:
 		ctx->codec_mode = CODEC_STD_THO;
 		break;
-	case V4L2_PIX_FMT_VP8:
-		ctx->codec_mode = CODEC_STD_VP8;
-		break;
+#endif
+#ifdef USE_JPEG
 	case V4L2_PIX_FMT_MJPEG:
 		ctx->codec_mode = CODEC_STD_MJPG;
 		break;
+#endif
 	default:
-		NX_ErrMsg(("Invalid codec type(fourcc = %x)!!!\n",
-			ctx->strm_fmt->fourcc));
+		NX_ErrMsg("Invalid codec type(fourcc = %x)!!!\n",
+			ctx->strm_fmt->fourcc);
 		goto err_exit;
 	}
 	openArg.codecStd = ctx->codec_mode;
@@ -798,14 +831,14 @@ int vpu_dec_open_instance(struct nx_vpu_ctx *ctx)
 	ctx->bit_stream_buf = nx_alloc_memory(&dev->plat_dev->dev,
 		STREAM_BUF_SIZE, 4096);
 	if (ctx->bit_stream_buf == NULL) {
-		NX_ErrMsg(("Bitstream_buf allocation failed.\n"));
+		NX_ErrMsg("Bitstream_buf allocation failed.\n");
 		goto err_exit;
 	}
 
 	ctx->instance_buf = nx_alloc_memory(&dev->plat_dev->dev,
 		workBufSize, 4096);
 	if (ctx->instance_buf == NULL) {
-		NX_ErrMsg(("instance_buf allocation failed.\n"));
+		NX_ErrMsg("instance_buf allocation failed.\n");
 		goto err_exit;
 	}
 
@@ -815,9 +848,9 @@ int vpu_dec_open_instance(struct nx_vpu_ctx *ctx)
 
 	ret = NX_VpuDecOpen(&openArg, dev, &hInst);
 	if ((VPU_RET_OK != ret) || (0 == hInst)) {
-		NX_ErrMsg(("Cannot open VPU Instance!!\n"));
-		NX_ErrMsg(("  codecStd=%d, is_encoder=%d, hInst=%p)\n",
-			openArg.codecStd, openArg.isEncoder, hInst));
+		NX_ErrMsg("Cannot open VPU Instance!!\n");
+		NX_ErrMsg("  codecStd=%d, is_encoder=%d, hInst=%p)\n",
+			openArg.codecStd, openArg.isEncoder, hInst);
 		goto err_exit;
 	}
 
@@ -848,7 +881,7 @@ int vpu_dec_parse_vid_cfg(struct nx_vpu_ctx *ctx)
 	FUNC_IN();
 
 	if (ctx->hInst == NULL) {
-		NX_ErrMsg(("Err : vpu is not opend\n"));
+		NX_ErrMsg("Err : vpu is not opend\n");
 		return -EAGAIN;
 	}
 
@@ -860,7 +893,7 @@ int vpu_dec_parse_vid_cfg(struct nx_vpu_ctx *ctx)
 		/*spin_lock_irqsave(&ctx->dev->irqlock, flags);*/
 
 		if (list_empty(&ctx->strm_queue)) {
-			NX_DbgMsg(INFO_MSG, ("No src buffer.\n"));
+			NX_DbgMsg(INFO_MSG, "No src buffer.\n");
 			/* spin_unlock_irqrestore(&ctx->dev->irqlock, flags); */
 			return -EAGAIN;
 		}
@@ -868,7 +901,7 @@ int vpu_dec_parse_vid_cfg(struct nx_vpu_ctx *ctx)
 		buf = list_entry(ctx->strm_queue.next, struct nx_vpu_buf, list);
 		buf->used = 1;
 		phyAddr = nx_vpu_mem_plane_addr(ctx, &buf->vb, 0);
-		seqArg.seqDataSize = buf->vb.planes[0].bytesused;
+		seqArg.seqDataSize = vb2_get_plane_payload(&buf->vb, 0);
 
 #ifdef USE_ION_MEMORY
 		{
@@ -894,13 +927,13 @@ int vpu_dec_parse_vid_cfg(struct nx_vpu_ctx *ctx)
 
 	ret = NX_VpuDecSetSeqInfo(ctx->hInst, &seqArg);
 	if (ret != VPU_RET_OK)
-		NX_ErrMsg(("NX_VpuDecSetSeqInfo() failed.(ErrorCode=%d)\n",
-			ret));
+		NX_ErrMsg("NX_VpuDecSetSeqInfo() failed.(ErrorCode=%d)\n",
+			ret);
 
 	if (seqArg.minFrameBufCnt < 1 ||
 		seqArg.minFrameBufCnt > VPU_MAX_BUFFERS)
-		NX_ErrMsg(("Min FrameBufCnt Error(%d)!!!\n",
-			seqArg.minFrameBufCnt));
+		NX_ErrMsg("Min FrameBufCnt Error(%d)!!!\n",
+			seqArg.minFrameBufCnt);
 
 	ctx->width = seqArg.outWidth;
 	ctx->height = seqArg.outHeight;
@@ -919,8 +952,8 @@ int vpu_dec_parse_vid_cfg(struct nx_vpu_ctx *ctx)
 	dec_ctx->crop_top = seqArg.cropTop;
 	dec_ctx->crop_bot = seqArg.cropBottom;
 
-	NX_DbgMsg(INFO_MSG, ("[PARSE]Min_Buff = %d\n",
-		dec_ctx->frame_buffer_cnt));
+	NX_DbgMsg(INFO_MSG, "[PARSE]Min_Buff = %d\n",
+		dec_ctx->frame_buffer_cnt);
 
 	spin_lock_irqsave(&ctx->dev->irqlock, flags);
 
@@ -929,7 +962,7 @@ int vpu_dec_parse_vid_cfg(struct nx_vpu_ctx *ctx)
 	list_del(&buf->list);
 	ctx->strm_queue_cnt--;
 
-	buf->vb.planes[0].bytesused = ctx->strm_size;
+	vb2_set_plane_payload(&buf->vb, 0, ctx->strm_size);
 	vbuf->field = dec_ctx->interlace_flg[0];
 	vbuf->flags = ctx->codec.dec.frame_buf_delay;
 
@@ -949,7 +982,7 @@ int vpu_dec_init(struct nx_vpu_ctx *ctx)
 	FUNC_IN();
 
 	if (ctx->hInst == NULL) {
-		NX_ErrMsg(("Err : vpu is not opend\n"));
+		NX_ErrMsg("Err : vpu is not opend\n");
 		return -EAGAIN;
 	}
 	frameArg = kzalloc(sizeof(struct vpu_dec_reg_frame_arg),
@@ -962,7 +995,7 @@ int vpu_dec_init(struct nx_vpu_ctx *ctx)
 	if (ctx->codec_mode != CODEC_STD_MJPG) {
 		ret = alloc_decoder_memory(ctx);
 		if (ret) {
-			NX_ErrMsg(("Failed to allocate decoder buffers.\n"));
+			NX_ErrMsg("Failed to allocate decoder buffers.\n");
 			return -ENOMEM;
 		}
 
@@ -993,14 +1026,19 @@ int vpu_dec_init(struct nx_vpu_ctx *ctx)
 
 	ret = NX_VpuDecRegFrameBuf(ctx->hInst, frameArg);
 	if (ret != VPU_RET_OK)
-		NX_ErrMsg(("NX_VpuDecRegFrameBuf() failed.(ErrorCode=%d)\n",
-			ret));
+		NX_ErrMsg("NX_VpuDecRegFrameBuf() failed.(ErrorCode=%d)\n",
+			ret);
 
 	return ret;
 }
 
+#ifdef USE_DEPRECATED_STRUCTURE
 static void put_dec_info(struct nx_vpu_ctx *ctx,
 	struct vpu_dec_frame_arg *pDecArg, struct timeval *pTimestamp)
+#else
+static void put_dec_info(struct nx_vpu_ctx *ctx,
+	struct vpu_dec_frame_arg *pDecArg, u64 timeStamp)
+#endif
 {
 	struct vpu_dec_ctx *dec_ctx = &ctx->codec.dec;
 	int32_t idx = pDecArg->indexFrameDecoded;
@@ -1033,7 +1071,7 @@ static void put_dec_info(struct nx_vpu_ctx *ctx,
 		dec_ctx->frm_type[idx] = -1;
 		break;
 	default:
-		NX_ErrMsg(("not defined frame type!!!\n"));
+		NX_ErrMsg("not defined frame type!!!\n");
 		dec_ctx->frm_type[idx] = -1;
 	}
 
@@ -1059,13 +1097,17 @@ static void put_dec_info(struct nx_vpu_ctx *ctx,
 	}
 
 	if ((dec_ctx->interlace_flg[idx] == V4L2_FIELD_NONE) ||
-		(pDecArg->npf))
+		(!pDecArg->npf))
 		dec_ctx->reliable_0_100[idx] = dec_ctx->cur_reliable;
 	else
 		dec_ctx->reliable_0_100[idx] += dec_ctx->cur_reliable >> 1;
 
+#ifdef USE_DEPRECATED_STRUCTURE
 	dec_ctx->timeStamp[idx].tv_sec = pTimestamp->tv_sec;
 	dec_ctx->timeStamp[idx].tv_usec = pTimestamp->tv_usec;
+#else
+	dec_ctx->timeStamp[idx] = timeStamp;
+#endif
 }
 
 int vpu_dec_decode_slice(struct nx_vpu_ctx *ctx)
@@ -1073,7 +1115,11 @@ int vpu_dec_decode_slice(struct nx_vpu_ctx *ctx)
 	struct vpu_dec_ctx *dec_ctx = &ctx->codec.dec;
 	int ret = 0;
 	unsigned long flags;
+#ifdef USE_DEPRECATED_STRUCTURE
 	struct timeval timestamp;
+#else
+	u64 timestamp;
+#endif
 	struct vpu_dec_frame_arg decArg;
 	struct nx_vpu_v4l2 *dev = ctx->dev;
 	struct nx_vpu_buf *buf;
@@ -1082,7 +1128,7 @@ int vpu_dec_decode_slice(struct nx_vpu_ctx *ctx)
 	FUNC_IN();
 
 	if (ctx->hInst == NULL) {
-		NX_ErrMsg(("Err : vpu is not opend\n"));
+		NX_ErrMsg("Err : vpu is not opend\n");
 		return -EAGAIN;
 	}
 
@@ -1095,7 +1141,7 @@ int vpu_dec_decode_slice(struct nx_vpu_ctx *ctx)
 		/* spin_lock_irqsave(&dev->irqlock, flags); */
 
 		if (list_empty(&ctx->strm_queue)) {
-			NX_DbgMsg(INFO_MSG, ("No src buffer.\n"));
+			NX_DbgMsg(INFO_MSG, "No src buffer.\n");
 			/* spin_unlock_irqrestore(&ctx->dev->irqlock, flags); */
 			return -EAGAIN;
 		}
@@ -1104,7 +1150,8 @@ int vpu_dec_decode_slice(struct nx_vpu_ctx *ctx)
 		vbuf = to_vb2_v4l2_buffer(&buf->vb);
 		buf->used = 1;
 		phyAddr = nx_vpu_mem_plane_addr(ctx, &buf->vb, 0);
-		decArg.strmDataSize = buf->vb.planes[0].bytesused;
+		decArg.strmDataSize = vb2_get_plane_payload(&buf->vb, 0);
+
 		alignSz = (decArg.strmDataSize + 4095) & (~4095);
 #ifdef USE_ION_MEMORY
 		decArg.strmData = (unsigned char *)cma_get_virt(phyAddr,
@@ -1114,39 +1161,66 @@ int vpu_dec_decode_slice(struct nx_vpu_ctx *ctx)
 #endif
 
 		decArg.eos = dec_ctx->eos_tag;
+#ifdef USE_DEPRECATED_STRUCTURE
 		timestamp.tv_sec = vbuf->timestamp.tv_sec;
 		timestamp.tv_usec = vbuf->timestamp.tv_usec;
-
+#else
+		timestamp = vbuf->vb2_buf.timestamp;
+#endif
 		/* spin_unlock_irqrestore(&dev->irqlock, flags); */
 	} else {
 		decArg.strmDataSize = 0;
 		decArg.strmData = 0;
 		decArg.eos = dec_ctx->eos_tag;
 
+#ifdef USE_DEPRECATED_STRUCTURE
 		timestamp.tv_sec = -1;
 		timestamp.tv_usec = -1;
+#else
+		timestamp = -1;
+#endif
 	}
 
 	dec_ctx->start_Addr = dec_ctx->end_Addr;
 
 	ret = NX_VpuDecRunFrame(ctx->hInst, &decArg);
-	if (ret != VPU_RET_OK) {
-		NX_ErrMsg(("NX_VpuDecRunFrame() failed.(ErrorCode=%d)\n", ret));
+	if (ret < VPU_RET_OK) {
+		NX_ErrMsg("NX_VpuDecRunFrame() failed.(ErrorCode=%d)\n", ret);
+		/*
+		If the result return here, v4l2 buffer is pending.
+		Then, v4l2 dqbuf is pending.
+		So, this code may have to be removed.
+		*/
+		/*
 		return ret;
+		*/
 	}
 
-	dec_ctx->end_Addr = decArg.strmReadPos;
+	ctx->strm_size = 0;
 
-	if (dec_ctx->end_Addr >= dec_ctx->start_Addr)
-		ctx->strm_size = dec_ctx->end_Addr - dec_ctx->start_Addr;
-	else
-		ctx->strm_size = (STREAM_BUF_SIZE - dec_ctx->start_Addr)
-				+ dec_ctx->end_Addr;
+	if (!ret) {
+		dec_ctx->end_Addr = decArg.strmReadPos;
 
+		if (dec_ctx->end_Addr >= dec_ctx->start_Addr)
+			ctx->strm_size =
+				dec_ctx->end_Addr - dec_ctx->start_Addr;
+		else
+			ctx->strm_size =
+				(STREAM_BUF_SIZE - dec_ctx->start_Addr)
+					+ dec_ctx->end_Addr;
+	}
+
+#ifdef USE_DEPRECATED_STRUCTURE
 	put_dec_info(ctx, &decArg, &timestamp);
+#else
+	put_dec_info(ctx, &decArg, timestamp);
+#endif
 
-	if (decArg.indexFrameDisplay >= 0) {
-		dec_ctx->delay_frm = 0;
+	if (0 < ret) {
+		NX_DbgMsg(INFO_MSG, "need more frame.\n");
+		dec_ctx->frame_prop = 2;
+	} else if (decArg.indexFrameDisplay >= 0) {
+		dec_ctx->frame_prop = 0;
 
 		spin_lock_irqsave(&dev->irqlock, flags);
 
@@ -1169,15 +1243,15 @@ int vpu_dec_decode_slice(struct nx_vpu_ctx *ctx)
 
 		spin_unlock_irqrestore(&dev->irqlock, flags);
 	} else if (decArg.indexFrameDisplay == -3) {
-		NX_DbgMsg(INFO_MSG, ("delayed Output(%d)\n",
-			decArg.indexFrameDisplay));
-		dec_ctx->delay_frm = 1;
+		NX_DbgMsg(INFO_MSG, "delayed Output(%d).\n",
+			decArg.indexFrameDisplay);
+		dec_ctx->frame_prop = 1;
 	} else if (decArg.indexFrameDisplay == -2) {
-		NX_DbgMsg(INFO_MSG, ("Skip Frame\n"));
-		dec_ctx->delay_frm = -1;
+		NX_DbgMsg(INFO_MSG, "Skip Frame.\n");
+		dec_ctx->frame_prop = -2;
 	} else {
-		NX_ErrMsg(("There is not decoded img!!!\n"));
-		dec_ctx->delay_frm = -1;
+		NX_DbgMsg(INFO_MSG, "There is not decoded image.\n");
+		dec_ctx->frame_prop = -1;
 	}
 
 	spin_lock_irqsave(&dev->irqlock, flags);
@@ -1196,12 +1270,15 @@ int vpu_dec_decode_slice(struct nx_vpu_ctx *ctx)
 		buf->vb.index = idx;
 		vbuf->field = dec_ctx->interlace_flg[idx];
 		vbuf->flags = dec_ctx->frm_type[idx];
-		buf->vb.planes[0].bytesused = ctx->strm_size;
+		vb2_set_plane_payload(&buf->vb, 0, ctx->strm_size);
+#ifdef USE_DEPRECATED_STRUCTURE
 		vbuf->timestamp.tv_sec =
 			dec_ctx->timeStamp[idx].tv_sec;
 		vbuf->timestamp.tv_usec =
 			dec_ctx->timeStamp[idx].tv_usec;
-
+#else
+		vbuf->vb2_buf.timestamp = dec_ctx->timeStamp[idx];
+#endif
 		vb2_buffer_done(&buf->vb, VB2_BUF_STATE_DONE);
 	}
 
@@ -1216,11 +1293,14 @@ int vpu_dec_decode_slice(struct nx_vpu_ctx *ctx)
 		vbuf = to_vb2_v4l2_buffer(&buf->vb);
 		vbuf->field = dec_ctx->interlace_flg[idx];
 		vbuf->flags = dec_ctx->frm_type[idx];
+#ifdef USE_DEPRECATED_STRUCTURE
 		vbuf->timestamp.tv_sec =
 			dec_ctx->timeStamp[idx].tv_sec;
 		vbuf->timestamp.tv_usec =
 			dec_ctx->timeStamp[idx].tv_usec;
-
+#else
+		vbuf->vb2_buf.timestamp = dec_ctx->timeStamp[idx];
+#endif
 		vb2_buffer_done(&buf->vb, VB2_BUF_STATE_DONE);
 	}
 
@@ -1247,17 +1327,17 @@ int alloc_decoder_memory(struct nx_vpu_ctx *ctx)
 	mvSize = ALIGN(mvSize, 4096);
 
 	if (width == 0 || height == 0 || mvSize == 0) {
-		NX_ErrMsg(("Invalid memory parameters!!!\n"));
-		NX_ErrMsg(("  width=%d, height=%d, mvSize=%d\n", width, height,
-			mvSize));
+		NX_ErrMsg("Invalid memory parameters!!!\n");
+		NX_ErrMsg("  width=%d, height=%d, mvSize=%d\n", width, height,
+			mvSize);
 		return -EINVAL;
 	}
 
 	dec_ctx->col_mv_buf = nx_alloc_memory(drv, mvSize *
 		dec_ctx->frame_buffer_cnt, 4096);
 	if (0 == dec_ctx->col_mv_buf) {
-		NX_ErrMsg(("col_mv_buf allocation failed.(size=%d,align=%d)\n",
-			mvSize * dec_ctx->frame_buffer_cnt, 4096));
+		NX_ErrMsg("col_mv_buf allocation failed.(size=%d,align=%d)\n",
+			mvSize * dec_ctx->frame_buffer_cnt, 4096);
 		goto Error_Exit;
 	}
 
@@ -1265,8 +1345,8 @@ int alloc_decoder_memory(struct nx_vpu_ctx *ctx)
 		dec_ctx->slice_buf = nx_alloc_memory(drv, 2048 * 2048 * 3 / 4,
 			4096);
 		if (0 == dec_ctx->slice_buf) {
-			NX_ErrMsg(("slice buf allocation failed(size = %d)\n",
-				2048 * 2048 * 3 / 4));
+			NX_ErrMsg("slice buf allocation failed(size = %d)\n",
+				2048 * 2048 * 3 / 4);
 			goto Error_Exit;
 		}
 	}
@@ -1276,8 +1356,8 @@ int alloc_decoder_memory(struct nx_vpu_ctx *ctx)
 			dec_ctx->pv_slice_buf = nx_alloc_memory(drv, 17 * 4 *
 				(2048 * 2048 / 256), 4096);
 		if (0 == dec_ctx->pv_slice_buf) {
-			NX_ErrMsg(("slice allocation failed(size=%d)\n",
-				17 * 4 * (2048 * 2048 / 256)));
+			NX_ErrMsg("slice allocation failed(size=%d)\n",
+				17 * 4 * (2048 * 2048 / 256));
 			goto Error_Exit;
 		}
 	}
@@ -1296,7 +1376,7 @@ int free_decoder_memory(struct nx_vpu_ctx *ctx)
 	FUNC_IN();
 
 	if (!ctx) {
-		NX_ErrMsg(("invalid decoder handle!!!\n"));
+		NX_ErrMsg("invalid decoder handle!!!\n");
 		return -1;
 	}
 

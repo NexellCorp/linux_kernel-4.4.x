@@ -1,19 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
 
 #ifndef __NX_ALLOC_MEM_H__
@@ -22,35 +10,55 @@
 #include <linux/types.h>
 #include <linux/kernel.h>
 
+#ifndef CONFIG_ARCH_NXP3220_COMMON
+#define USE_JPEG
+#define USE_ENCODER
+#define USE_DEPRECATED_APIS
+#define USE_DEPRECATED_SYSCALL
+#define USE_DEPRECATED_STRUCTURE
+#endif
 
 /* #define USE_ION_MEMORY */
 
 #define FUNC_MSG		0
 
-
 #ifndef NX_DTAG
 #define NX_DTAG			"[DRV|VPU]"
 #endif
 
-#define NX_DbgMsg(COND, MSG)	do {					\
+#define NX_Trace(...)		do {					\
+					printk(NX_DTAG			\
+						" "__VA_ARGS__);	\
+				} while (0)
+
+#define NX_DbgMsg(COND, ...)	do {					\
 					if (COND) {			\
-						printk(NX_DTAG);	\
-						printk MSG;		\
+						printk(NX_DTAG		\
+							" "__VA_ARGS__);\
 					}				\
 				} while (0)
 
-#define NX_ErrMsg(MSG)  do {						\
-				printk("%s%s(%d) : ", NX_DTAG, __FILE__,\
-					__LINE__);			\
-				printk MSG;				\
-			} while (0)
+#define NX_ErrMsg(...)  	do {					\
+					printk(NX_DTAG			\
+						" ""file: %s, line: %d",\
+						__FILE__, __LINE__ );	\
+					printk(NX_DTAG			\
+						" "__VA_ARGS__);	\
+				} while (0)
 
 #if FUNC_MSG
-	#define FUNC_IN()	printk("%s() %d IN.\n", __func__, __LINE__)
-	#define FUNC_OUT()	printk("%s() %d OUT.\n", __func__, __LINE__)
+#define FUNC_IN()		do {					\
+					printk("%s(), %d IN.\n", 	\
+						__FUNCTION__, __LINE__);\
+				} while (0)
+
+#define FUNC_OUT()		do {					\
+					printk("%s(), %d OUT.\n", 	\
+						__FUNCTION__, __LINE__);\
+				} while (0)
 #else
-	#define FUNC_IN()	do {} while (0)
-	#define FUNC_OUT()	do {} while (0)
+#define FUNC_IN()		do {} while (0)
+#define FUNC_OUT()		do {} while (0)
 #endif
 
 #ifndef ALIGN
@@ -58,7 +66,6 @@
 #endif
 
 #define NX_MAX_PLANES		4
-
 
 /*
  * struct nx_memory_info - nexell private memory type

@@ -1,19 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
 
 #ifndef _nx_vpu_v4l2_H
@@ -28,14 +16,12 @@
 #include "nx_vpu_config.h"
 #include "nx_vpu_api.h"
 
-
 #define VPU_MAX_BUFFERS                 32
 #define STREAM_BUF_SIZE                 (4*1024*1024)
 #define ENABLE_INTERRUPT_MODE
 
 #define fh_to_ctx(__fh) container_of(__fh, struct nx_vpu_ctx, fh)
 #define vb_to_vpu_buf(x) container_of(x, struct nx_vpu_buf, vb)
-
 
 struct nx_vpu_v4l2 {
 	struct v4l2_device v4l2_dev;
@@ -44,9 +30,15 @@ struct nx_vpu_v4l2 {
 	struct platform_device *plat_dev;
 
 	void *regs_base;
+#ifdef CONFIG_ARCH_NXP3220_COMMON
+	struct clk* clk_axi;
+	struct clk* clk_apb;
+	struct clk* clk_core;
+#else
 	struct reset_control *coda_c;
 	struct reset_control *coda_a;
 	struct reset_control *coda_p;
+#endif
 
 	uint32_t sram_base_addr;
 	uint32_t sram_size;
@@ -55,22 +47,32 @@ struct nx_vpu_v4l2 {
 	struct mutex dev_mutex;
 
 	wait_queue_head_t vpu_wait_queue;
+#ifdef USE_JPEG
 	wait_queue_head_t jpu_wait_queue;
+#endif
 
 	atomic_t vpu_event_present;
+#ifdef USE_JPEG
 	atomic_t jpu_event_present;
 
 	uint32_t jpu_intr_reason;
+#endif
 
 	struct nx_vpu_ctx *ctx[NX_MAX_VPU_INSTANCE];
 	int curr_ctx;
 	unsigned long ctx_work_bits;
 
+#ifdef USE_DEPRECATED_SYSCALL
 	void *alloc_ctx;
+#else
+	struct device *mem_dev;
+#endif
 
 	/* instance management */
 	int cur_num_instance;
+#ifdef USE_JPEG
 	int cur_jpg_instance;
+#endif
 
 	struct nx_memory_info *firmware_buf;
 };
@@ -95,20 +97,27 @@ struct vpu_enc_ctx {
 struct vpu_dec_ctx {
 	int flush;
 	int eos_tag;
-	int delay_frm;
+	int frame_prop;
 	int frame_buf_delay;
 	int cur_reliable;
 
 	int frm_type[VPU_MAX_BUFFERS];
 	int interlace_flg[VPU_MAX_BUFFERS];
 	int reliable_0_100[VPU_MAX_BUFFERS];
+#ifdef USE_DEPRECATED_STRUCTURE
 	struct timeval timeStamp[VPU_MAX_BUFFERS];
+#else
+	u64 timeStamp[VPU_MAX_BUFFERS];
+#endif
 	int multiResolution[VPU_MAX_BUFFERS];
 	int upSampledWidth[VPU_MAX_BUFFERS];
 	int upSampledHeight[VPU_MAX_BUFFERS];
 
+#ifdef USE_DEPRECATED_STRUCTURE
 	struct timeval savedTimeStamp;
-
+#else
+	u64 savedTimeStamp;
+#endif
 	unsigned int start_Addr;
 	unsigned int end_Addr;
 
@@ -229,9 +238,15 @@ int vidioc_enum_fmt_vid_out_mplane(struct file *file, void *priv,
 int vidioc_querybuf(struct file *file, void *priv, struct v4l2_buffer *buf);
 int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type type);
 int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type type);
+#ifdef USE_DEPRECATED_SYSCALL
 int nx_vpu_queue_setup(struct vb2_queue *vq, const void *parg,
 	unsigned int *buf_count, unsigned int *plane_count,
 	unsigned int psize[], void *allocators[]);
+#else
+int nx_vpu_queue_setup(struct vb2_queue *vq,
+	unsigned int *buf_count, unsigned int *plane_count,
+	unsigned int psize[], struct device *alloc_devs[]);
+#endif
 
 void nx_vpu_unlock(struct vb2_queue *q);
 void nx_vpu_lock(struct vb2_queue *q);
@@ -262,6 +277,5 @@ int vpu_dec_decode_slice(struct nx_vpu_ctx *ctx);
 
 int alloc_decoder_memory(struct nx_vpu_ctx *ctx);
 int free_decoder_memory(struct nx_vpu_ctx *ctx);
-
 
 #endif          /* #define _nx_vpu_v4l2_H */

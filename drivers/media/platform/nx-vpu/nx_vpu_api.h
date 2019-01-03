@@ -1,19 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
 
 #ifndef __NX_VPU_API_H__
@@ -22,7 +10,9 @@
 #include "nx_port_func.h"
 #include "vpu_types.h"
 #include "nx_vpu_config.h"
+#ifdef CONFIG_ARCH_S5P6818
 #include <soc/nexell/tieoff.h>
+#endif
 
 /* Codec Mode */
 enum {
@@ -133,9 +123,7 @@ enum nx_vpu_ret {
 	VPU_RET_NEED_STREAM	= 1,	/* Need More Stream */
 };
 
-
 /* Common Memory Information */
-
 struct sec_axi_info {
 	int useBitEnable;
 	int useIpEnable;
@@ -429,6 +417,17 @@ struct nx_vpu_codec_inst {
 	} codecInfo;
 };
 
+struct nx_vpu_version {
+	uint32_t firm_version;
+	uint32_t firm_revision;
+	uint32_t product_name;
+	uint32_t product_version;
+	uint32_t release_version;
+	uint32_t config_date;
+	uint32_t config_revision;
+	uint32_t config_type;
+};
+
 /* BIT_RUN command */
 enum nx_vpu_cmd {
 	SEQ_INIT = 1,
@@ -463,12 +462,14 @@ enum vpu_gdi_tiled_map_type {
 	VPU_TILED_MAP_TYPE_MAX
 };
 
-
 /* H/W Level APIs */
 void NX_VPU_HwOn(void *, void *);
 void NX_VPU_HWOff(void *);
 int NX_VPU_GetCurPowerState(void);
-void NX_VPU_Clock(int on);
+void NX_VPU_ResetEnter(void *);
+void NX_VPU_ResetRelease(void *);
+void NX_VPU_ClockOn(void*);
+void NX_VPU_ClockOff(void*);
 
 int NX_VpuInit(void *pv, void *baseAddr, void *firmVirAddr,
 	uint32_t firmPhyAddr);
@@ -531,11 +532,17 @@ int JPU_DecRegFrameBuf(struct nx_vpu_codec_inst *pInst,
 int JPU_DecRunFrame(struct nx_vpu_codec_inst *pInst,
 	struct vpu_dec_frame_arg *pRunArg);
 
+extern void vpu_soc_peri_hw_on(void *pv);
+extern void vpu_soc_peri_hw_off(void *pv);
 
 extern void vpu_soc_peri_reset_enter(void *pv);
 extern void vpu_soc_peri_reset_exit(void *pv);
 
+extern void vpu_soc_peri_clock_on(void *pv);
+extern void vpu_soc_peri_clock_off(void *pv);
+
 extern int VPU_WaitBitInterrupt(void *devHandle, int mSeconds);
+extern int VPU_ClearBitInterrupt(void);
 extern int JPU_WaitInterrupt(void *devHandle, int timeOut);
 
 #endif/* __NX_VPU_API_H__ */
