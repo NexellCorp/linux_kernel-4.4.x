@@ -994,7 +994,7 @@
 		};
 
 		video-codec@c0080000 {
-			compatible = "nexell, nx-vpu";
+			compatible = "nexell,nx-vpu";
 			reg = <0xc0080000 0x4000>;
 			interrupts = <IRQ_CODA960_HOST>,
 				<IRQ_CODA960_JPG>;
