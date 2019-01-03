@@ -1,25 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
 
 #include "vpu_hw_interface.h"		/* Register Access */
 #include "nx_vpu_gdi.h"
 #include "nx_port_func.h"
-
 
 #define XY2CONFIG(A, B, C, D, E, F, G, H, I) \
 	((A)<<20 | (B)<<19 | (C)<<18 | (D)<<17 | (E)<<16 | (F)<<12 | (G)<<8 | \
@@ -39,7 +26,6 @@
 #define EM_BANK                         3
 #define EM_CAS                          10
 #define EM_WIDTH                        2
-
 
 struct gdi_tiled_map {
 	int xy2ca_map[16];
@@ -90,7 +76,6 @@ struct dram_config {
 	int  bankBit;
 	int  busBit;
 };
-
 
 int SetTiledMapType(int mapType, int stride, int interleave)
 {
@@ -355,8 +340,8 @@ int ConfigEncSecAXI(int codStd, struct sec_axi_info *sa, int width,
 	sa->bufSize = offset;
 
 	if (sa->bufSize > sramSize) {
-		NX_ErrMsg(("ConfigEncSecAXI() Failed!!!"));
-		NX_ErrMsg(("(bufSz=%d, sramSz=%d)\n", sa->bufSize, sramSize));
+		NX_ErrMsg("ConfigEncSecAXI() Failed!!!");
+		NX_ErrMsg("(bufSz=%d, sramSz=%d)\n", sa->bufSize, sramSize);
 		return VPU_RET_ERR_SRAM;
 	}
 
@@ -609,8 +594,8 @@ int ConfigDecSecAXI(int codStd, struct sec_axi_info *sa, int width, int height,
 	sa->bufSize = offset;
 
 	if (sa->bufSize > sramSize) {
-		NX_ErrMsg(("ConfigDecSecAXI() Failed!!!"));
-		NX_ErrMsg(("bufSz=%d, sramSz=%d)\n", sa->bufSize, sramSize));
+		NX_ErrMsg("ConfigDecSecAXI() Failed!!!");
+		NX_ErrMsg("bufSz=%d, sramSz=%d)\n", sa->bufSize, sramSize);
 		return VPU_RET_ERR_SRAM;
 	}
 

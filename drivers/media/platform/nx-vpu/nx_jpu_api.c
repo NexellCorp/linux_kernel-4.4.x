@@ -1,19 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
 
 #ifndef UNUSED
@@ -27,7 +15,6 @@
 #include "nx_port_func.h"
 #include "vpu_types.h"
 
-
 #define	INFO_MSG					0
 
 #define DC_TABLE_INDEX0				0
@@ -39,7 +26,6 @@
 #define Q_COMPONENT1				0x40
 #define Q_COMPONENT2				0x80
 
-
 enum {
 	INT_JPU_DONE = 0,
 	INT_JPU_ERROR = 1,
@@ -48,7 +34,6 @@ enum {
 	INT_JPU_BIT_BUF_FULL = 3,
 	INT_JPU_PARIAL_OVERFLOW = 3
 };
-
 
 /* ----------------------------------------------------------------------------
  * File: VpuJpegTable.h
@@ -190,9 +175,7 @@ static unsigned char cInfoTable[5][24] = {
 	{ 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 3, }, /* 444 */
 	{ 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 3, }, /* 400 */
 };
-
 #endif	/* JPEG_TABLE_H */
-
 
 /*-----------------------------------------------------------------------------
  *      For Jpeg Encoder
@@ -670,8 +653,8 @@ int JPU_EncRunFrame(struct nx_vpu_codec_inst *pInst,
 	unsigned int mapEnable;
 	int stride = runArg->inImgBuffer.stride[0];
 
-	NX_DbgMsg(INFO_MSG, ("Jpeg Encode Info : Rotate = %d, Mirror = %d\n",
-		pJpgInfo->rotationAngle, pJpgInfo->mirrorDirection));
+	NX_DbgMsg(INFO_MSG, "Jpeg Encode Info : Rotate = %d, Mirror = %d\n",
+		pJpgInfo->rotationAngle, pJpgInfo->mirrorDirection);
 
 	if (pJpgInfo->headerSize == 0) {
 		SetupJpegEncPara(pJpgInfo, pInfo->jpegQuality);
@@ -819,15 +802,15 @@ int JPU_EncRunFrame(struct nx_vpu_codec_inst *pInst,
 		return VPU_RET_ERR_TIMEOUT;
 
 	if (reason != 1) {
-		NX_ErrMsg(("JPG Encode Error(reason = 0x%08x)\n", reason));
+		NX_ErrMsg("JPG Encode Error(reason = 0x%08x)\n", reason);
 		return VPU_RET_ERROR;
 	}
 
 	/* Post Porcessing */
 	val = VpuReadReg(MJPEG_PIC_STATUS_REG);
 	if ((val & 0x4) >> 2) {
-		NX_ErrMsg(("JPG Encode Error(reason = 0x%08x)\n", reason));
-		NX_ErrMsg((" : VPU_RET_ERR_WRONG_SEQ\n"));
+		NX_ErrMsg("JPG Encode Error(reason = 0x%08x)\n", reason);
+		NX_ErrMsg(" : VPU_RET_ERR_WRONG_SEQ\n");
 		return VPU_RET_ERR_WRONG_SEQ;
 	}
 
@@ -842,7 +825,6 @@ int JPU_EncRunFrame(struct nx_vpu_codec_inst *pInst,
 
 	return VPU_RET_OK;
 }
-
 
 /*-----------------------------------------------------------------------------
  *      For Jpeg Decoder
@@ -1666,7 +1648,7 @@ int JPU_DecRunFrame(struct nx_vpu_codec_inst *pInst,
 	}
 
 	if (i > pInfo->numFrameBuffer) {
-		NX_ErrMsg(("Frame Buffer for Decoding is not sufficient!!!\n"));
+		NX_ErrMsg("Frame Buffer for Decoding is not sufficient!!!\n");
 		return -1;
 	}
 
@@ -1744,22 +1726,22 @@ int JPU_DecRunFrame(struct nx_vpu_codec_inst *pInst,
 
 	reason = JPU_WaitInterrupt(pInst->devHandle, JPU_DEC_TIMEOUT);
 	if (!reason) {
-		NX_ErrMsg(("JPU_DecRunFrame() Failed. Timeout(%d)\n",
-			JPU_DEC_TIMEOUT));
+		NX_ErrMsg("JPU_DecRunFrame() Failed. Timeout(%d)\n",
+			JPU_DEC_TIMEOUT);
 		return VPU_RET_ERR_TIMEOUT;
 	}
 
 	if (reason & (1 << INT_JPU_ERROR)) {
-		NX_ErrMsg(("JPU Decode Error(reason = 0x%08x)\n", reason));
+		NX_ErrMsg("JPU Decode Error(reason = 0x%08x)\n", reason);
 		return VPU_RET_ERROR;
 	}
 	if (reason & (1 << INT_JPU_BBC_INTERRUPT)) {
-		NX_ErrMsg(("JPU BBC Interrupt Error(reason = 0x%08x)\n",
-			reason));
+		NX_ErrMsg("JPU BBC Interrupt Error(reason = 0x%08x)\n",
+			reason);
 		return VPU_RET_ERROR;
 	}
 	if (reason & (1 << INT_JPU_BIT_BUF_FULL)) {
-		NX_ErrMsg(("JPU Overflow Error( reason = 0x%08x)\n", reason));
+		NX_ErrMsg("JPU Overflow Error( reason = 0x%08x)\n", reason);
 		return VPU_RET_ERR_STRM_FULL;
 	}
 	if (!(reason & (1 << INT_JPU_DONE)))

@@ -1,19 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
 
 #include <linux/module.h>
@@ -25,11 +13,17 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/interrupt.h>
+#include <linux/clk.h>
+#include <linux/of_reserved_mem.h>
 
 #include <linux/videodev2.h>
 #include <linux/videodev2_nxp_media.h>
 
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 #include <linux/soc/nexell/nx-media-device.h>
+#else
+#define NX_VPU_START	14
+#endif
 
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-mem2mem.h>
@@ -86,12 +80,12 @@ int nx_vpu_try_run(struct nx_vpu_ctx *ctx)
 
 	FUNC_IN();
 
-	NX_DbgMsg(INFO_MSG, ("cmd = %x\n", ctx->vpu_cmd));
+	NX_DbgMsg(INFO_MSG, "cmd = %x\n", ctx->vpu_cmd);
 
 	mutex_lock(&g_vpu_mutex);
 
 #ifdef ENABLE_CLOCK_GATING
-	NX_VPU_Clock(1);
+	NX_VPU_ClockOn(dev);
 #endif
 
 	__set_bit(ctx->idx, &dev->ctx_work_bits);
@@ -160,7 +154,7 @@ int nx_vpu_try_run(struct nx_vpu_ctx *ctx)
 	case DEC_RUN:
 		if (ctx->is_initialized) {
 			ret = vpu_dec_decode_slice(ctx);
-			if (ret != 0) {
+			if (ret < 0) {
 				dev_err(err, "decode_slice() is failed, ");
 				dev_err(err, "ret = %d\n", ret);
 			}
@@ -202,14 +196,13 @@ int nx_vpu_try_run(struct nx_vpu_ctx *ctx)
 	__clear_bit(ctx->idx, &dev->ctx_work_bits);
 
 #ifdef ENABLE_CLOCK_GATING
-	NX_VPU_Clock(0);
+	NX_VPU_ClockOff(dev);
 #endif
 
 	mutex_unlock(&g_vpu_mutex);
 
 	return ret;
 }
-
 
 /*-----------------------------------------------------------------------------
  *      functions for Input/Output format
@@ -343,6 +336,22 @@ static struct nx_vpu_fmt formats[] = {
 		.num_planes = 1,
 	},
 	{
+		.name = "SORENSON SPARK Stream",
+		.fourcc = V4L2_PIX_FMT_FLV1,
+		.num_planes = 1,
+	},
+
+	/*
+	Not Supported in BODA950
+		The FLV is supported
+		The VC1, VMV is not supported
+		The RVx is not supported
+		The JPEG is not supported
+		The VP8 is seems to be not supported
+		The Theora is seems to be not supported
+	*/
+#ifndef CONFIG_ARCH_NXP3220_COMMON
+	{
 		.name = "WMV9 Stream",
 		.fourcc = V4L2_PIX_FMT_WMV9,
 		.num_planes = 1,
@@ -368,20 +377,18 @@ static struct nx_vpu_fmt formats[] = {
 		.num_planes = 1,
 	},
 	{
-		.name = "SORENSON SPARK Stream",
-		.fourcc = V4L2_PIX_FMT_FLV1,
-		.num_planes = 1,
-	},
-	{
 		.name = "THEORA Stream",
 		.fourcc = V4L2_PIX_FMT_THEORA,
 		.num_planes = 1,
 	},
+#endif
+#ifdef USE_JPEG
 	{
 		.name = "JPEG Stream",
 		.fourcc = V4L2_PIX_FMT_MJPEG,
 		.num_planes = 1,
 	},
+#endif
 };
 #define NUM_FORMATS ARRAY_SIZE(formats)
 
@@ -426,7 +433,6 @@ static int vidioc_enum_fmt(struct v4l2_fmtdesc *f, bool mplane, bool out)
 	return -EINVAL;
 }
 /* -------------------------------------------------------------------------- */
-
 
 /*-----------------------------------------------------------------------------
  *      functions for vidioc_queryctrl
@@ -546,11 +552,9 @@ int vidioc_streamoff(struct file *file, void *priv,
 
 /* -------------------------------------------------------------------------- */
 
-
 /*-----------------------------------------------------------------------------
  *      functions for VB2 Contorls(struct "vb2_ops")
  *----------------------------------------------------------------------------*/
-
 static int check_vb_with_fmt(struct nx_vpu_fmt *fmt, struct vb2_buffer *vb)
 {
 	struct vb2_queue *vq = vb->vb2_queue;
@@ -563,29 +567,35 @@ static int check_vb_with_fmt(struct nx_vpu_fmt *fmt, struct vb2_buffer *vb)
 		return -EINVAL;
 
 	if (fmt->num_planes != vb->num_planes) {
-		NX_ErrMsg(("invalid plane number for the format(%d, %d)\n",
-			fmt->num_planes, vb->num_planes));
+		NX_ErrMsg("invalid plane number for the format(%d, %d)\n",
+			fmt->num_planes, vb->num_planes);
 		return -EINVAL;
 	}
 
 	for (i = 0; i < fmt->num_planes; i++) {
 		if (!nx_vpu_mem_plane_addr(ctx, vb, i)) {
-			NX_ErrMsg(("failed to get %d plane cookie\n", i));
+			NX_ErrMsg("failed to get %d plane cookie\n", i);
 			return -EINVAL;
 		}
 
-		NX_DbgMsg(INFO_MSG, ("index: %d, plane[%d] cookie: 0x%08lx\n",
+		NX_DbgMsg(INFO_MSG, "index: %d, plane[%d] cookie: 0x%08lx\n",
 			vb->index, i,
-			(unsigned long)nx_vpu_mem_plane_addr(ctx, vb, i)));
+			(unsigned long)nx_vpu_mem_plane_addr(ctx, vb, i));
 	}
 
 	return 0;
 }
 
+#ifdef USE_DEPRECATED_SYSCALL
 int nx_vpu_queue_setup(struct vb2_queue *vq,
 			const void *parg,
 			unsigned int *buf_count, unsigned int *plane_count,
 			unsigned int psize[], void *allocators[])
+#else
+int nx_vpu_queue_setup(struct vb2_queue *vq,
+			unsigned int *buf_count, unsigned int *plane_count,
+			unsigned int psize[], struct device *alloc_devs[])
+#endif
 {
 	struct nx_vpu_ctx *ctx = vq->drv_priv;
 	int i;
@@ -604,7 +614,11 @@ int nx_vpu_queue_setup(struct vb2_queue *vq,
 			*buf_count = VPU_MAX_BUFFERS;
 
 		psize[0] = ctx->strm_buf_size;
+#ifdef USE_DEPRECATED_SYSCALL
 		allocators[0] = ctx->dev->alloc_ctx;
+#else
+		alloc_devs[0] = ctx->dev->mem_dev;
+#endif
 	} else if (vq->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		int cnt = (ctx->is_encoder) ? (1) :
 			(ctx->codec.dec.frame_buffer_cnt);
@@ -623,19 +637,25 @@ int nx_vpu_queue_setup(struct vb2_queue *vq,
 		psize[1] = ctx->chroma_size;
 		psize[2] = ctx->chroma_size;
 
+#ifdef USE_DEPRECATED_SYSCALL
 		allocators[0] = ctx->dev->alloc_ctx;
 		allocators[1] = ctx->dev->alloc_ctx;
 		allocators[2] = ctx->dev->alloc_ctx;
+#else
+		alloc_devs[0] = ctx->dev->mem_dev;
+		alloc_devs[1] = ctx->dev->mem_dev;
+		alloc_devs[2] = ctx->dev->mem_dev;
+#endif
 	} else {
-		NX_ErrMsg(("invalid queue type: %d\n", vq->type));
+		NX_ErrMsg("invalid queue type: %d\n", vq->type);
 		return -EINVAL;
 	}
 
-	NX_DbgMsg(INFO_MSG, ("buf_count: %d, plane_count: %d\n", *buf_count,
-		*plane_count));
+	NX_DbgMsg(INFO_MSG, "buf_count: %d, plane_count: %d\n", *buf_count,
+		*plane_count);
 
 	for (i = 0; i < *plane_count; i++)
-		NX_DbgMsg(INFO_MSG, ("plane[%d] size=%d\n", i, psize[i]));
+		NX_DbgMsg(INFO_MSG, "plane[%d] size=%d\n", i, psize[i]);
 
 	return 0;
 }
@@ -666,17 +686,21 @@ int nx_vpu_buf_init(struct vb2_buffer *vb)
 		if (ret < 0)
 			return ret;
 
-		/*buf->planes.raw.y = nx_vpu_mem_plane_addr(ctx, vb, 0);
+		/*
+		buf->planes.raw.y = nx_vpu_mem_plane_addr(ctx, vb, 0);
 		buf->planes.raw.cb = nx_vpu_mem_plane_addr(ctx, vb, 1);
-		buf->planes.raw.cr = nx_vpu_mem_plane_addr(ctx, vb, 2);*/
+		buf->planes.raw.cr = nx_vpu_mem_plane_addr(ctx, vb, 2);
+		*/
 	} else if (vq->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		ret = check_vb_with_fmt(ctx->strm_fmt, vb);
 		if (ret < 0)
 			return ret;
 
-		/*buf->planes.stream = nx_vpu_mem_plane_addr(ctx, vb, 0);*/
+		/*
+		buf->planes.stream = nx_vpu_mem_plane_addr(ctx, vb, 0);
+		*/
 	} else {
-		NX_ErrMsg(("inavlid queue type: %d\n", vq->type));
+		NX_ErrMsg("inavlid queue type: %d\n", vq->type);
 		return -EINVAL;
 	}
 
@@ -696,20 +720,20 @@ int nx_vpu_buf_prepare(struct vb2_buffer *vb)
 		if (ret < 0)
 			return ret;
 
-		NX_DbgMsg(INFO_MSG, ("plane size: %ld, luma size: %d\n",
-			vb2_plane_size(vb, 0), ctx->luma_size));
+		NX_DbgMsg(INFO_MSG, "plane size: %ld, luma size: %d\n",
+			vb2_plane_size(vb, 0), ctx->luma_size);
 
 		if (vb2_plane_size(vb, 0) < ctx->luma_size) {
-			NX_ErrMsg(("plane size is too small for luma\n"));
+			NX_ErrMsg("plane size is too small for luma\n");
 			return -EINVAL;
 		}
 
 		if (ctx->img_fmt.num_planes > 1) {
-			NX_DbgMsg(INFO_MSG, ("plane size:%ld, chroma size:%d\n",
-				vb2_plane_size(vb, 1), ctx->chroma_size));
+			NX_DbgMsg(INFO_MSG, "plane size:%ld, chroma size:%d\n",
+				vb2_plane_size(vb, 1), ctx->chroma_size);
 
 			if (vb2_plane_size(vb, 1) < ctx->chroma_size) {
-				NX_ErrMsg(("plane size is small for chroma\n"));
+				NX_ErrMsg("plane size is small for chroma\n");
 				return -EINVAL;
 			}
 		}
@@ -718,15 +742,15 @@ int nx_vpu_buf_prepare(struct vb2_buffer *vb)
 		if (ret < 0)
 			return ret;
 
-		NX_DbgMsg(INFO_MSG, ("plane size: %ld, strm size: %d\n",
-			vb2_plane_size(vb, 0), ctx->strm_buf_size));
+		NX_DbgMsg(INFO_MSG, "plane size: %ld, strm size: %d\n",
+			vb2_plane_size(vb, 0), ctx->strm_buf_size);
 
 		if (vb2_plane_size(vb, 0) < ctx->strm_buf_size) {
 			pr_err("plane size is too small for stream\n");
 			return -EINVAL;
 		}
 	} else {
-		NX_ErrMsg(("inavlid queue type: %d\n", vq->type));
+		NX_ErrMsg("inavlid queue type: %d\n", vq->type);
 		return -EINVAL;
 	}
 
@@ -779,7 +803,7 @@ static int VPU_WaitVpuInterrupt(struct nx_vpu_v4l2 *dev, int timeOut)
 	if (0 == atomic_read(&dev->vpu_event_present)) {
 		/* Error */
 		if (ret == 0) {
-			NX_ErrMsg(("VPU HW Timeout!\n"));
+			NX_ErrMsg("VPU HW Timeout!\n");
 			atomic_set(&dev->vpu_event_present, 0);
 			VPU_SWReset(SW_RESET_SAFETY);
 			return -1;
@@ -795,7 +819,7 @@ static int VPU_WaitVpuInterrupt(struct nx_vpu_v4l2 *dev, int timeOut)
 		}
 
 		/* Time out */
-		NX_ErrMsg(("VPU HW Error!!\n"));
+		NX_ErrMsg("VPU HW Error!!\n");
 		VPU_SWReset(SW_RESET_SAFETY);
 		atomic_set(&dev->vpu_event_present, 0);
 		return -1;
@@ -813,16 +837,18 @@ int VPU_WaitBitInterrupt(void *devHandle, int mSeconds)
 	if (0 != VPU_WaitVpuInterrupt(devHandle, mSeconds)) {
 		reason = VpuReadReg(BIT_INT_REASON);
 		VpuWriteReg(BIT_INT_REASON, 0);
-		NX_ErrMsg(("VPU_WaitVpuInterrupt() TimeOut!!!\n"));
-		NX_ErrMsg(("reason = 0x%.8x, CurPC(0xBD 0xBF : %x %x %x))\n",
+		NX_ErrMsg("VPU_WaitVpuInterrupt() TimeOut!!!\n");
+		NX_ErrMsg("reason = 0x%.8x, CurPC(0xBD 0xBF : %x %x %x))\n",
 			reason, VpuReadReg(BIT_CUR_PC), VpuReadReg(BIT_CUR_PC),
-			VpuReadReg(BIT_CUR_PC)));
+			VpuReadReg(BIT_CUR_PC));
 		return 0;
 	}
 
 	VpuWriteReg(BIT_INT_CLEAR, 1);  /* clear HW signal */
 	reason = VpuReadReg(BIT_INT_REASON);
-	VpuWriteReg(BIT_INT_REASON, 0);
+	/*
+	VPU_ClearBitInterrupt();
+	*/
 	return reason;
 #else
 	while (mSeconds > 0) {
@@ -831,8 +857,10 @@ int VPU_WaitBitInterrupt(void *devHandle, int mSeconds)
 			if (reason != (unsigned int)-1)
 				VpuWriteReg(BIT_INT_CLEAR, 1);
 			/* tell to F/W that HOST received an interrupt. */
-			VpuWriteReg(BIT_INT_REASON, 0);
+			/*
+			VPU_ClearBitInterrupt();
 			break;
+			*/
 		}
 		DrvMSleep(1);
 		mSeconds--;
@@ -841,6 +869,19 @@ int VPU_WaitBitInterrupt(void *devHandle, int mSeconds)
 #endif
 }
 
+/*
+Intterupt reason is INT_BIT_DEC_FIELD and BitStream Mode is BS_MODE_PIC_END,
+	do not clear interrupt until feeding next field picture.
+So, dont clear interrupt in VPU_WaitBitInterrupt().
+	and clear intterrupt at outside.
+*/
+int VPU_ClearBitInterrupt(void)
+{
+	VpuWriteReg(BIT_INT_REASON, 0);
+	return VPU_RET_OK;
+}
+
+#ifdef USE_JPEG
 static irqreturn_t nx_jpu_irq(int irq, void *priv)
 {
 	struct nx_vpu_v4l2 *dev = priv;
@@ -859,19 +900,20 @@ static irqreturn_t nx_jpu_irq(int irq, void *priv)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 int JPU_WaitInterrupt(void *devHandle, int timeOut)
 {
-	struct nx_vpu_v4l2 *dev = (struct nx_vpu_v4l2 *)devHandle;
 	uint32_t reason = 0;
-
+#ifdef USE_JPEG
+	struct nx_vpu_v4l2 *dev = (struct nx_vpu_v4l2 *)devHandle;
 #ifdef ENABLE_INTERRUPT_MODE
 	if (0 == wait_event_interruptible_timeout(dev->jpu_wait_queue,
 		atomic_read(&dev->jpu_event_present),
 		msecs_to_jiffies(timeOut))) {
 		reason = VpuReadReg(MJPEG_PIC_STATUS_REG);
-		NX_ErrMsg(("JPU_WaitInterrupt() TimeOut!!!(reason = 0x%.8x)\n",
-			reason));
+		NX_ErrMsg("JPU_WaitInterrupt() TimeOut!!!(reason = 0x%.8x)\n",
+			reason);
 		VPU_SWReset(SW_RESET_SAFETY);
 		return 0;
 	}
@@ -890,7 +932,7 @@ int JPU_WaitInterrupt(void *devHandle, int timeOut)
 			break;
 
 		if (reason & (1<<INT_JPU_BIT_BUF_FULL)) {
-			NX_ErrMsg(("Stream Buffer Too Small!!!"));
+			NX_ErrMsg("Stream Buffer Too Small!!!");
 			VpuReadReg(MJPEG_PIC_STATUS_REG,
 				(1 << INT_JPU_BIT_BUF_FULL));
 			return reason;
@@ -898,12 +940,12 @@ int JPU_WaitInterrupt(void *devHandle, int timeOut)
 
 		timeOut--;
 		if (timeOut == 0) {
-			NX_ErrMsg(("JPU TimeOut!!!"));
+			NX_ErrMsg("JPU TimeOut!!!");
 			break;
 		}
 	}
 #endif
-
+#endif
 	return reason;
 }
 
@@ -925,7 +967,7 @@ static int nx_vpu_open(struct file *file)
 
 	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
 	if (!ctx) {
-		NX_ErrMsg(("Not enough memory.\n"));
+		NX_ErrMsg("Not enough memory.\n");
 		ret = -ENOMEM;
 		goto err_ctx_mem;
 	}
@@ -958,6 +1000,7 @@ static int nx_vpu_open(struct file *file)
 	__clear_bit(ctx->idx, &dev->ctx_work_bits);
 	dev->ctx[ctx->idx] = ctx;
 
+#ifdef USE_ENCODER
 	if (vdev == dev->vfd_enc) {
 		ctx->is_encoder = 1;
 		ret = nx_vpu_enc_open(ctx);
@@ -965,6 +1008,12 @@ static int nx_vpu_open(struct file *file)
 		ctx->is_encoder = 0;
 		ret = nx_vpu_dec_open(ctx);
 	}
+#else
+	if (vdev == dev->vfd_dec) {
+		ctx->is_encoder = 0;
+		ret = nx_vpu_dec_open(ctx);
+	}
+#endif
 	if (ret)
 		goto err_ctx_init;
 
@@ -976,13 +1025,13 @@ static int nx_vpu_open(struct file *file)
 #ifdef ENABLE_POWER_SAVING
 		dev->curr_ctx = ctx->idx;
 
-		NX_VPU_Clock(1);
+		NX_VPU_ClockOn(dev);
 		ret = NX_VpuInit(dev, dev->regs_base,
 			dev->firmware_buf->virAddr,
 			(uint32_t)dev->firmware_buf->phyAddr);
 
 #ifdef ENABLE_CLOCK_GATING
-		NX_VPU_Clock(0);
+		NX_VPU_ClockOff(dev);
 #endif
 
 		if (ret)
@@ -1037,7 +1086,7 @@ static int nx_vpu_close(struct file *file)
 	if (num_open_inst == 0) {
 #ifdef ENABLE_POWER_SAVING
 		/* H/W Power Off */
-		NX_VPU_Clock(1);
+		NX_VPU_ClockOn(dev);
 		NX_VpuDeInit(dev);
 #endif
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
@@ -1046,7 +1095,7 @@ static int nx_vpu_close(struct file *file)
 	}
 
 #ifdef ENABLE_CLOCK_GATING
-	NX_VPU_Clock(0);
+	NX_VPU_ClockOff(dev);
 #endif
 
 	vb2_queue_release(&ctx->vq_img);
@@ -1116,23 +1165,115 @@ static const struct v4l2_file_operations nx_vpu_fops = {
 	.mmap = nx_vpu_mmap,
 };
 
+void vpu_soc_peri_hw_on(void *pv)
+{
+#ifndef CONFIG_ARCH_NXP3220_COMMON
+#else
+	/*
+	struct nx_vpu_v4l2 *dev = (struct nx_vpu_v4l2 *)pv;
+
+	Nothing
+	*/
+#endif
+}
+
+void vpu_soc_peri_hw_off(void *pv)
+{
+#ifndef CONFIG_ARCH_NXP3220_COMMON
+#else
+	/*
+	struct nx_vpu_v4l2 *dev = (struct nx_vpu_v4l2 *)pv;
+
+	Nothing
+	*/
+#endif
+}
+
 void vpu_soc_peri_reset_enter(void *pv)
 {
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 	struct nx_vpu_v4l2 *dev = (struct nx_vpu_v4l2 *)pv;
 
 	reset_control_assert(dev->coda_c);
 	reset_control_assert(dev->coda_a);
 	reset_control_assert(dev->coda_p);
+#else
+#endif
 }
 
 void vpu_soc_peri_reset_exit(void *pv)
 {
+#ifndef CONFIG_ARCH_NXP3220_COMMON
 	struct nx_vpu_v4l2 *dev = (struct nx_vpu_v4l2 *)pv;
 
 	reset_control_deassert(dev->coda_c);
 	reset_control_deassert(dev->coda_a);
 	reset_control_deassert(dev->coda_p);
+#else
+#endif
 }
+
+void vpu_soc_peri_clock_on(void *pv)
+{
+#ifdef CONFIG_ARCH_NXP3220_COMMON
+	struct nx_vpu_v4l2 *dev = (struct nx_vpu_v4l2 *)pv;
+
+	clk_prepare_enable(dev->clk_axi);
+	clk_prepare_enable(dev->clk_apb);
+	clk_prepare_enable(dev->clk_core);
+#else
+#endif
+}
+
+void vpu_soc_peri_clock_off(void *pv)
+{
+#ifdef CONFIG_ARCH_NXP3220_COMMON
+	struct nx_vpu_v4l2 *dev = (struct nx_vpu_v4l2 *)pv;
+
+	clk_disable_unprepare(dev->clk_core);
+	clk_disable_unprepare(dev->clk_apb);
+	clk_disable_unprepare(dev->clk_axi);
+#else
+#endif
+}
+
+#if defined (CONFIG_ARCH_NXP3220_COMMON) &&	\
+	defined (CONFIG_VIDEO_NEXELL_RESERVED_MEMORY)
+static void nx_vpu_memdev_release(struct device *dev)
+{
+	of_reserved_mem_device_release(dev);
+}
+
+static struct device *nx_vpu_alloc_memdev(struct device *dev,
+					const char *name, unsigned int idx)
+{
+	struct device *child;
+	int ret;
+
+	child = devm_kzalloc(dev, sizeof(struct device), GFP_KERNEL);
+	if (!child)
+		return NULL;
+
+	device_initialize(child);
+	dev_set_name(child, "%s:%s", dev_name(dev), name);
+	child->parent = dev;
+	child->bus = dev->bus;
+	child->coherent_dma_mask = dev->coherent_dma_mask;
+	child->dma_mask = dev->dma_mask;
+	child->release = nx_vpu_memdev_release;
+
+	if (device_add(child) == 0) {
+		ret = of_reserved_mem_device_init_by_idx(child, dev->of_node,
+							 idx);
+		if (ret == 0)
+			return child;
+		device_del(child);
+	}
+
+	put_device(child);
+	return NULL;
+}
+#endif
 
 static int nx_vpu_init(struct nx_vpu_v4l2 *dev)
 {
@@ -1149,19 +1290,21 @@ static int nx_vpu_init(struct nx_vpu_v4l2 *dev)
 
 	mutex_lock(&g_vpu_mutex);
 
-	NX_VPU_Clock(1);
+	NX_VPU_ClockOn(dev);
 
 	ret = NX_VpuInit(dev, dev->regs_base, dev->firmware_buf->virAddr,
 		dev->firmware_buf->phyAddr);
 
 #ifdef ENABLE_CLOCK_GATING
-	NX_VPU_Clock(0);
+	NX_VPU_ClockOff(dev);
 #endif
 
 	mutex_unlock(&g_vpu_mutex);
 
 	dev->cur_num_instance = 0;
+#ifdef USE_JPEG
 	dev->cur_jpg_instance = 0;
+#endif
 
 	return ret;
 }
@@ -1172,10 +1315,10 @@ static int nx_vpu_deinit(struct nx_vpu_v4l2 *dev)
 
 	FUNC_IN();
 
-	NX_VPU_Clock(1);
+	NX_VPU_ClockOn(dev);
 	ret = NX_VpuDeInit(dev);
 #ifdef ENABLE_CLOCK_GATING
-	NX_VPU_Clock(0);
+	NX_VPU_ClockOff(dev);
 #endif
 
 	if (dev->firmware_buf != NULL)
@@ -1197,8 +1340,8 @@ static int nx_vpu_probe(struct platform_device *pdev)
 
 	dev = devm_kzalloc(&pdev->dev, sizeof(*dev), GFP_KERNEL);
 	if (!dev) {
-		NX_ErrMsg(("fail to kzalloc(size %zu) (%s)\n",
-			sizeof(struct nx_vpu_v4l2), NX_VIDEO_NAME));
+		NX_ErrMsg("fail to kzalloc(size %zu) (%s)\n",
+			sizeof(struct nx_vpu_v4l2), NX_VIDEO_NAME);
 		return -ENOMEM;
 	}
 
@@ -1241,6 +1384,7 @@ static int nx_vpu_probe(struct platform_device *pdev)
 	}
 	init_waitqueue_head(&dev->vpu_wait_queue);
 
+#ifdef USE_JPEG
 	/* For JPU interrupt */
 	irq = platform_get_irq(pdev, 1);
 	if (irq < 0) {
@@ -1254,7 +1398,27 @@ static int nx_vpu_probe(struct platform_device *pdev)
 		return ret;
 	}
 	init_waitqueue_head(&dev->jpu_wait_queue);
+#endif
 
+#ifdef CONFIG_ARCH_NXP3220_COMMON
+	dev->clk_axi = devm_clk_get(&pdev->dev, "vpu-clk-axi");
+	if (IS_ERR(dev->clk_axi)) {
+		dev_err(&pdev->dev, "failed to get clock of vpu-axi\n");
+		return -ENODEV;
+	}
+
+	dev->clk_apb = devm_clk_get(&pdev->dev, "vpu-clk-apb");
+	if (IS_ERR(dev->clk_apb)) {
+		dev_err(&pdev->dev, "failed to get clock of vpu-apb\n");
+		return -ENODEV;
+	}
+
+	dev->clk_core = devm_clk_get(&pdev->dev, "vpu-clk-core");
+	if (IS_ERR(dev->clk_core)) {
+		dev_err(&pdev->dev, "failed to get clock of vpu-core\n");
+		return -ENODEV;
+	}
+#else
 	dev->coda_c = devm_reset_control_get(&pdev->dev, "vpu-c-reset");
 	if (IS_ERR(dev->coda_c)) {
 		dev_err(&pdev->dev, "failed to get reset control of vpu-c\n");
@@ -1272,6 +1436,7 @@ static int nx_vpu_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to get reset control of vpu-c\n");
 		return -ENODEV;
 	}
+#endif
 
 	ret = of_property_read_u32_array(pdev->dev.of_node, "sram", info, 2);
 	if (!ret) {
@@ -1279,6 +1444,7 @@ static int nx_vpu_probe(struct platform_device *pdev)
 		dev->sram_size = info[1];
 	}
 
+#ifdef USE_DEPRECATED_APIS
 	/* alloc context : use vb2 dma contig   */
 	dev->alloc_ctx = vb2_dma_contig_init_ctx(&pdev->dev);
 	if (!dev->alloc_ctx) {
@@ -1286,6 +1452,26 @@ static int nx_vpu_probe(struct platform_device *pdev)
 			__func__);
 		return -ENOMEM;
 	}
+#else
+#ifdef CONFIG_VIDEO_NEXELL_RESERVED_MEMORY
+	dev->mem_dev = nx_vpu_alloc_memdev(&pdev->dev, "vpu-dma", 0);
+#else
+	/*
+	The "struct device" itself can be dma'ble device.
+	So the VPU driver can be the memory device.
+	*/
+
+	dev->mem_dev = &pdev->dev;
+#endif
+	if (!dev->mem_dev) {
+		dev_err(&pdev->dev, "%s: failed to dma memory device.\n",
+			__func__);
+
+		return -ENODEV;
+	}
+
+	vb2_dma_contig_set_max_seg_size(dev->mem_dev, DMA_BIT_MASK(32));
+#endif
 
 	mutex_init(&dev->dev_mutex);
 	mutex_init(&g_vpu_mutex);
@@ -1297,6 +1483,7 @@ static int nx_vpu_probe(struct platform_device *pdev)
 		goto err_v4l2_dev_reg;
 	}
 
+#ifdef USE_ENCODER
 	/* encoder */
 	vfd = video_device_alloc();
 	if (!vfd) {
@@ -1323,6 +1510,7 @@ static int nx_vpu_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to register video device\n");
 		goto err_enc_reg;
 	}
+#endif
 
 	/* decoder */
 	vfd = video_device_alloc();
@@ -1354,7 +1542,9 @@ static int nx_vpu_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, dev);
 
 	atomic_set(&dev->vpu_event_present, 0);
+#ifdef USE_JPEG
 	atomic_set(&dev->jpu_event_present, 0);
+#endif
 
 	ret = NX_VpuParaInitialized(&pdev->dev);
 	if (ret < 0) {
@@ -1375,14 +1565,21 @@ err_dec_reg:
 	video_unregister_device(dev->vfd_dec);
 err_dec_alloc:
 	video_device_release(dev->vfd_dec);
+#ifdef USE_ENCODER
 err_enc_alloc:
 	video_unregister_device(dev->vfd_enc);
 err_enc_reg:
 	video_device_release(dev->vfd_enc);
+#endif
 err_v4l2_dev_reg:
 	v4l2_device_unregister(&dev->v4l2_dev);
 
+#ifdef USE_DEPRECATED_APIS
 	vb2_dma_contig_cleanup_ctx(dev->alloc_ctx);
+#else
+	device_unregister(dev->mem_dev);
+	vb2_dma_contig_clear_max_seg_size(dev->mem_dev);
+#endif
 
 	dev_err(&pdev->dev, "%s-- with error!!!\n", __func__);
 	return ret;
@@ -1399,22 +1596,33 @@ static int nx_vpu_remove(struct platform_device *pdev)
 
 	if (dev->cur_num_instance > 0) {
 		dev_err(&pdev->dev, "Warning Video Frimware is running.\n");
-		dev_err(&pdev->dev, "(Video(%d), Jpeg(%d)\n",
+#ifdef USE_JPEG
+		dev_err(&pdev->dev, "Video(%d), Jpeg(%d)\n",
 			dev->cur_num_instance, dev->cur_jpg_instance);
+#else
+		dev_err(&pdev->dev, "Video(%d)\n", dev->cur_num_instance);
+#endif
 	}
 
+#ifdef USE_ENCODER
 	video_unregister_device(dev->vfd_enc);
+#endif
 	video_unregister_device(dev->vfd_dec);
 	v4l2_device_unregister(&dev->v4l2_dev);
 
-	reset_control_assert(dev->coda_c);
-	reset_control_assert(dev->coda_a);
-	reset_control_assert(dev->coda_p);
+#ifndef CONFIG_ARCH_NXP3220_COMMON
+	NX_VPU_ResetEnter(dev);
+#endif
 
 	nx_vpu_deinit(dev);
 
+#ifdef USE_DEPRECATED_APIS
 	if (dev->alloc_ctx)
 		vb2_dma_contig_cleanup_ctx(dev->alloc_ctx);
+#else
+	device_unregister(dev->mem_dev);
+	vb2_dma_contig_clear_max_seg_size(dev->mem_dev);
+#endif
 
 	mutex_destroy(&g_vpu_mutex);
 	mutex_destroy(&dev->dev_mutex);
@@ -1429,12 +1637,12 @@ static int nx_vpu_suspend(struct platform_device *pdev, pm_message_t state)
 	FUNC_IN();
 
 	mutex_lock(&g_vpu_mutex);
-	NX_VPU_Clock(1);
+	NX_VPU_ClockOn(dev);
 
 	NX_VpuSuspend(dev);
 
 #ifdef ENABLE_CLOCK_GATING
-	NX_VPU_Clock(0);
+	NX_VPU_ClockOff(dev);
 #endif
 	mutex_unlock(&g_vpu_mutex);
 
@@ -1449,12 +1657,12 @@ static int nx_vpu_resume(struct platform_device *pdev)
 	FUNC_IN();
 
 	mutex_lock(&g_vpu_mutex);
-	NX_VPU_Clock(1);
+	NX_VPU_ClockOn(dev);
 
 	NX_VpuResume(dev, dev->regs_base);
 
 #ifdef ENABLE_CLOCK_GATING
-	NX_VPU_Clock(0);
+	NX_VPU_ClockOff(dev);
 #endif
 	mutex_unlock(&g_vpu_mutex);
 
@@ -1471,10 +1679,11 @@ static struct platform_device_id nx_vpu_driver_ids[] = {
 
 static const struct of_device_id nx_vpu_dt_match[] = {
 	{
-	.compatible = "nexell, nx-vpu",
+		.compatible = "nexell,nx-vpu",
 	},
 	{},
 };
+
 MODULE_DEVICE_TABLE(of, nx_vpu_dt_match);
 
 static struct platform_driver nx_vpu_driver = {
@@ -1490,22 +1699,8 @@ static struct platform_driver nx_vpu_driver = {
 	},
 };
 
-#ifdef CONFIG_V4L2_INIT_LEVEL_UP
-static int __init nx_vpu_quick_init(void)
-{
-	return platform_driver_register(&nx_vpu_driver);
-}
-
-static void __exit nx_vpu_quick_exit(void)
-{
-	platform_driver_unregister(&nx_vpu_driver);
-}
-subsys_initcall(nx_vpu_quick_init);
-module_exit(nx_vpu_quick_exit);
-#else
 module_platform_driver(nx_vpu_driver);
-#endif
 
-MODULE_AUTHOR("Kim SeongHee <kshblue@nexell.co.kr>");
-MODULE_DESCRIPTION("Nexell S5P6818 series SoC V4L2/Codec device driver");
+MODULE_AUTHOR("Sungwon Jo <doriya@nexell.co.kr>");
+MODULE_DESCRIPTION("Nexell SoC V4L2/Codec device driver");
 MODULE_LICENSE("GPL");
