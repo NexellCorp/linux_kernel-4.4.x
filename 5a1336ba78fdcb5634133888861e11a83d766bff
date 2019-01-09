@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c0a5ed32_03532c91",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-09T06:08:34Z",
+      "side": 1,
+      "message": "--\u003e decimator",
+      "range": {
+        "startLine": 9,
+        "startChar": 54,
+        "endLine": 9,
+        "endChar": 63
+      },
+      "revId": "5a1336ba78fdcb5634133888861e11a83d766bff",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
