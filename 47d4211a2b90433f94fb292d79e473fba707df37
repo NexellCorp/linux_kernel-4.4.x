@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8527fd14_3e018aa2",
+        "filename": "drivers/media/platform/nexell/Kconfig",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-09T06:00:38Z",
+      "side": 1,
+      "message": "I think here add below sentence\nif VIDEO_NEXELL_M2M\nsource ...\nendif",
+      "revId": "47d4211a2b90433f94fb292d79e473fba707df37",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}

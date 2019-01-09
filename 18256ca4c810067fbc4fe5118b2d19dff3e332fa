@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2751d831_71f11c01",
+        "filename": "drivers/media/platform/nexell/m2m/nx-deinterlacer.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-09T06:00:38Z",
+      "side": 1,
+      "message": "Move code related to user ioctl to include/uapi/linux/nx-deinterlacer.h",
+      "range": {
+        "startLine": 26,
+        "startChar": 0,
+        "endLine": 79,
+        "endChar": 2
+      },
+      "revId": "18256ca4c810067fbc4fe5118b2d19dff3e332fa",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}

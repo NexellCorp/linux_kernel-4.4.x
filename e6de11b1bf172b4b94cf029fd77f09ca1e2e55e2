@@ -1,0 +1,159 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "31e448b3_aaa813c7",
+        "filename": "drivers/media/platform/nexell/Kconfig",
+        "patchSetId": 3
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-09T06:00:38Z",
+      "side": 1,
+      "message": "I think here need to add below guard\n\nif VIDEO_NEXELL_M2M",
+      "revId": "e6de11b1bf172b4b94cf029fd77f09ca1e2e55e2",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2d0c63de_e6c3dad1",
+        "filename": "drivers/media/platform/nexell/m2m/Kconfig",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-09T06:00:38Z",
+      "side": 1,
+      "message": "Please use tab instead of spaces",
+      "range": {
+        "startLine": 2,
+        "startChar": 0,
+        "endLine": 11,
+        "endChar": 39
+      },
+      "revId": "e6de11b1bf172b4b94cf029fd77f09ca1e2e55e2",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6054f3af_e5c9649c",
+        "filename": "drivers/media/platform/nexell/m2m/nx-deinterlacer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-09T06:00:38Z",
+      "side": 1,
+      "message": "do not use multi spaces",
+      "range": {
+        "startLine": 100,
+        "startChar": 10,
+        "endLine": 100,
+        "endChar": 17
+      },
+      "revId": "e6de11b1bf172b4b94cf029fd77f09ca1e2e55e2",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "31324810_b83b1982",
+        "filename": "drivers/media/platform/nexell/m2m/nx-deinterlacer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-09T06:00:38Z",
+      "side": 1,
+      "message": "ditto",
+      "range": {
+        "startLine": 102,
+        "startChar": 19,
+        "endLine": 102,
+        "endChar": 25
+      },
+      "revId": "e6de11b1bf172b4b94cf029fd77f09ca1e2e55e2",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cb7965a6_aedcdcb4",
+        "filename": "drivers/media/platform/nexell/m2m/nx-deinterlacer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-09T06:00:38Z",
+      "side": 1,
+      "message": "ditto",
+      "range": {
+        "startLine": 103,
+        "startChar": 19,
+        "endLine": 103,
+        "endChar": 25
+      },
+      "revId": "e6de11b1bf172b4b94cf029fd77f09ca1e2e55e2",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eb314611_d25a0e6e",
+        "filename": "drivers/media/platform/nexell/m2m/nx-deinterlacer.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-09T06:00:38Z",
+      "side": 1,
+      "message": "I think this code block must be moved to include/uapi/linux/nx-deinterlacer.h because userspace app needs this structure",
+      "range": {
+        "startLine": 30,
+        "startChar": 0,
+        "endLine": 57,
+        "endChar": 2
+      },
+      "revId": "e6de11b1bf172b4b94cf029fd77f09ca1e2e55e2",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "08af5f35_e079d482",
+        "filename": "drivers/media/platform/nexell/m2m/nx-deinterlacer.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-09T06:00:38Z",
+      "side": 1,
+      "message": "I think this code block needs to be moved to nx-deinterlacer.c because this is only used by nx-deinterlacer driver internally.",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 72,
+        "endChar": 2
+      },
+      "revId": "e6de11b1bf172b4b94cf029fd77f09ca1e2e55e2",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
