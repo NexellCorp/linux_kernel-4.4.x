@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "582f366d_58c0bbd0",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-09T06:10:54Z",
+      "side": 1,
+      "message": "Change other message .. this is too nexell specific.",
+      "range": {
+        "startLine": 9,
+        "startChar": 36,
+        "endLine": 9,
+        "endChar": 61
+      },
+      "revId": "3bf0534dec5ce508406508a0e7ed8c8e18d859de",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
