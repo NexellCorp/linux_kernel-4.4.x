@@ -112,7 +112,6 @@ static int tw8834_write_reg_array(struct tw8834 *tw8834,
 {
 	s32 ret;
 	int i;
-	struct v4l2_subdev *sd = &tw8834->sd;
 	struct i2c_client *client = tw8834->i2c_client;
 
 	for (i = 0; i < nb; i++) {
@@ -127,35 +126,6 @@ static int tw8834_write_reg_array(struct tw8834 *tw8834,
 	}
 	return 0;
 }
-static int tw8834_read_register(struct tw8834 *tw8834,
-				u16 reg)
-{
-	int ret;
-	int ret;
-	u8 page = (reg >> 8);
-
-	ret = tw8834_i2c_write_byte(tw8834, 0xFF, page);
-	if (ret < 0)
-		return ret;
-
-	ret = tw8834_i2c_read_byte(tw8834, (u8)(reg & 0xFF));
-
-	return ret;
-}
-static int tw8834_write_register(struct tw8834 *tw8834,
-				 u16 reg,
-				 u8 value)
-{
-	int ret;
-	u8 page = (reg >> 8);
-
-	ret = tw8834_i2c_write_byte(tw8834, 0xFF, page);
-	if (ret < 0)
-		return ret;
-
-	ret = tw8834_i2c_write_byte(tw8834, (u8)(reg & 0xFF), value);
-	return ret;
-}
 /* video operations */
 static int tw8834_s_routing(struct v4l2_subdev *sd, u32 in, u32 out, u32 config)
 {
@@ -166,23 +136,6 @@ static int tw8834_s_routing(struct v4l2_subdev *sd, u32 in, u32 out, u32 config)
 
 	tw8834->input = in;
 	return 0;
-}
-static int tw8834_s_stream(struct v4l2_subdev *sd, int enable)
-{
-	struct tw8834 *tw8834 = to_tw8834(sd);
-	int ret = 0;
-
-	if (enable) {
-
-		if (tw8834->set_power)
-			tw8834->set_power(TW8834_POWER_INPUT_ENABLE);
-	} else {
-		if (tw8834->set_power)
-			tw8834->set_power(TW8834_POWER_INPUT_DISABLE);
-	}
-
-	tw8834->is_streaming = !!enable;
-	return ret;
 }
 int tw8834_subscribe_event(struct v4l2_subdev *subdev,
 			   struct v4l2_fh *fh,
@@ -253,7 +206,6 @@ static int tw8834_probe(struct i2c_client *client,
 	struct tw8834 *tw8834;
 	struct v4l2_subdev *sd;
 	int ret = -ENODEV;
-	struct v4l2_mbus_framefmt *format;
 	struct reg_cfg reg;
 
 
