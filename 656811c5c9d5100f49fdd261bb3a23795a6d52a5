@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6866d6e6_dbe25863",
+        "filename": "arch/arm/boot/dts/nxp4330-vtk.dts",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1015645
+      },
+      "writtenOn": "2019-01-16T00:48:13Z",
+      "side": 1,
+      "message": "remove this",
+      "range": {
+        "startLine": 73,
+        "startChar": 0,
+        "endLine": 74,
+        "endChar": 28
+      },
+      "revId": "656811c5c9d5100f49fdd261bb3a23795a6d52a5",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8ba9977e_fbd3f589",
+        "filename": "arch/arm/boot/dts/nxp4330-vtk.dts",
+        "patchSetId": 1
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 1015645
+      },
+      "writtenOn": "2019-01-16T00:48:13Z",
+      "side": 1,
+      "message": "remove this",
+      "range": {
+        "startLine": 98,
+        "startChar": 0,
+        "endLine": 113,
+        "endChar": 5
+      },
+      "revId": "656811c5c9d5100f49fdd261bb3a23795a6d52a5",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1243b4a5_12a58c9c",
+        "filename": "arch/arm/boot/dts/nxp4330-vtk.dts",
+        "patchSetId": 1
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 1015645
+      },
+      "writtenOn": "2019-01-16T00:48:13Z",
+      "side": 1,
+      "message": "remove this",
+      "range": {
+        "startLine": 118,
+        "startChar": 0,
+        "endLine": 124,
+        "endChar": 6
+      },
+      "revId": "656811c5c9d5100f49fdd261bb3a23795a6d52a5",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
