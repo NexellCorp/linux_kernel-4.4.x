@@ -836,14 +836,15 @@ static int nx_decimator_probe(struct platform_device *pdev)
 		WARN_ON(1);
 		return -ENOMEM;
 	}
-	if (!nx_vip_is_valid(me->module)) {
-		dev_err(dev, "NX VIP %d is not valid\n", me->module);
-		return -ENODEV;
-	}
 
 	ret = nx_decimator_parse_dt(pdev, me);
 	if (ret)
 		return ret;
+
+	if (!nx_vip_is_valid(me->module)) {
+		dev_err(dev, "NX VIP %d is not valid\n", me->module);
+		return -ENODEV;
+	}
 
 	init_me(me);
 
