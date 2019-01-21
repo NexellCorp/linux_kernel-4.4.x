@@ -41,6 +41,15 @@ config SND_SPDIF_TRANSCEIVER
 	select SND_NX_SPDIF_TX
 	select SND_SOC_SPDIF
 
+config SND_NX_SPDIF_RX
+	tristate
+
+config SND_SPDIF_RECEIVER
+	tristate "SPDIF receiver (PCM)"
+	depends on SND_NX_SOC
+	select SND_NX_SPDIF_RX
+	select SND_SOC_SPDIF
+
 config SND_NX_SPI
 	tristate "SPI receiver (PCM)"
 	depends on SND_NX_SOC
@@ -87,6 +96,11 @@ config SND_CODEC_ALC5623
 	tristate "ALC5623 I2S audio codec."
 	depends on SND_NX_I2S
 	select SND_SOC_ALC5623
+
+config SND_CODEC_RT5631
+	tristate "RT5631 I2S audio codec."
+	depends on SND_NX_I2S
+	select SND_SOC_RT5631
 
 config SND_CODEC_SMARTVOICE
 	tristate "Smart Voice spi/i2s audio codec."
