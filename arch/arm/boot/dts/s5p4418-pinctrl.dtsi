@@ -502,6 +502,13 @@ pinctrl@C0010000 {
 		nexell,pin-strength = <NX_PIN_STR0>;
 	};
 
+	spdifrx_pin:spdifrx {
+		nexell,pins = "gpioc-24";
+		nexell,pin-function = <NX_PIN_FUNC2>;
+		nexell,pin-pull = <NX_PIN_PULL_DOWN>;
+		nexell,pin-strength = <NX_PIN_STR0>;
+	};
+
 	vid0_data_clk: vid0-data-clk {
 		nexell,pins = "gpiod-28", "gpiod-29", "gpiod-30", "gpiod-31", "gpioe-0", "gpioe-1", "gpioe-2", "gpioe-3", "gpioe-4";
 		nexell,pin-function = <NX_PIN_FUNC1>;
