@@ -41,6 +41,15 @@ config SND_SPDIF_TRANSCEIVER
 	select SND_NX_SPDIF_TX
 	select SND_SOC_SPDIF
 
+config SND_NX_SPDIF_RX
+	tristate
+
+config SND_SPDIF_RECEIVER
+	tristate "SPDIF receiver (PCM)"
+	depends on SND_NX_SOC
+	select SND_NX_SPDIF_RX
+	select SND_SOC_SPDIF
+
 config SND_NX_SPI
 	tristate "SPI receiver (PCM)"
 	depends on SND_NX_SOC
