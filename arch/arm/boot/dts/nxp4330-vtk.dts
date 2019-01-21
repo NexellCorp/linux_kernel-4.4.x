@@ -61,6 +61,12 @@
 			};
 		};
 
+		pinctrl@C0010000 {
+			i2s2_bus:i2s2 {
+				/delete-node/ i2s2-mclk;
+			};
+		};
+
 		l2:l2-cache-controller@cf000000 {
 			arm,prefetch-offset = <7>;
 			prefetch-data = <1>;
@@ -116,8 +122,163 @@
 			status = "okay";
 		};
 
+		i2s_0:i2s@c0055000 {
+			#sound-dai-cells = <1>;
+			master-mode = <1>;
+			mclk-in = <0>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <1>;
+			status = "okay";
+		};
+
+		i2s_1:i2s@c0056000 {
+			#sound-dai-cells = <1>;
+			master-mode = <1>;
+			mclk-in = <1>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <0>;
+			status = "okay";
+		};
+
+		i2s_2:i2s@c0057000 {
+			#sound-dai-cells = <1>;
+			master-mode = <0>;
+			mclk-in = <1>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <0>;
+			status = "okay";
+		};
+
+		i2c_0:i2c@c00a4000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			rt5631: rt5631@1a {
+				#sound-dai-cells = <0>;
+				compatible = "rt,rt5631";
+				reg = <0x1a>;
+			};
+		};
+
+		amba {
+			pl08xdma0:pl08xdma@c0000000 {
+				use_isr;
+			};
+
+			pl08xdma1:pl08xdma@c0001000 {
+				use_isr;
+			};
+		};
+
+		spdif_tx: spdiftx@c0059000 {
+			#sound-dai-cells = <1>;
+			pcm-bit = <16>;
+			sample_rate = <48000>;
+			status = "okay";
+		};
+
+		spdif_rx: spdifrx@c005a000 {
+			#sound-dai-cells = <1>;
+			status = "okay";
+		};
+
 	};	/*** soc ***/
 
+	sound {
+		compatible = "nexell,simple-audio-card";
+		simple-audio-card,name = "nxp4330 vtk Audio";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,widgets =
+		    "Headphone", "Out Jack",
+		    "Microphone", "In Jack";
+		simple-audio-card,routing =
+		    "Out Jack", "HPOL",
+		    "Out Jack", "HPOR",
+		    "IN2P", "In Jack",
+		    "IN2P", "In Jack";
+		status = "okay";
+
+
+		simple-audio-card,dai-link@0 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_0 0>;
+			};
+
+			codec {
+				sound-dai = <&snd_null>;
+			};
+		};
+
+		simple-audio-card,dai-link@1 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_1 0>;
+			};
+
+			codec {
+				sound-dai = <&rt5631>;
+			};
+		};
+
+		simple-audio-card,dai-link@2 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_2 0>;
+			};
+
+			codec {
+				sound-dai = <&snd_null>;
+			};
+		};
+
+		simple-audio-card,dai-link@3 {
+			format = "spdif";
+			cpu {
+				sound-dai = <&spdif_tx 0>;
+			};
+
+			codec {
+				sound-dai = <&spdif_out>;
+			};
+		};
+
+		simple-audio-card,dai-link@4 {
+			format = "spdif";
+			cpu {
+				sound-dai = <&spdif_rx 0>;
+			};
+
+			codec {
+				sound-dai = <&spdif_in>;
+			};
+		};
+	};
+
+	snd_null: snd_null@10 {
+		#sound-dai-cells = <0>;
+		compatible = "nexell,snd-null";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0 0>;
+        };
+
+	spdif_out: spdif-out {
+		#sound-dai-cells = <0>;
+		compatible = "linux,spdif-dit";
+	};
+
+	spdif_in: spdif-in {
+		#sound-dai-cells = <0>;
+		compatible = "linux,spdif-dir";
+	};
 };
 
 &dw_mmc_0 {
