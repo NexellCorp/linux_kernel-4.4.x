@@ -116,8 +116,16 @@
 			status = "okay";
 		};
 
-	};	/*** soc ***/
+		amba {
+			pl08xdma0:pl08xdma@c0000000 {
+				use_isr;
+			};
 
+			pl08xdma1:pl08xdma@c0001000 {
+				use_isr;
+			};
+		};
+	};	/*** soc ***/
 };
 
 &dw_mmc_0 {
