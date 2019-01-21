@@ -466,6 +466,22 @@
 			status = "disabled";
 		};
 
+		spdif_rx: spdifrx@c005a000 {
+			compatible = "nexell,nexell-spdif-rx";
+			reg = <PHYS_BASE_SPDIF_RX 0x1000>;
+			interrupts = <IRQ_SPDIFRX>;
+			dmas = <&pl08xdma1 5 0>;
+			dma-names = "rx";
+			resets = <&nexell_reset RESET_ID_SPDIFRX>;
+			reset-names = "spdifrx-reset";
+			clocks = <&pclk>;
+			clock-names = "pclk";
+			pinctrl-names = "default";
+			pinctrl-0 = <&spdifrx_pin>;
+			sample_rate = <48000>;
+			status = "disabled";
+		};
+
 		watchdog@c0019000 {
 			compatible = "nexell,nexell-wdt";
 			reg = <PHYS_BASE_WDT 0x1000>;
