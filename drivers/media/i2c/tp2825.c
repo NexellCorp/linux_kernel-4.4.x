@@ -1431,7 +1431,12 @@ static void __exit tp2825_mod_exit(void)
 	i2c_del_driver(&tp2825_i2c_driver);
 }
 
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+subsys_initcall(tp2825_mod_init);
+#else
 module_init(tp2825_mod_init);
+#endif
+
 module_exit(tp2825_mod_exit);
 #else
 module_i2c_driver(tp2825_i2c_driver);
