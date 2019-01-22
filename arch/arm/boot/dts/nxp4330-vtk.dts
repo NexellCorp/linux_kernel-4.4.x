@@ -61,6 +61,12 @@
 			};
 		};
 
+		pinctrl@C0010000 {
+			i2s2_bus:i2s2 {
+				/delete-node/ i2s2-mclk;
+			};
+		};
+
 		l2:l2-cache-controller@cf000000 {
 			arm,prefetch-offset = <7>;
 			prefetch-data = <1>;
@@ -113,6 +119,39 @@
 
 		dwc2otg@c0040000 {
 			gpios = <&alive_0 5 0>;
+			status = "okay";
+		};
+
+		i2s_0:i2s@c0055000 {
+			#sound-dai-cells = <1>;
+			master-mode = <1>;
+			mclk-in = <0>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <1>;
+			status = "okay";
+		};
+
+		i2s_1:i2s@c0056000 {
+			#sound-dai-cells = <1>;
+			master-mode = <1>;
+			mclk-in = <1>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <0>;
+			status = "okay";
+		};
+
+		i2s_2:i2s@c0057000 {
+			#sound-dai-cells = <1>;
+			master-mode = <0>;
+			mclk-in = <1>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <0>;
 			status = "okay";
 		};
 
