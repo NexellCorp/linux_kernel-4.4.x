@@ -97,6 +97,11 @@ config SND_CODEC_ALC5623
 	depends on SND_NX_I2S
 	select SND_SOC_ALC5623
 
+config SND_CODEC_RT5631
+	tristate "RT5631 I2S audio codec."
+	depends on SND_NX_I2S
+	select SND_SOC_RT5631
+
 config SND_CODEC_SMARTVOICE
 	tristate "Smart Voice spi/i2s audio codec."
 	depends on SND_NX_SPI
