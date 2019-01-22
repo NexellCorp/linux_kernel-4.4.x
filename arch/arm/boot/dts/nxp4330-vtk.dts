@@ -155,6 +155,18 @@
 			status = "okay";
 		};
 
+		i2c_0:i2c@c00a4000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			rt5631: rt5631@1a {
+				#sound-dai-cells = <0>;
+				compatible = "rt,rt5631";
+				reg = <0x1a>;
+			};
+		};
+
 		amba {
 			pl08xdma0:pl08xdma@c0000000 {
 				use_isr;
