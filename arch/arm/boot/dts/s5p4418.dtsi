@@ -461,6 +461,8 @@
 			reset-names = "spdiftx-reset";
 			clocks = <&spdiftx>;
 			clock-names = "spdif-tx";
+			pinctrl-names = "default";
+			pinctrl-0 = <&spdiftx_pin>;
 			pcm-bit = <16>;
 			sample_rate = <48000>;
 			status = "disabled";
