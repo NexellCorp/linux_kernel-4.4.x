@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6c58ea30_d57f151c",
+        "filename": "sound/soc/nexell/Kconfig",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 1015645
+      },
+      "writtenOn": "2019-01-22T01:31:57Z",
+      "side": 1,
+      "message": "split commit please",
+      "range": {
+        "startLine": 100,
+        "startChar": 0,
+        "endLine": 103,
+        "endChar": 22
+      },
+      "revId": "11fb5a936b4e251b8e4a5acf529e56124764e094",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "259497d1_1bc97c75",
+        "filename": "sound/soc/nexell/nexell-spdif-receiver.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 1015645
+      },
+      "writtenOn": "2019-01-22T01:31:57Z",
+      "side": 1,
+      "message": "remove space",
+      "range": {
+        "startLine": 69,
+        "startChar": 71,
+        "endLine": 69,
+        "endChar": 73
+      },
+      "revId": "11fb5a936b4e251b8e4a5acf529e56124764e094",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4e53e918_26e2921c",
+        "filename": "sound/soc/nexell/nexell-spdif-receiver.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 1015645
+      },
+      "writtenOn": "2019-01-22T01:31:57Z",
+      "side": 1,
+      "message": "remove space",
+      "range": {
+        "startLine": 76,
+        "startChar": 5,
+        "endLine": 76,
+        "endChar": 7
+      },
+      "revId": "11fb5a936b4e251b8e4a5acf529e56124764e094",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4e1e7f93_d5f9e063",
+        "filename": "sound/soc/nexell/nexell-spdifrx.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 423,
+      "author": {
+        "id": 1015645
+      },
+      "writtenOn": "2019-01-22T01:31:57Z",
+      "side": 1,
+      "message": "line fix please",
+      "range": {
+        "startLine": 423,
+        "startChar": 2,
+        "endLine": 423,
+        "endChar": 15
+      },
+      "revId": "11fb5a936b4e251b8e4a5acf529e56124764e094",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
