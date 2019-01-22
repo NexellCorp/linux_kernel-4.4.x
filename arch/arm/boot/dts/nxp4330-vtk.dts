@@ -238,6 +238,17 @@
 				sound-dai = <&snd_null>;
 			};
 		};
+
+		simple-audio-card,dai-link@3 {
+			format = "spdif";
+			cpu {
+				sound-dai = <&spdif_tx 0>;
+			};
+
+			codec {
+				sound-dai = <&spdif_out>;
+			};
+		};
 	};
 
 	snd_null: snd_null@10 {
