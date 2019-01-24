@@ -72,6 +72,10 @@
 			};
 		};
 
+		adc:adc@c0053000 {
+			status = "okay";
+		};
+
 		pinctrl@C0010000 {
 			i2s2_bus:i2s2 {
 				/delete-node/ i2s2-mclk;
