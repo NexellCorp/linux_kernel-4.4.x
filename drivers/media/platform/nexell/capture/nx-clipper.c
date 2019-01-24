@@ -70,6 +70,11 @@
 #define DQ_TIMEOUT_MS		CONFIG_CLIPPER_DQTIMER_TIMEOUT
 #endif
 
+#define DEFAULT_DUTY_CYCLE	50
+#define NS_IN_HZ (1000000000UL)
+#define TO_PERIOD_NS(freq)	(NS_IN_HZ/(freq))
+#define TO_DUTY_NS(duty, freq)  (duty ? TO_PERIOD_NS(freq)/(100/duty) : 0)
+
 #ifdef CONFIG_V4L2_INIT_LEVEL_UP
 struct task_struct *g_ClipperThread;
 #endif
@@ -598,13 +603,19 @@ static int parse_power_dt(struct device_node *np, struct device *dev,
 static int parse_clock_dt(struct device_node *np, struct device *dev,
 			  struct nx_clipper *me)
 {
-	me->pwm = devm_pwm_get(dev, NULL);
+	me->pwm = devm_of_pwm_get(dev, np, NULL);
 	if (!IS_ERR(me->pwm)) {
 		unsigned int period = pwm_get_period(me->pwm);
-		pwm_config(me->pwm, period/2, period);
-	} else {
+		unsigned int duty_cycle =
+			TO_DUTY_NS(DEFAULT_DUTY_CYCLE, period);
+
+		pwm_config(me->pwm, duty_cycle, TO_PERIOD_NS(period));
+		dev_info(dev, "[%s] name:%s, period:%d, duty_cycle:%d\n",
+				__func__, me->pwm->label, me->pwm->period,
+				me->pwm->duty_cycle);
+		pwm_enable(me->pwm);
+	} else
 		me->pwm = NULL;
-	}
 
 	return 0;
 }
