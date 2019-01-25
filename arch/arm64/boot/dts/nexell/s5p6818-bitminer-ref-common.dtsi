@@ -329,7 +329,8 @@
 				ldo1	{ PMIC_PDATA_INIT( 5,
 					"nxe2000_ldo1",
 					1000000, 3500000,
-					3300000, 1, 1, 0x0)
+					1800000, 1, 1, 0x0) /* ASIC */
+/*					3300000, 1, 1, 0x0) /* FPGA */
 					regulator-always-on;
 					regulator-boot-on;};
 			VCC_LDO3:
@@ -380,3 +381,10 @@
 	};
 };
 
+&spi0_bus {
+	nexell,pin-strength = <NX_PIN_STR3>;
+};
+
+&spi2_bus {
+	nexell,pin-strength = <NX_PIN_STR3>;
+};
