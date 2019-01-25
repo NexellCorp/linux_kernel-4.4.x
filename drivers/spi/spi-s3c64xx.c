@@ -22,7 +22,6 @@
 #include <linux/dmaengine.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
-#include <linux/regmap.h>
 #include <linux/spi/spi.h>
 #include <linux/gpio.h>
 #include <linux/of.h>
@@ -190,7 +189,6 @@ struct s3c64xx_spi_port_config {
  */
 struct s3c64xx_spi_driver_data {
 	void __iomem                    *regs;
-	struct regmap		*regmap;
 	struct clk                      *clk;
 	struct clk                      *src_clk;
 	struct platform_device          *pdev;
@@ -221,90 +219,52 @@ static void nx_spi_qos_update(int val)
 }
 #endif
 
-static void flush_fifo(struct s3c64xx_spi_driver_data *sdd, int rx_valid)
+static void flush_fifo(struct s3c64xx_spi_driver_data *sdd)
 {
-
-#if 1
-	u32 val;
 	void __iomem *regs = sdd->regs;
-	__raw_writel(0, regs+S3C64XX_SPI_PACKET_CNT);
+	unsigned long loops;
+	u32 val;
 
-	val = __raw_readl(regs+S3C64XX_SPI_CH_CFG);
-	val &= ~(S3C64XX_SPI_CH_RXCH_ON | S3C64XX_SPI_CH_TXCH_ON | S3C64XX_SPI_CH_HS_EN);
-	val |= S3C64XX_SPI_CH_SW_RST;
-	__raw_writel(val, regs+S3C64XX_SPI_CH_CFG);
+	writel(0, regs + S3C64XX_SPI_PACKET_CNT);
 
-	//
-
-	val = __raw_readl(regs+S3C64XX_SPI_CH_CFG);
-	val &= ~S3C64XX_SPI_CH_SW_RST;
-	__raw_writel(val, regs+S3C64XX_SPI_CH_CFG);
-
-	val = __raw_readl(regs+S3C64XX_SPI_MODE_CFG);
-	val &= ~(S3C64XX_SPI_MODE_TXDMA_ON | S3C64XX_SPI_MODE_RXDMA_ON);
-	__raw_writel(val, regs+S3C64XX_SPI_MODE_CFG);
-#else
-	regmap_write(sdd->regmap, S3C64XX_SPI_PACKET_CNT, 0);
-
-#if 0
-	regmap_read(sdd->regmap, S3C64XX_SPI_CH_CFG, &val);
+	val = readl(regs + S3C64XX_SPI_CH_CFG);
 	val &= ~(S3C64XX_SPI_CH_RXCH_ON | S3C64XX_SPI_CH_TXCH_ON);
-	regmap_write(sdd->regmap, S3C64XX_SPI_CH_CFG, val);
+	writel(val, regs + S3C64XX_SPI_CH_CFG);
 
-	regmap_read(sdd->regmap, S3C64XX_SPI_CH_CFG, &val);
+	val = readl(regs + S3C64XX_SPI_CH_CFG);
 	val |= S3C64XX_SPI_CH_SW_RST;
 	val &= ~S3C64XX_SPI_CH_HS_EN;
-	regmap_write(sdd->regmap, S3C64XX_SPI_CH_CFG, val);
-#else
-	regmap_update_bits(sdd->regmap, S3C64XX_SPI_CH_CFG, 
-			S3C64XX_SPI_CH_RXCH_ON | S3C64XX_SPI_CH_TXCH_ON | S3C64XX_SPI_CH_SW_RST | S3C64XX_SPI_CH_HS_EN,
-			S3C64XX_SPI_CH_SW_RST);
-#endif
+	writel(val, regs + S3C64XX_SPI_CH_CFG);
 
-#if 0
-	unsigned long loops;
-	u32 val, tmp;
 	/* Flush TxFIFO*/
 	loops = msecs_to_loops(1);
 	do {
-		regmap_read(sdd->regmap, S3C64XX_SPI_STATUS, &val);
-	} while (S3C64XX_SPI_ST_TX_DONE(val, sdd) && loops--);
+		val = readl(regs + S3C64XX_SPI_STATUS);
+	} while (TX_FIFO_LVL(val, sdd) && loops--);
 
 	if (loops == 0)
 		dev_warn(&sdd->pdev->dev, "Timed out flushing TX FIFO\n");
 
-	if(rx_valid) {
-		/* Flush RxFIFO*/
-		loops = msecs_to_loops(1);
-		do {
-			regmap_read(sdd->regmap, S3C64XX_SPI_STATUS, &val);
-			if (RX_FIFO_LVL(val, sdd))
-				regmap_read(sdd->regmap, S3C64XX_SPI_RX_DATA, &tmp);
-			else
-				break;
-		} while (loops--);
-		if (loops == 0)
-			dev_warn(&sdd->pdev->dev, "Timed out flushing RX FIFO\n");
-	}
-#endif
+	/* Flush RxFIFO*/
+	loops = msecs_to_loops(1);
+	do {
+		val = readl(regs + S3C64XX_SPI_STATUS);
+		if (RX_FIFO_LVL(val, sdd))
+			readl(regs + S3C64XX_SPI_RX_DATA);
+		else
+			break;
+	} while (loops--);
 
-#if 0
-	regmap_read(sdd->regmap, S3C64XX_SPI_CH_CFG, &val);
+	if (loops == 0)
+		dev_warn(&sdd->pdev->dev, "Timed out flushing RX FIFO\n");
+
+	val = readl(regs + S3C64XX_SPI_CH_CFG);
 	val &= ~S3C64XX_SPI_CH_SW_RST;
-	regmap_write(sdd->regmap, S3C64XX_SPI_CH_CFG, val);
+	writel(val, regs + S3C64XX_SPI_CH_CFG);
 
-	regmap_read(sdd->regmap, S3C64XX_SPI_MODE_CFG, &val);
+	val = readl(regs + S3C64XX_SPI_MODE_CFG);
 	val &= ~(S3C64XX_SPI_MODE_TXDMA_ON | S3C64XX_SPI_MODE_RXDMA_ON);
-	regmap_write(sdd->regmap, S3C64XX_SPI_MODE_CFG, val);
-#else
-	regmap_update_bits(sdd->regmap, S3C64XX_SPI_CH_CFG, 
-			S3C64XX_SPI_CH_SW_RST,
-			0);
-	regmap_update_bits(sdd->regmap, S3C64XX_SPI_MODE_CFG, 
-			S3C64XX_SPI_MODE_TXDMA_ON | S3C64XX_SPI_MODE_RXDMA_ON,
-			0);
-#endif
-#endif
+	writel(val, regs + S3C64XX_SPI_MODE_CFG);
 }
 
 static void s3c64xx_spi_dmacb(void *data)
@@ -441,10 +401,10 @@ static void enable_datapath(struct s3c64xx_spi_driver_data *sdd,
 	void __iomem *regs = sdd->regs;
 	u32 modecfg, chcfg;
 
-	regmap_read(sdd->regmap, S3C64XX_SPI_MODE_CFG, &modecfg);
+	modecfg = readl(regs + S3C64XX_SPI_MODE_CFG);
 	modecfg &= ~(S3C64XX_SPI_MODE_TXDMA_ON | S3C64XX_SPI_MODE_RXDMA_ON);
 
-	regmap_read(sdd->regmap, S3C64XX_SPI_CH_CFG, &chcfg);
+	chcfg = readl(regs + S3C64XX_SPI_CH_CFG);
 	chcfg &= ~S3C64XX_SPI_CH_TXCH_ON;
 
 	if (dma_mode) {
@@ -455,9 +415,9 @@ static void enable_datapath(struct s3c64xx_spi_driver_data *sdd,
 		 * as exactly needed.
 		 */
 		chcfg |= S3C64XX_SPI_CH_RXCH_ON;
-		regmap_write(sdd->regmap, S3C64XX_SPI_PACKET_CNT, 
-				((xfer->len * 8 / sdd->cur_bpw) & 0xffff) 
-				| S3C64XX_SPI_PACKET_CNT_EN);
+		writel(((xfer->len * 8 / sdd->cur_bpw) & 0xffff)
+					| S3C64XX_SPI_PACKET_CNT_EN,
+					regs + S3C64XX_SPI_PACKET_CNT);
 	}
 
 	if (xfer->tx_buf != NULL) {
@@ -494,20 +454,21 @@ static void enable_datapath(struct s3c64xx_spi_driver_data *sdd,
 		if (dma_mode) {
 			modecfg |= S3C64XX_SPI_MODE_RXDMA_ON;
 			chcfg |= S3C64XX_SPI_CH_RXCH_ON;
-			regmap_write(sdd->regmap, S3C64XX_SPI_PACKET_CNT, 
-					((xfer->len * 8 / sdd->cur_bpw) & 0xffff) 
-					| S3C64XX_SPI_PACKET_CNT_EN);
+			writel(((xfer->len * 8 / sdd->cur_bpw) & 0xffff)
+					| S3C64XX_SPI_PACKET_CNT_EN,
+					regs + S3C64XX_SPI_PACKET_CNT);
 			prepare_dma(&sdd->rx_dma, &xfer->rx_sg);
 		}
 	}
 
-	regmap_write(sdd->regmap, S3C64XX_SPI_MODE_CFG, modecfg);
-	regmap_write(sdd->regmap, S3C64XX_SPI_CH_CFG, chcfg);
+	writel(modecfg, regs + S3C64XX_SPI_MODE_CFG);
+	writel(chcfg, regs + S3C64XX_SPI_CH_CFG);
 }
 
 static u32 s3c64xx_spi_wait_for_timeout(struct s3c64xx_spi_driver_data *sdd,
 					int timeout_ms)
 {
+	void __iomem *regs = sdd->regs;
 	unsigned long val = 1;
 	u32 status;
 
@@ -518,7 +479,7 @@ static u32 s3c64xx_spi_wait_for_timeout(struct s3c64xx_spi_driver_data *sdd,
 		val = msecs_to_loops(timeout_ms);
 
 	do {
-		regmap_read(sdd->regmap, S3C64XX_SPI_STATUS, &status);
+		status = readl(regs + S3C64XX_SPI_STATUS);
 	} while (RX_FIFO_LVL(status, sdd) < max_fifo && --val);
 
 	/* return the actual received data length */
@@ -528,6 +489,7 @@ static u32 s3c64xx_spi_wait_for_timeout(struct s3c64xx_spi_driver_data *sdd,
 static int wait_for_dma(struct s3c64xx_spi_driver_data *sdd,
 			struct spi_transfer *xfer)
 {
+	void __iomem *regs = sdd->regs;
 	unsigned long val;
 	u32 status;
 	int ms;
@@ -552,12 +514,12 @@ static int wait_for_dma(struct s3c64xx_spi_driver_data *sdd,
 	 */
 	if (val && !xfer->rx_buf) {
 		val = msecs_to_loops(10);
-		regmap_read(sdd->regmap, S3C64XX_SPI_STATUS, &status);
+		status = readl(regs + S3C64XX_SPI_STATUS);
 		while ((TX_FIFO_LVL(status, sdd)
 			|| !S3C64XX_SPI_ST_TX_DONE(status, sdd))
 		       && --val) {
 			cpu_relax();
-			regmap_read(sdd->regmap, S3C64XX_SPI_STATUS, &status);
+			status = readl(regs + S3C64XX_SPI_STATUS);
 		}
 
 	}
@@ -588,8 +550,9 @@ static int wait_for_pio(struct s3c64xx_spi_driver_data *sdd,
 		ms += 10; /* some tolerance */
 	val = msecs_to_loops(ms);
 	do {
-		regmap_read(sdd->regmap, S3C64XX_SPI_STATUS, &status);
+		status = readl(regs + S3C64XX_SPI_STATUS);
 	} while (RX_FIFO_LVL(status, sdd) < xfer->len && --val);
+
 
 	/* If it was only Tx */
 	if (!xfer->rx_buf) {
@@ -636,6 +599,7 @@ static int wait_for_pio(struct s3c64xx_spi_driver_data *sdd,
 
 static void s3c64xx_spi_config(struct s3c64xx_spi_driver_data *sdd)
 {
+	void __iomem *regs = sdd->regs;
 	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 	u32 val;
 
@@ -643,13 +607,13 @@ static void s3c64xx_spi_config(struct s3c64xx_spi_driver_data *sdd)
 	if (sdd->port_conf->clk_from_cmu) {
 		clk_disable_unprepare(sdd->src_clk);
 	} else {
-		regmap_read(sdd->regmap, S3C64XX_SPI_CLK_CFG, &val);
+		val = readl(regs + S3C64XX_SPI_CLK_CFG);
 		val &= ~S3C64XX_SPI_ENCLK_ENABLE;
-		regmap_write(sdd->regmap, S3C64XX_SPI_CLK_CFG, val);
+		writel(val, regs + S3C64XX_SPI_CLK_CFG);
 	}
 
 	/* Set Polarity and Phase */
-	regmap_read(sdd->regmap, S3C64XX_SPI_CH_CFG, &val);
+	val = readl(regs + S3C64XX_SPI_CH_CFG);
 	val &= ~(S3C64XX_SPI_CH_SLAVE |
 			S3C64XX_SPI_CPOL_L |
 			S3C64XX_SPI_CPHA_B);
@@ -662,10 +626,10 @@ static void s3c64xx_spi_config(struct s3c64xx_spi_driver_data *sdd)
 	if (sdd->cur_mode & SPI_CPHA)
 		val |= S3C64XX_SPI_CPHA_B;
 
-	regmap_write(sdd->regmap, S3C64XX_SPI_CH_CFG, val);
+	writel(val, regs + S3C64XX_SPI_CH_CFG);
 
 	/* Set Channel & DMA Mode */
-	regmap_read(sdd->regmap, S3C64XX_SPI_MODE_CFG, &val);
+	val = readl(regs + S3C64XX_SPI_MODE_CFG);
 	val &= ~(S3C64XX_SPI_MODE_BUS_TSZ_MASK
 			| S3C64XX_SPI_MODE_CH_TSZ_MASK);
 
@@ -684,7 +648,7 @@ static void s3c64xx_spi_config(struct s3c64xx_spi_driver_data *sdd)
 		break;
 	}
 
-	regmap_write(sdd->regmap, S3C64XX_SPI_MODE_CFG, val);
+	writel(val, regs + S3C64XX_SPI_MODE_CFG);
 
 	if (sdd->port_conf->clk_from_cmu) {
 		/* Configure Clock */
@@ -694,16 +658,16 @@ static void s3c64xx_spi_config(struct s3c64xx_spi_driver_data *sdd)
 		clk_prepare_enable(sdd->src_clk);
 	} else {
 		/* Configure Clock */
-		regmap_read(sdd->regmap, S3C64XX_SPI_CLK_CFG, &val);
+		val = readl(regs + S3C64XX_SPI_CLK_CFG);
 		val &= ~S3C64XX_SPI_PSR_MASK;
 		val |= ((clk_get_rate(sdd->src_clk) / sdd->cur_speed / 2 - 1)
 				& S3C64XX_SPI_PSR_MASK);
-		regmap_write(sdd->regmap, S3C64XX_SPI_CLK_CFG, val);
+		writel(val, regs + S3C64XX_SPI_CLK_CFG);
 
 		/* Enable Clock */
-		regmap_read(sdd->regmap, S3C64XX_SPI_CLK_CFG, &val);
+		val = readl(regs + S3C64XX_SPI_CLK_CFG);
 		val |= S3C64XX_SPI_ENCLK_ENABLE;
-		regmap_write(sdd->regmap, S3C64XX_SPI_CLK_CFG, val);
+		writel(val, regs + S3C64XX_SPI_CLK_CFG);
 	}
 }
 
@@ -715,34 +679,19 @@ static int s3c64xx_spi_prepare_message(struct spi_master *master,
 	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
 	struct spi_device *spi = msg->spi;
 	struct s3c64xx_spi_csinfo *cs = spi->controller_data;
-	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 
 	/* If Master's(controller) state differs from that needed by Slave */
-	if(!sci->not_queued_transfer) {
-		if (sdd->cur_speed != spi->max_speed_hz
-				|| sdd->cur_mode != spi->mode
-				|| sdd->cur_bpw != spi->bits_per_word) {
-			sdd->cur_bpw = spi->bits_per_word;
-			sdd->cur_speed = spi->max_speed_hz;
-			sdd->cur_mode = spi->mode;
-			s3c64xx_spi_config(sdd);
-		}
-	}
-	else {
-		struct spi_transfer *xfer = list_first_entry(&msg->transfers, typeof(*xfer), transfer_list);
-		u8 bpw = xfer->bits_per_word;
-		u32 speed = xfer->speed_hz;
-
-		if (bpw != sdd->cur_bpw || speed != sdd->cur_speed || spi->mode != sdd->cur_mode) {
-			sdd->cur_bpw = bpw;
-			sdd->cur_speed = speed;
-			sdd->cur_mode = spi->mode;
-			s3c64xx_spi_config(sdd);
-		}
+	if (sdd->cur_speed != spi->max_speed_hz
+			|| sdd->cur_mode != spi->mode
+			|| sdd->cur_bpw != spi->bits_per_word) {
+		sdd->cur_bpw = spi->bits_per_word;
+		sdd->cur_speed = spi->max_speed_hz;
+		sdd->cur_mode = spi->mode;
+		s3c64xx_spi_config(sdd);
 	}
 
 	/* Configure feedback delay */
-	regmap_write(sdd->regmap, S3C64XX_SPI_FB_CLK, cs->fb_delay & 0x3);
+	writel(cs->fb_delay & 0x3, sdd->regs + S3C64XX_SPI_FB_CLK);
 
 	return 0;
 }
@@ -752,7 +701,6 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 				    struct spi_transfer *xfer)
 {
 	struct s3c64xx_spi_driver_data *sdd = spi_master_get_devdata(master);
-	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
 	int status;
 	u32 speed;
 	u8 bpw;
@@ -775,17 +723,14 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 
 	reinit_completion(&sdd->xfer_completion);
 
-	if(!sci->not_queued_transfer) {
-		/* Only BPW and Speed may change across transfers */
-		bpw = xfer->bits_per_word;
-		speed = xfer->speed_hz;
+	/* Only BPW and Speed may change across transfers */
+	bpw = xfer->bits_per_word;
+	speed = xfer->speed_hz;
 
-		if (bpw != sdd->cur_bpw || speed != sdd->cur_speed || spi->mode != sdd->cur_mode) {
-			sdd->cur_bpw = bpw;
-			sdd->cur_speed = speed;
-			sdd->cur_mode = spi->mode;
-			s3c64xx_spi_config(sdd);
-		}
+	if (bpw != sdd->cur_bpw || speed != sdd->cur_speed) {
+		sdd->cur_bpw = bpw;
+		sdd->cur_speed = speed;
+		s3c64xx_spi_config(sdd);
 	}
 
 	/* Polling method for xfers not bigger than FIFO capacity */
@@ -805,12 +750,11 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 
 	/* Start the signals */
 	if (!(sdd->port_conf->quirks & S3C64XX_SPI_QUIRK_CS_AUTO))
-		regmap_write(sdd->regmap, S3C64XX_SPI_SLAVE_SEL, 0);
-	else {
-		u32 tmp;
-		regmap_read(sdd->regmap, S3C64XX_SPI_SLAVE_SEL, &tmp);
-		regmap_write(sdd->regmap, S3C64XX_SPI_SLAVE_SEL, tmp /*| S3C64XX_SPI_SLAVE_AUTO | S3C64XX_SPI_SLAVE_NSC_CNT_2*/);
-	}
+		writel(0, sdd->regs + S3C64XX_SPI_SLAVE_SEL);
+	else
+		writel(readl(sdd->regs + S3C64XX_SPI_SLAVE_SEL)
+			| S3C64XX_SPI_SLAVE_AUTO | S3C64XX_SPI_SLAVE_NSC_CNT_2,
+			sdd->regs + S3C64XX_SPI_SLAVE_SEL);
 
 	spin_unlock_irqrestore(&sdd->lock, flags);
 
@@ -835,57 +779,11 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 				dmaengine_terminate_all(sdd->rx_dma.ch);
 		}
 	}
-
-#ifdef CONFIG_ARCH_S5P6818
-	{
-	struct s3c64xx_spi_csinfo *cs = spi->controller_data;
-	if (!(sdd->port_conf->quirks & S3C64XX_SPI_QUIRK_CS_AUTO))
-		if (cs->cs_per_msg) {
-			regmap_write(sdd->regmap, S3C64XX_SPI_SLAVE_SEL, S3C64XX_SPI_SLAVE_SIG_INACT);
-		}
-	}
-#endif
-
-	flush_fifo(sdd, xfer->rx_buf != NULL);
+	flush_fifo(sdd);
 
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
 	nx_spi_qos_update(NX_BUS_CLK_IDLE_KHZ);
 #endif
-
-	return status;
-}
-
-static void spi_set_cs(struct spi_device *spi, bool enable)
-{
-	if (spi->mode & SPI_CS_HIGH)
-		enable = !enable;
-
-	if (gpio_is_valid(spi->cs_gpio))
-		gpio_set_value(spi->cs_gpio, !enable);
-	else if (spi->master->set_cs)
-		spi->master->set_cs(spi, !enable);
-}
-
-static int s3c64xx_spi_transfer(struct spi_device *spi, struct spi_message *msg)
-{
-	int status = 0;
-	struct spi_master *master = spi->master;
-	struct spi_transfer *xfer;
-
-	list_for_each_entry(xfer, &msg->transfers, transfer_list) {
-		spi_set_cs(spi, true);
-		status = s3c64xx_spi_transfer_one(master, spi, xfer);
-	}
-
-	if (msg->status == -EINPROGRESS)
-		msg->status = status;
-
-	msg->state = NULL;
-
-	if (msg->complete)
-		msg->complete(msg->context);
-
-	spi_set_cs(spi, false);
 
 	return status;
 }
@@ -917,12 +815,6 @@ static struct s3c64xx_spi_csinfo *s3c64xx_get_slave_ctrldata(
 
 	of_property_read_u32(data_np, "samsung,spi-feedback-delay", &fb_delay);
 	cs->fb_delay = fb_delay;
-
-	if (of_property_read_u32(data_np, "cs-per-message", &fb_delay))
-		cs->cs_per_msg = 0;
-	else
-		cs->cs_per_msg = fb_delay;
-
 	of_node_put(data_np);
 	return cs;
 }
@@ -1018,7 +910,7 @@ static int s3c64xx_spi_setup(struct spi_device *spi)
 	pm_runtime_mark_last_busy(&sdd->pdev->dev);
 	pm_runtime_put_autosuspend(&sdd->pdev->dev);
 	if (!(sdd->port_conf->quirks & S3C64XX_SPI_QUIRK_CS_AUTO))
-		regmap_write(sdd->regmap, S3C64XX_SPI_SLAVE_SEL, S3C64XX_SPI_SLAVE_SIG_INACT);
+		writel(S3C64XX_SPI_SLAVE_SIG_INACT, sdd->regs + S3C64XX_SPI_SLAVE_SEL);
 	return 0;
 
 setup_exit:
@@ -1026,7 +918,7 @@ setup_exit:
 	pm_runtime_put_autosuspend(&sdd->pdev->dev);
 	/* setup() returns with device de-selected */
 	if (!(sdd->port_conf->quirks & S3C64XX_SPI_QUIRK_CS_AUTO))
-		regmap_write(sdd->regmap, S3C64XX_SPI_SLAVE_SEL, S3C64XX_SPI_SLAVE_SIG_INACT);
+		writel(S3C64XX_SPI_SLAVE_SIG_INACT, sdd->regs + S3C64XX_SPI_SLAVE_SEL);
 
 	if (gpio_is_valid(spi->cs_gpio))
 		gpio_free(spi->cs_gpio);
@@ -1066,7 +958,7 @@ static irqreturn_t s3c64xx_spi_irq(int irq, void *data)
 	struct spi_master *spi = sdd->master;
 	unsigned int val, clr = 0;
 
-	regmap_read(sdd->regmap, S3C64XX_SPI_STATUS, &val);
+	val = readl(sdd->regs + S3C64XX_SPI_STATUS);
 
 	if (val & S3C64XX_SPI_ST_RX_OVERRUN_ERR) {
 		clr = S3C64XX_SPI_PND_RX_OVERRUN_CLR;
@@ -1086,8 +978,8 @@ static irqreturn_t s3c64xx_spi_irq(int irq, void *data)
 	}
 
 	/* Clear the pending irq by setting and then clearing it */
-	regmap_write(sdd->regmap, S3C64XX_SPI_PENDING_CLR, clr);
-	regmap_write(sdd->regmap, S3C64XX_SPI_PENDING_CLR, 0);
+	writel(clr, sdd->regs + S3C64XX_SPI_PENDING_CLR);
+	writel(0, sdd->regs + S3C64XX_SPI_PENDING_CLR);
 
 	return IRQ_HANDLED;
 }
@@ -1095,39 +987,40 @@ static irqreturn_t s3c64xx_spi_irq(int irq, void *data)
 static void s3c64xx_spi_hwinit(struct s3c64xx_spi_driver_data *sdd, int channel)
 {
 	struct s3c64xx_spi_info *sci = sdd->cntrlr_info;
+	void __iomem *regs = sdd->regs;
 	unsigned int val;
 
 	sdd->cur_speed = 0;
 
 	if (!(sdd->port_conf->quirks & S3C64XX_SPI_QUIRK_CS_AUTO))
-		regmap_write(sdd->regmap, S3C64XX_SPI_SLAVE_SEL, S3C64XX_SPI_SLAVE_SIG_INACT);
+		writel(S3C64XX_SPI_SLAVE_SIG_INACT, sdd->regs + S3C64XX_SPI_SLAVE_SEL);
 
 	/* Disable Interrupts - we use Polling if not DMA mode */
-	regmap_write(sdd->regmap, S3C64XX_SPI_INT_EN, 0);
+	writel(0, regs + S3C64XX_SPI_INT_EN);
 
 	if (!sdd->port_conf->clk_from_cmu)
-		regmap_write(sdd->regmap, S3C64XX_SPI_CLK_CFG, 
-				sci->src_clk_nr << S3C64XX_SPI_CLKSEL_SRCSHFT);
-	regmap_write(sdd->regmap, S3C64XX_SPI_MODE_CFG, 0);
-	regmap_write(sdd->regmap, S3C64XX_SPI_PACKET_CNT, 0);
+		writel(sci->src_clk_nr << S3C64XX_SPI_CLKSEL_SRCSHFT,
+				regs + S3C64XX_SPI_CLK_CFG);
+	writel(0, regs + S3C64XX_SPI_MODE_CFG);
+	writel(0, regs + S3C64XX_SPI_PACKET_CNT);
 
 	/* Clear any irq pending bits, should set and clear the bits */
 	val = S3C64XX_SPI_PND_RX_OVERRUN_CLR |
 		S3C64XX_SPI_PND_RX_UNDERRUN_CLR |
 		S3C64XX_SPI_PND_TX_OVERRUN_CLR |
 		S3C64XX_SPI_PND_TX_UNDERRUN_CLR;
-	regmap_write(sdd->regmap, S3C64XX_SPI_PENDING_CLR, val);
-	regmap_write(sdd->regmap, S3C64XX_SPI_PENDING_CLR, 0);
+	writel(val, regs + S3C64XX_SPI_PENDING_CLR);
+	writel(0, regs + S3C64XX_SPI_PENDING_CLR);
 
-	regmap_write(sdd->regmap, S3C64XX_SPI_SWAP_CFG, 0);
+	writel(0, regs + S3C64XX_SPI_SWAP_CFG);
 
-	regmap_read(sdd->regmap, S3C64XX_SPI_MODE_CFG, &val);
+	val = readl(regs + S3C64XX_SPI_MODE_CFG);
 	val &= ~S3C64XX_SPI_MODE_4BURST;
 	val &= ~(S3C64XX_SPI_MAX_TRAILCNT << S3C64XX_SPI_TRAILCNT_OFF);
 	val |= (S3C64XX_SPI_TRAILCNT << S3C64XX_SPI_TRAILCNT_OFF);
-	regmap_write(sdd->regmap, S3C64XX_SPI_MODE_CFG, val);
+	writel(val, regs + S3C64XX_SPI_MODE_CFG);
 
-	flush_fifo(sdd, 1);
+	flush_fifo(sdd);
 }
 
 #ifdef CONFIG_OF
@@ -1159,11 +1052,6 @@ static struct s3c64xx_spi_info *s3c64xx_spi_parse_dt(struct device *dev)
 	else
 		sci->hierarchy = hierarchy;
 
-	if (of_property_read_u32(dev->of_node, "not-queued-transfer", &temp))
-		sci->not_queued_transfer = 0;
-	else
-		sci->not_queued_transfer = temp;
-
 	return sci;
 }
 #else
@@ -1188,13 +1076,6 @@ static inline struct s3c64xx_spi_port_config *s3c64xx_spi_get_port_config(
 	return (struct s3c64xx_spi_port_config *)
 			 platform_get_device_id(pdev)->driver_data;
 }
-
-static const struct regmap_config s3c64xx_regmap_config = {
-	.reg_bits = 32,
-	.val_bits = 32,
-	.reg_stride = 4,
-	.max_register = 0x30,
-};
 
 static int s3c64xx_spi_probe(struct platform_device *pdev)
 {
@@ -1283,10 +1164,7 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 	master->cleanup = s3c64xx_spi_cleanup;
 	master->prepare_transfer_hardware = s3c64xx_spi_prepare_transfer;
 	master->prepare_message = s3c64xx_spi_prepare_message;
-	if(sci->not_queued_transfer)
-		master->transfer = s3c64xx_spi_transfer;
-	else
-		master->transfer_one = s3c64xx_spi_transfer_one;
+	master->transfer_one = s3c64xx_spi_transfer_one;
 	master->unprepare_transfer_hardware = s3c64xx_spi_unprepare_transfer;
 	master->num_chipselect = sci->num_cs;
 	master->dma_alignment = 8;
@@ -1302,14 +1180,6 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 	if (IS_ERR(sdd->regs)) {
 		ret = PTR_ERR(sdd->regs);
 		goto err0;
-	}
-
-	sdd->regmap = devm_regmap_init_mmio_clk(&pdev->dev, NULL, sdd->regs,
-						&s3c64xx_regmap_config);
-	if (IS_ERR(sdd->regmap)) {
-		dev_err(&pdev->dev, "failed to init regmap: %ld\n",
-				PTR_ERR(sdd->regmap));
-		return PTR_ERR(sdd->regmap);
 	}
 
 	if (sci->cfg_gpio && sci->cfg_gpio()) {
@@ -1393,7 +1263,7 @@ static int s3c64xx_spi_probe(struct platform_device *pdev)
 	       S3C64XX_SPI_INT_TX_OVERRUN_EN;
 	if(sci->hierarchy == SSP_MASTER)
 		val |=  S3C64XX_SPI_INT_TX_UNDERRUN_EN;
-	regmap_write(sdd->regmap, S3C64XX_SPI_INT_EN, val);
+	writel(val, sdd->regs + S3C64XX_SPI_INT_EN);
 
 	ret = devm_spi_register_master(&pdev->dev, master);
 	if (ret != 0) {
@@ -1433,7 +1303,7 @@ static int s3c64xx_spi_remove(struct platform_device *pdev)
 
 	pm_runtime_get_sync(&pdev->dev);
 
-	regmap_write(sdd->regmap, S3C64XX_SPI_INT_EN, 0);
+	writel(0, sdd->regs + S3C64XX_SPI_INT_EN);
 
 	clk_disable_unprepare(sdd->src_clk);
 
