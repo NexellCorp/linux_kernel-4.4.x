@@ -592,11 +592,9 @@
 	};
 };
 
+/* for MAX9286 */
+/*
 &vip_0 {
-	status = "okay";
-};
-
-&vip_1 {
 	status = "okay";
 };
 
@@ -608,7 +606,6 @@
 	status = "okay";
 };
 
-/* for MAX9286 */
 &clipper_0 {
 	interface_type = <NX_CAPTURE_INTERFACE_MIPI_CSI>;
 	gpios = <&gpio_b 12 0 &gpio_c 13 0>;
@@ -642,8 +639,13 @@
 		>;
 	};
 };
+*/
 
 /* for TP2825 */
+&vip_1 {
+	status = "okay";
+};
+
 &clipper_1 {
 	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
 	pinctrl-names = "default";
