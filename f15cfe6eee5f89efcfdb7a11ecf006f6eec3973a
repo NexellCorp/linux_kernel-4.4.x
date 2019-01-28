@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "843c4762_f0534a39",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-01-28T23:39:04Z",
+      "side": 1,
+      "message": "Please make your commit message more adequate.\nI think your commit message is to give rt priority to your v4l2 thread. Make your commit message as your intention.",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 9,
+        "endChar": 41
+      },
+      "revId": "f15cfe6eee5f89efcfdb7a11ecf006f6eec3973a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
