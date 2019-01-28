@@ -331,6 +331,22 @@
 		scaler@c0066000 {
 			status = "okay";
 		};
+
+		dw_mmc_1:dwmmc@c0068000 {
+			compatible = "nexell,s5p6818-dw-mshc-sdio1";
+			interrupts = <IRQ_SDMMC1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <PHYS_BASE_SDMMC1 0x1000>;
+			resets  = <&nexell_reset RESET_ID_SDMMC1>;
+			reset-names = "dw_mmc-reset";
+			clock-names = "biu", "ciu";
+			clocks = <&sdhc1>, <&sdhc1>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sdmmc1_cclk &sdmmc1_cmd &sdmmc1_bus4>;
+			fifo-detph = <0x20>;
+			status = "disabled";
+		};
 	};	/*** soc ***/
 
 	i2c_gpio3: i2c@3 {
