@@ -4026,7 +4026,7 @@ recheck:
 			    !can_nice(p, attr->sched_nice))
 				return -EPERM;
 		}
-
+#ifndef CONFIG_V4L2_INIT_LEVEL_UP
 		if (rt_policy(policy)) {
 			unsigned long rlim_rtprio =
 					task_rlimit(p, RLIMIT_RTPRIO);
@@ -4040,6 +4040,7 @@ recheck:
 			    attr->sched_priority > rlim_rtprio)
 				return -EPERM;
 		}
+#endif
 
 		 /*
 		  * Can't set/change SCHED_DEADLINE policy at all for now
