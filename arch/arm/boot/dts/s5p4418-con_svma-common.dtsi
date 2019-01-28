@@ -446,9 +446,9 @@
 		reg = <0 0>;
 	};
 
-	sound {
-		compatible = "simple-audio-card";
-		simple-audio-card,name = "s5p4418 Convergence Car Audio";
+	sound-main {
+		compatible = "nexell,simple-audio-card";
+		simple-audio-card,name = "s5p4418 Convergence Car Audio Main";
 		simple-audio-card,mclk-fs = <256>;
 		simple-audio-card,widgets =
 			"Headphone", "Out Jack",
@@ -470,17 +470,6 @@
 		simple-audio-card,dai-link@1 {
 			format = "i2s";
 			cpu {
-			sound-dai = <&i2s_0 0>;
-			};
-
-			codec {
-			sound-dai = <&alc5621_1>;
-			};
-		};
-
-		simple-audio-card,dai-link@2 {
-			format = "i2s";
-			cpu {
 			sound-dai = <&i2s_2 0>;
 			};
 
@@ -489,7 +478,7 @@
 			};
 		};
 
-		simple-audio-card,dai-link@3 {
+		simple-audio-card,dai-link@2 {
 			format = "spdif";
 			cpu {
 			sound-dai = <&spdif_tx 0>;
@@ -497,6 +486,28 @@
 
 			codec {
 			sound-dai = <&spdif_out>;
+			};
+		};
+	};
+
+	sound-sub {
+		compatible = "nexell,simple-audio-card";
+		simple-audio-card,name = "s5p4418 Convergence Car Audio Sub";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,widgets =
+			"Headphone", "Out Jack",
+			"Microphone", "In Jack";
+		status = "okay";
+
+		simple-audio-card,dai-link@0 {
+			format = "i2s";
+
+			cpu {
+			sound-dai = <&i2s_0 0>;
+			};
+
+			codec {
+			sound-dai = <&alc5621_1>;
 			};
 		};
 	};
