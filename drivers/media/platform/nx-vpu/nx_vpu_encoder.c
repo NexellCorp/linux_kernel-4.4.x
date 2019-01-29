@@ -1,20 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016  Nexell Co., Ltd.
- * Author: Seonghee, Kim <kshblue@nexell.co.kr>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Nexell VPU driver
+ * Copyright (c) 2019 Sungwon Jo <doriya@nexell.co.kr>
  */
+
 
 #ifndef UNUSED
 #define UNUSED(p) ((void)(p))
@@ -26,11 +15,9 @@
 #include "nx_vpu_api.h"
 #include "nx_vpu_gdi.h"
 
-
 #define DBG_REGISTER		0
 #define DBG_ES_ADDR		0
 #define INFO_MSG		0
-
 
 /*--------------------------------------------------------------------------- */
 /*  Define Static Functions */
@@ -47,11 +34,9 @@ static int VPU_EncGetHeaderCommand(struct nx_vpu_codec_inst *pInst,
 static int VPU_EncCloseCommand(struct nx_vpu_codec_inst *pInst,
 	void *vpu_event_present);
 
-
 /*----------------------------------------------------------------------------
  *			Encoder APIs
  */
-
 int NX_VpuEncOpen(struct vpu_open_arg *pOpenArg, void *devHandle,
 	struct nx_vpu_codec_inst **ppInst)
 {
@@ -79,9 +64,9 @@ int NX_VpuEncOpen(struct vpu_open_arg *pOpenArg, void *devHandle,
 		hInst->codecMode = MJPG_ENC;
 		hInst->auxMode = 0;
 	} else {
-		NX_ErrMsg(("NX_VpuEncOpen() failed!!!\n"));
-		NX_ErrMsg(("Cannot support codec standard(%d)\n",
-			pOpenArg->codecStd));
+		NX_ErrMsg("NX_VpuEncOpen() failed!!!\n");
+		NX_ErrMsg("Cannot support codec standard(%d)\n",
+			pOpenArg->codecStd);
 		return VPU_RET_ERR_PARAM;
 	}
 
@@ -113,7 +98,7 @@ int NX_VpuEncClose(struct nx_vpu_codec_inst *pInst, void *vpu_event_present)
 
 	ret = VPU_EncCloseCommand(pInst, vpu_event_present);
 	if (ret != VPU_RET_OK)
-		NX_ErrMsg(("NX_VpuEncClose() failed.(%d)\n", ret));
+		NX_ErrMsg("NX_VpuEncClose() failed.(%d)\n", ret);
 
 	return ret;
 }
@@ -163,17 +148,17 @@ int NX_VpuEncSetSeqParam(struct nx_vpu_codec_inst *pInst,
 	if (pSeqArg->enableAUDelimiter)
 		pEncInfo->enc_codec_para.avcEncParam.audEnable = 1;
 
-	NX_DbgMsg(INFO_MSG, ("NX_VpuEncSetSeqParam() information\n"));
-	NX_DbgMsg(INFO_MSG, ("Reloution : %d x %d\n",
-		pEncInfo->srcWidth, pEncInfo->srcHeight));
-	NX_DbgMsg(INFO_MSG, ("Fps : %d/%d\n",
-		pEncInfo->frameRateNum, pEncInfo->frameRateDen));
-	NX_DbgMsg(INFO_MSG, ("Target bitrate : %d kbps\n", pEncInfo->bitRate));
-	NX_DbgMsg(INFO_MSG, ("GOP : %d\n", pEncInfo->gopSize));
-	NX_DbgMsg(INFO_MSG, ("Max QP : %d\n", pEncInfo->userQpMax));
-	NX_DbgMsg(INFO_MSG, ("SR : %d\n", pEncInfo->MESearchRange));
-	NX_DbgMsg(INFO_MSG, ("Stream_buffer : 0x%llx, 0x%llx))\n",
-		pEncInfo->strmBufPhyAddr, pEncInfo->strmBufVirAddr));
+	NX_DbgMsg(INFO_MSG, "NX_VpuEncSetSeqParam() information\n");
+	NX_DbgMsg(INFO_MSG, "Reloution : %d x %d\n",
+		pEncInfo->srcWidth, pEncInfo->srcHeight);
+	NX_DbgMsg(INFO_MSG, "Fps : %d/%d\n",
+		pEncInfo->frameRateNum, pEncInfo->frameRateDen);
+	NX_DbgMsg(INFO_MSG, "Target bitrate : %d kbps\n", pEncInfo->bitRate);
+	NX_DbgMsg(INFO_MSG, "GOP : %d\n", pEncInfo->gopSize);
+	NX_DbgMsg(INFO_MSG, "Max QP : %d\n", pEncInfo->userQpMax);
+	NX_DbgMsg(INFO_MSG, "SR : %d\n", pEncInfo->MESearchRange);
+	NX_DbgMsg(INFO_MSG, "Stream_buffer : 0x%llx, 0x%llx))\n",
+		pEncInfo->strmBufPhyAddr, pEncInfo->strmBufVirAddr);
 
 	if (CODEC_STD_MJPG == pEncInfo->codecStd) {
 		struct enc_jpeg_info *pJpgInfo =
@@ -237,7 +222,7 @@ int NX_VpuEncGetHeader(struct nx_vpu_codec_inst *pInst,
 		/* SPS */
 		ret = VPU_EncGetHeaderCommand(pInst, SPS_RBSP, &ptr, &size);
 		if (ret != VPU_RET_OK) {
-			NX_ErrMsg(("NX_VpuEncGetHeader() SPS_RBSP Error!\n"));
+			NX_ErrMsg("NX_VpuEncGetHeader() SPS_RBSP Error!\n");
 			goto GET_HEADER_EXIT;
 		}
 		NX_DrvMemcpy(pHeader->avcHeader.spsData, ptr, size);
@@ -245,7 +230,7 @@ int NX_VpuEncGetHeader(struct nx_vpu_codec_inst *pInst,
 		/* PPS */
 		ret = VPU_EncGetHeaderCommand(pInst, PPS_RBSP, &ptr, &size);
 		if (ret != VPU_RET_OK) {
-			NX_ErrMsg(("NX_VpuEncGetHeader() PPS_RBSP Error!\n"));
+			NX_ErrMsg("NX_VpuEncGetHeader() PPS_RBSP Error!\n");
 			goto GET_HEADER_EXIT;
 		}
 		NX_DrvMemcpy(pHeader->avcHeader.ppsData, ptr, size);
@@ -254,7 +239,7 @@ int NX_VpuEncGetHeader(struct nx_vpu_codec_inst *pInst,
 		ret = VPU_EncGetHeaderCommand(pInst, VOS_HEADER, &ptr, &size);
 		/* VOS */
 		if (ret != VPU_RET_OK) {
-			NX_ErrMsg(("NX_VpuEncGetHeader() VOS_HEADER Error!\n"));
+			NX_ErrMsg("NX_VpuEncGetHeader() VOS_HEADER Error!\n");
 			goto GET_HEADER_EXIT;
 		}
 		NX_DrvMemcpy(pHeader->mp4Header.vosData, ptr, size);
@@ -262,7 +247,7 @@ int NX_VpuEncGetHeader(struct nx_vpu_codec_inst *pInst,
 		/* VOL */
 		ret = VPU_EncGetHeaderCommand(pInst, VOL_HEADER, &ptr, &size);
 		if (ret != VPU_RET_OK) {
-			NX_ErrMsg(("NX_VpuEncGetHeader() VOL_HEADER Error!\n"));
+			NX_ErrMsg("NX_VpuEncGetHeader() VOL_HEADER Error!\n");
 			goto GET_HEADER_EXIT;
 		}
 		NX_DrvMemcpy(pHeader->mp4Header.volData, ptr, size);
@@ -291,11 +276,9 @@ int NX_VpuEncChgParam(struct nx_vpu_codec_inst *pInst,
 		return -1;
 }
 
-
 /*---------------------------------------------------------------------------
  * Encoder Specific Static Functions
  */
-
 static void VPU_EncDefaultParam(struct vpu_enc_info *pEncInfo)
 {
 	/* Set Default Frame Rate */
@@ -511,17 +494,16 @@ static int VPU_EncSeqCommand(struct nx_vpu_codec_inst *pInst)
 	{
 		int reg;
 
-		NX_DbgMsg(DBG_REGISTER, ("[SEQ_INIT_Reg]\n"));
+		NX_DbgMsg(DBG_REGISTER, "[SEQ_INIT_Reg]\n");
 		for (reg = 0x0 ; reg < 0x200 ; reg += 16) {
-			NX_DbgMsg(DBG_REGISTER, ("[Addr = %3x]%x %x %x %x\n",
+			NX_DbgMsg(DBG_REGISTER, "[Addr = %3x]%x %x %x %x\n",
 				reg, VpuReadReg(BIT_BASE + reg),
 				VpuReadReg(BIT_BASE + reg + 4),
 				VpuReadReg(BIT_BASE + reg + 8),
-				VpuReadReg(BIT_BASE + reg + 12)));
+				VpuReadReg(BIT_BASE + reg + 12));
 		}
 	}
 #endif
-
 
 	VpuBitIssueCommand(pInst, SEQ_INIT);
 
@@ -529,22 +511,24 @@ static int VPU_EncSeqCommand(struct nx_vpu_codec_inst *pInst)
 	{
 		int reg;
 
-		NX_DbgMsg(DBG_REGISTER, ("[SEQ_INIT_Reg]\n"));
+		NX_DbgMsg(DBG_REGISTER, "[SEQ_INIT_Reg]\n");
 		for (reg = 0x0 ; reg < 0x200 ; reg += 16) {
-			NX_DbgMsg(DBG_REGISTER, ("[Addr = %3x]%x %x %x %x\n",
+			NX_DbgMsg(DBG_REGISTER, "[Addr = %3x]%x %x %x %x\n",
 				reg, VpuReadReg(BIT_BASE + reg),
 				VpuReadReg(BIT_BASE + reg + 4),
 				VpuReadReg(BIT_BASE + reg + 8),
-				VpuReadReg(BIT_BASE + reg + 12)));
+				VpuReadReg(BIT_BASE + reg + 12));
 		}
 	}
 #endif
 
 	if (!VPU_WaitBitInterrupt(pInst->devHandle, VPU_DEC_TIMEOUT)) {
-		NX_ErrMsg(("VPU_EncSeqCommand() Failed. Timeout(%d)\n",
-			VPU_BUSY_CHECK_TIMEOUT));
+		NX_ErrMsg("VPU_EncSeqCommand() Failed. Timeout(%d)\n",
+			VPU_BUSY_CHECK_TIMEOUT);
 		return VPU_RET_ERR_TIMEOUT;
 	}
+
+	VPU_ClearBitInterrupt();
 
 	/* Get Encoder Frame Buffer Information */
 	if (VpuReadReg(RET_ENC_SEQ_ENC_SUCCESS) & (1<<31))
@@ -562,9 +546,9 @@ static int VPU_EncSeqCommand(struct nx_vpu_codec_inst *pInst)
 	pEncInfo->strmWritePrt = VpuReadReg(BIT_WR_PTR);
 	pEncInfo->strmEndFlag = VpuReadReg(BIT_BIT_STREAM_PARAM);
 
-	NX_DbgMsg(INFO_MSG, ("VPU_EncSeqCommand() Success.\n"));
-	NX_DbgMsg(INFO_MSG, ("Writer Ptr = 0x%08x, Stream End Flag = %d\n",
-		pEncInfo->strmWritePrt, pEncInfo->strmEndFlag));
+	NX_DbgMsg(INFO_MSG, "VPU_EncSeqCommand() Success.\n");
+	NX_DbgMsg(INFO_MSG, "Writer Ptr = 0x%08x, Stream End Flag = %d\n",
+		pEncInfo->strmWritePrt, pEncInfo->strmEndFlag);
 
 	pInst->isInitialized = 1;
 	return VPU_RET_OK;
@@ -669,13 +653,13 @@ static int VPU_EncSetFrameBufCommand(struct nx_vpu_codec_inst *pInst,
 	{
 		int reg;
 
-		NX_DbgMsg(DBG_REGISTER, ("[ENC_SET_FRM_BUF_Reg]\n"));
+		NX_DbgMsg(DBG_REGISTER, "[ENC_SET_FRM_BUF_Reg]\n");
 		for (reg = 0x180 ; reg < 0x200 ; reg += 16) {
-			NX_DbgMsg(DBG_REGISTER, ("[Addr = %3x]%x %x %x %x\n",
+			NX_DbgMsg(DBG_REGISTER, "[Addr = %3x]%x %x %x %x\n",
 				reg, VpuReadReg(BIT_BASE + reg),
 				VpuReadReg(BIT_BASE + reg + 4),
 				VpuReadReg(BIT_BASE + reg + 8),
-				VpuReadReg(BIT_BASE + reg + 12)));
+				VpuReadReg(BIT_BASE + reg + 12));
 		}
 	}
 #endif
@@ -683,8 +667,8 @@ static int VPU_EncSetFrameBufCommand(struct nx_vpu_codec_inst *pInst,
 	VpuBitIssueCommand(pInst, SET_FRAME_BUF);
 	if (VPU_RET_OK != VPU_WaitVpuBusy(VPU_BUSY_CHECK_TIMEOUT,
 		BIT_BUSY_FLAG)) {
-		NX_ErrMsg(("VPU_EncSetFrameBuffer() Failed. Timeout(%d)\n",
-			VPU_BUSY_CHECK_TIMEOUT));
+		NX_ErrMsg("VPU_EncSetFrameBuffer() Failed. Timeout(%d)\n",
+			VPU_BUSY_CHECK_TIMEOUT);
 		return VPU_RET_ERR_TIMEOUT;
 	}
 
@@ -740,13 +724,13 @@ static int VPU_EncGetHeaderCommand(struct nx_vpu_codec_inst *pInst,
 	{
 		int reg;
 
-		NX_DbgMsg(DBG_REGISTER, ("[ENC_HEADER_Reg]\n"));
+		NX_DbgMsg(DBG_REGISTER, "[ENC_HEADER_Reg]\n");
 		for (reg = 0x180 ; reg < 0x200 ; reg += 16) {
-			NX_DbgMsg(DBG_REGISTER, ("[Addr = %3x]%x %x %x %x\n",
+			NX_DbgMsg(DBG_REGISTER, "[Addr = %3x]%x %x %x %x\n",
 				reg, VpuReadReg(BIT_BASE + reg),
 				VpuReadReg(BIT_BASE + reg + 4),
 				VpuReadReg(BIT_BASE + reg + 8),
-				VpuReadReg(BIT_BASE + reg + 12)));
+				VpuReadReg(BIT_BASE + reg + 12));
 		}
 	}
 #endif
@@ -869,13 +853,13 @@ static int VPU_EncOneFrameCommand(struct nx_vpu_codec_inst *pInst,
 	{
 		int reg;
 
-		NX_DbgMsg(DBG_REGISTER, ("[ENC_RUN_Reg]\n"));
+		NX_DbgMsg(DBG_REGISTER, "[ENC_RUN_Reg]\n");
 		for (reg = 0x180 ; reg < 0x200 ; reg += 16) {
-			NX_DbgMsg(DBG_REGISTER, ("[Addr = %3x]%x %x %x %x\n",
+			NX_DbgMsg(DBG_REGISTER, "[Addr = %3x]%x %x %x %x\n",
 				reg, VpuReadReg(BIT_BASE + reg),
 				VpuReadReg(BIT_BASE + reg + 4),
 				VpuReadReg(BIT_BASE + reg + 8),
-				VpuReadReg(BIT_BASE + reg + 12)));
+				VpuReadReg(BIT_BASE + reg + 12));
 		}
 	}
 #endif
@@ -888,6 +872,9 @@ static int VPU_EncOneFrameCommand(struct nx_vpu_codec_inst *pInst,
 
 		if (reason == 0)
 			return VPU_RET_ERR_TIMEOUT;
+
+		VPU_ClearBitInterrupt();
+
 		if (reason & (1<<VPU_INT_BIT_PIC_RUN))
 			break;
 		else if (reason &  (1<<VPU_INT_BIT_BIT_BUF_FULL))
@@ -914,8 +901,8 @@ static int VPU_EncOneFrameCommand(struct nx_vpu_codec_inst *pInst,
 	pRunArg->outStreamSize = size;
 	pRunArg->outStreamAddr = pEncInfo->strmBufVirAddr;
 
-	/*NX_DbgMsg(INFO_MSG, ("Encoded Size = %d, PicType = %d, picFlag = %d,
-		sliceNumber = %d\n", size, picType, picFlag, sliceNumber));*/
+	/*NX_DbgMsg(INFO_MSG, "Encoded Size = %d, PicType = %d, picFlag = %d,
+		sliceNumber = %d\n", size, picType, picFlag, sliceNumber);*/
 
 	return VPU_RET_OK;
 }
@@ -981,8 +968,8 @@ static int VPU_EncCloseCommand(struct nx_vpu_codec_inst *pInst,
 			BIT_BUSY_FLAG)) {
 			VpuWriteReg(BIT_INT_CLEAR, 0x1);
 			atomic_set((atomic_t *)vpu_event_present, 0);
-			NX_ErrMsg(("VPU_EncCloseCommand() Failed!!!\n"));
-			NX_ErrMsg(("Timeout(%d)\n", VPU_BUSY_CHECK_TIMEOUT));
+			NX_ErrMsg("VPU_EncCloseCommand() Failed!!!\n");
+			NX_ErrMsg("Timeout(%d)\n", VPU_BUSY_CHECK_TIMEOUT);
 			VPU_SWReset(SW_RESET_SAFETY);
 			pInst->isInitialized = 0;
 			return VPU_RET_ERR_TIMEOUT;

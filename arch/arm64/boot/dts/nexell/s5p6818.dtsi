@@ -959,7 +959,7 @@
 		};
 
 		video-codec@c0080000 {
-			compatible = "nexell, nx-vpu";
+			compatible = "nexell,nx-vpu";
 			reg = <0xc0080000 0x4000>;
 			interrupts = <0 IRQ_CODA960_HOST 0>,
 				<0 IRQ_CODA960_JPG 0>;
@@ -1009,6 +1009,17 @@
 			clock-names = "clk_mali";
 			resets = <&nexell_reset RESET_ID_VR>;
 			reset-names = "vr-reset";
+		};
+
+		deinterlacer: deinterlacer@c0065000 {
+			compatible = "nexell,nx-deinterlacer";
+			reg = <PHYS_BASE_DEINTERLACE 0x1000>;
+			interrupts = <0 IRQ_DEINTERLACE 0>;
+			clock-names = "deinterlace";
+			clocks = <&deinterlace>;
+			reset-names = "deinterlace-reset";
+			resets = <&nexell_reset RESET_ID_DEINTERLACE>;
+			status = "disabled";
 		};
 	}; /*** soc ***/
 };

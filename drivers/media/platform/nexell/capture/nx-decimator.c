@@ -391,6 +391,7 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 	struct nx_decimator *me = v4l2_get_subdevdata(sd);
 	u32 module = me->module;
 	struct v4l2_subdev *remote;
+	void *hostdata_back;
 
 	remote = get_remote_source_subdev(me);
 	if (!remote) {
@@ -418,13 +419,23 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 		}
 		if (!(NX_ATOMIC_READ(&me->state) & STATE_RUNNING)) {
 			if (nx_vip_is_running(me->module, VIP_DECIMATOR)) {
-				pr_err("VIP%d Decimator is already running\n",
+				dev_err(&me->pdev->dev, "VIP%d Decimator is already running\n",
 						me->module);
 				nx_video_clear_buffer(&me->vbuf_obj);
 				ret = -EBUSY;
 				goto UP_AND_OUT;
 			}
 
+			hostdata_back = v4l2_get_subdev_hostdata(remote);
+			v4l2_set_subdev_hostdata(remote, NX_DECIMATOR_DEV_NAME);
+			ret = v4l2_subdev_call(remote, video, s_stream, 1);
+			v4l2_set_subdev_hostdata(remote, hostdata_back);
+			if (ret) {
+				dev_err(&me->pdev->dev,
+					"failed to s_stream %d\n", enable);
+				nx_video_clear_buffer(&me->vbuf_obj);
+				goto UP_AND_OUT;
+			}
 			set_vip(me, me->width, me->height);
 			ret = register_irq_handler(me);
 			if (ret) {
@@ -459,6 +470,10 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 			free_dma_buffer(me);
 			nx_video_clear_buffer(&me->vbuf_obj);
 			deinit_buffer_handler(me);
+			hostdata_back = v4l2_get_subdev_hostdata(remote);
+			v4l2_set_subdev_hostdata(remote, NX_DECIMATOR_DEV_NAME);
+			v4l2_subdev_call(remote, video, s_stream, 0);
+			v4l2_set_subdev_hostdata(remote, hostdata_back);
 			NX_ATOMIC_CLEAR_MASK(STATE_RUNNING, &me->state);
 			dev_info(&me->pdev->dev,  "[DEC %d] stop done\n",
 				 me->module);
@@ -821,14 +836,15 @@ static int nx_decimator_probe(struct platform_device *pdev)
 		WARN_ON(1);
 		return -ENOMEM;
 	}
-	if (!nx_vip_is_valid(me->module)) {
-		dev_err(dev, "NX VIP %d is not valid\n", me->module);
-		return -ENODEV;
-	}
 
 	ret = nx_decimator_parse_dt(pdev, me);
 	if (ret)
 		return ret;
+
+	if (!nx_vip_is_valid(me->module)) {
+		dev_err(dev, "NX VIP %d is not valid\n", me->module);
+		return -ENODEV;
+	}
 
 	init_me(me);
 

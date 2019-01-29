@@ -44,14 +44,18 @@ struct nx_resolution {
 };
 
 static struct nx_resolution supported_resolutions[] = {	
-/*
 	{
-		.width	= 1920,
-		.height = 1080,
+		.width	= 960,
+		.height = 576,
 		.interval[0] = 25,
 		.interval[1] = 30,
 	},
-*/
+	{
+		.width	= 960,
+		.height = 480,
+		.interval[0] = 25,
+		.interval[1] = 30,
+	},
 	{
 		.width	= 1280,
 		.height = 720,
@@ -86,6 +90,45 @@ struct reg_val {
 static struct tp2825_state _state;
 static int mode;
 static int revision;
+
+/* PAL HALF -> 960x576i */
+static struct reg_val _sensor_init_data_960x576i[] = {
+	/* video */
+	{0x40, 0x00},
+	{0x07, 0xc0},
+	{0x0b, 0xc0},
+	{0x39, 0x8c},
+	{0x4d, 0x03},
+	{0x4e, 0x37},
+	/* PTZ */
+	{0xc8, 0x21},
+	{0x7e, 0x01},
+	{0xb9, 0x01},
+	/* Data Set */
+	/* {0x02, 0xcf}, */
+	{0x15, 0x13},
+	{0x16, 0x68},
+	{0x17, 0x80},
+	{0x18, 0x17},
+	{0x19, 0x20},
+	{0x1a, 0x17},
+	{0x1c, 0x09},
+	{0x1d, 0x48},
+	{0x0c, 0x53},
+	{0x0d, 0x11},
+	{0x20, 0xb0},
+	{0x26, 0x02},
+	{0x2b, 0x70},
+	{0x2d, 0x60},
+	{0x2e, 0x5e},
+	{0x30, 0x7a},
+	{0x31, 0x4a},
+	{0x32, 0x4d},
+	{0x33, 0xf0},
+	{0x35, 0x65},
+	{0x39, 0x84},
+	END_MARKER
+};
 
 /* PAL -> 1920x576i */
 static struct reg_val _sensor_init_data_1920x576i[] = {
@@ -123,6 +166,46 @@ static struct reg_val _sensor_init_data_1920x576i[] = {
 	{0x33, 0xf0},
 	{0x35, 0x25},
 	{0x39, 0x84},
+	END_MARKER
+};
+
+/* NTSC -> 960x480i */
+static struct reg_val _sensor_init_data_960x480i[] = {
+	/* video */
+	{0x40, 0x00},
+	{0x07, 0xc0},
+	{0x0b, 0xc0},
+	{0x39, 0x8c},
+	{0x4d, 0x03},
+	{0x4e, 0x17},
+	/* PTZ */
+	{0xc8, 0x21},
+	{0x7e, 0x01},
+	{0xb9, 0x01},
+	/* Data Set */
+	{0x02, 0xcf},
+	{0x15, 0x13},
+	{0x16, 0x4e},
+	{0x17, 0x80},
+	{0x18, 0x13},
+	{0x19, 0xf0},
+	{0x1a, 0x07},
+	{0x1c, 0x09},
+	{0x1d, 0x38},
+	{0x0c, 0x53},
+	{0x0d, 0x10},
+	{0x20, 0xa0},
+	{0x26, 0x12},
+	{0x2b, 0x70},
+	{0x2d, 0x68},
+	{0x2e, 0x5e},
+	{0x30, 0x62},
+	{0x31, 0xbb},
+	{0x32, 0x96},
+	{0x33, 0xc0},
+	{0x35, 0x45},
+	{0x39, 0x84},
+	{0xfa, 0x02},
 	END_MARKER
 };
 
@@ -611,7 +694,9 @@ static void TP2825_output(struct i2c_client *client)
 	if (mode == TP2825_720P25V2
 		|| mode == TP2825_720P30V2
 		|| mode == TP2825_PAL
-		|| mode == TP2825_NTSC) {
+		|| mode == TP2825_PAL_HALF
+		|| mode == TP2825_NTSC
+		|| mode == TP2825_NTSC_HALF) {
 		if (me->out_port == 2)
 			tp28xx_byte_write(client, 0x4E, 0x2f);
 		else
@@ -782,8 +867,28 @@ static int tp2825_set_video_mode(struct i2c_client *client,
 		TP2825_PAL_DataSet(client);
 		break;
 
+	case TP2825_PAL_HALF:
+		vmsg("## [%s()] TP2825_PAL_HALF\n", __func__);
+		tp2825_set_work_mode_PAL(client);
+		tp28xx_byte_write(client, 0x02, 0xCF);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp |= 0x04;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_PAL_DataSet(client);
+		break;
+
 	case TP2825_NTSC:
 		vmsg("## [%s()] TP2825_NTSC\n", __func__);
+		tp2825_set_work_mode_NTSC(client);
+		tp28xx_byte_write(client, 0x02, 0xCF);
+		tmp = tp28xx_byte_read(client, 0x4E);
+		tmp |= 0x04;
+		tp28xx_byte_write(client, 0x4E, tmp);
+		TP2825_NTSC_DataSet(client);
+		break;
+
+	case TP2825_NTSC_HALF:
+		vmsg("## [%s()] TP2825_NTSC_HALF\n", __func__);
 		tp2825_set_work_mode_NTSC(client);
 		tp28xx_byte_write(client, 0x02, 0xCF);
 		tmp = tp28xx_byte_read(client, 0x4E);
@@ -1083,9 +1188,25 @@ static int tp2825_s_stream(struct v4l2_subdev *sd, int enable)
 						reg_val->reg, reg_val->val);
 					reg_val++;
 				}
+			} else if (mode == TP2825_NTSC_HALF) {
+				vmsg("## [%s()] TP2825_NTSC_HALF\n", __func__);
+				reg_val = _sensor_init_data_960x480i;
+				while (reg_val->reg != 0xff) {
+					tp28xx_byte_write(me->i2c_client,
+						reg_val->reg, reg_val->val);
+					reg_val++;
+				}
 			} else if (mode == TP2825_PAL) {
 				vmsg("## [%s()] TP2825_PAL\n", __func__);
 				reg_val = _sensor_init_data_1920x576i;
+				while (reg_val->reg != 0xff) {
+					tp28xx_byte_write(me->i2c_client,
+						reg_val->reg, reg_val->val);
+					reg_val++;
+				}
+			} else if (mode == TP2825_PAL_HALF) {
+				vmsg("## [%s()] TP2825_PAL_HALF\n", __func__);
+				reg_val = _sensor_init_data_960x576i;
 				while (reg_val->reg != 0xff) {
 					tp28xx_byte_write(me->i2c_client,
 						reg_val->reg, reg_val->val);
@@ -1123,9 +1244,15 @@ static int tp2825_s_fmt(struct v4l2_subdev *sd,
 	/* NTSC -> 1920x480i */
 	if (me->width == 1920 && me->height == 480)
 		mode = TP2825_NTSC;
+	/* NTSC -> 960x480i */
+	else if (me->width == 960 && me->height == 480)
+		mode = TP2825_NTSC_HALF;
 	/* PAL -> 1920x576i */
 	else if (me->width == 1920 && me->height == 576)
 		mode = TP2825_PAL;
+	/* PAL -> 960x576i */
+	else if (me->width == 960 && me->height == 576)
+		mode = TP2825_PAL_HALF;
 	/* TVI(FHD) -> 1920x1080p */
 	else if (me->width == 1920 && me->height == 1080)
 		mode = TP2825_1080P30;
@@ -1156,7 +1283,7 @@ static int tp2825_enum_frame_size(struct v4l2_subdev *sd,
 	frame->max_width = supported_resolutions[frame->index].width;
 	frame->max_height = supported_resolutions[frame->index].height;
 
-	vmsg("%s, max_width:%d, max_height:%d\n", __func__, 
+	vmsg("%s, max_width:%d, max_height:%d\n", __func__,
 		frame->max_width, frame->max_height);
 
 	return 0;
@@ -1304,7 +1431,12 @@ static void __exit tp2825_mod_exit(void)
 	i2c_del_driver(&tp2825_i2c_driver);
 }
 
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+subsys_initcall(tp2825_mod_init);
+#else
 module_init(tp2825_mod_init);
+#endif
+
 module_exit(tp2825_mod_exit);
 #else
 module_i2c_driver(tp2825_i2c_driver);
