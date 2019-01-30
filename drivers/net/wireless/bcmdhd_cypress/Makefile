@@ -16,6 +16,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER               \
 	-DESCAN_RESULT_PATCH -DSUPPORT_PM2_ONLY -DWLTDLS                      \
 	-DDHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT -DRXFRAME_THREAD       \
 	-DMIRACAST_AMPDU_SIZE=8	-DROAM_ENABLE	-DWL_IFACE_COMB_NUM_CHANNELS	\
+	-DENABLE_INSMOD_NO_FW_LOAD \
 	-Idrivers/net/wireless/bcmdhd_cypress \
 	-Idrivers/net/wireless/bcmdhd_cypress/include   \
 	-Idrivers/net/wireless/bcmdhd_cypress/common/include
@@ -51,8 +52,6 @@ EXTRA_CFLAGS = $(DHDCFLAGS)
 
 ifeq ($(CONFIG_BCMDHD),m)
 EXTRA_LDFLAGS += --strip-debug
-else
-DHDCFLAGS += -DENABLE_INSMOD_NO_FW_LOAD
 endif
 
 #htdo add for platform device reg
