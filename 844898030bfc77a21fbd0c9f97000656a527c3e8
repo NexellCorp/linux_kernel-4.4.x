@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9cc80879_28255457",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1015509
+      },
+      "writtenOn": "2019-01-31T23:27:20Z",
+      "side": 1,
+      "message": "Please explain more detail.\nWhy we need this feature? What for?",
+      "range": {
+        "startLine": 10,
+        "startChar": 1,
+        "endLine": 11,
+        "endChar": 0
+      },
+      "revId": "844898030bfc77a21fbd0c9f97000656a527c3e8",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    }
+  ]
+}
