@@ -1129,7 +1129,7 @@ static int alc5623_i2c_probe(struct i2c_client *client,
 	else
 		vid2 = 0x23;
 
-    dev_err(&client->dev, "Found codec id : alc56%02x\n", vid2);
+    dev_dbg(&client->dev, "Found codec id : alc56%02x\n", vid2);
 
 	alc5623->id = vid2;
 	switch (alc5623->id) {
