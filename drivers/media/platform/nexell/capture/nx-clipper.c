@@ -2285,13 +2285,13 @@ static int nx_clipper_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 #else
-	if (me->module == 0) {
+	if (me->module == 1) {
 		if (g_ClipperThread == NULL)
 			g_ClipperThread = kthread_run(init_clipper_th,
 				me, "KthreadForNxClipper");
 	}
 
-	if (me->module == 1) {
+	if (me->module == 0) {
 		me->w_queue = create_singlethread_workqueue("clipper_wqueue");
 		INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
 
