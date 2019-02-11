@@ -1165,6 +1165,7 @@ static int tp2825_s_stream(struct v4l2_subdev *sd, int enable)
 
 	if (enable) {
 		if (me->first) {
+#ifdef DEBUG_TP2825
 			revision = tp28xx_byte_read(me->i2c_client, 0xfc);
 			if (revision == 0x00) {
 				revision = 0x01;
@@ -1179,7 +1180,7 @@ static int tp2825_s_stream(struct v4l2_subdev *sd, int enable)
 			vmsg("## [%s():%s:%d\t] width:%d, height:%d\n",
 				__func__, strrchr(__FILE__, '/')+1, __LINE__,
 				me->width, me->height);
-
+#endif
 			if (mode == TP2825_NTSC) {
 				vmsg("## [%s()] TP2825_NTSC\n", __func__);
 				reg_val = _sensor_init_data_1920x480i;
