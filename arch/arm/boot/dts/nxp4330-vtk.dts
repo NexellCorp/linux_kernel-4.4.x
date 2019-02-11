@@ -59,14 +59,12 @@
 				clk-input = <I_PLL2>;
 				clock-frequency = <10000000>;
 			};
-
 			spi0:spi@c00ac000 {
 				clock-frequency = <10000000>;
 			};
 			spi1:spi@c00ad000 {
 				clock-frequency = <10000000>;
 			};
-
 			spi2:spi@c00a7000 {
 				clock-frequency = <10000000>;
 			};
@@ -212,6 +210,30 @@
 			samsung,pwm-outputs = <0>, <1>, <2>;
 			status = "okay";
 		};
+
+		nexell_usbphy: nexell-usbphy@c0012000 {
+			status = "okay";
+		};
+
+		ehci@c0030000 {
+			status = "okay";
+			port@0 {
+				status = "okay";
+			};
+		};
+
+		ohci@c0020000 {
+			status = "okay";
+			port@0 {
+				status = "okay";
+			};
+		};
+
+		dwc2otg@c0040000 {
+			gpios = <&alive_0 5 0>;
+			status = "okay";
+		};
+
 	};	/*** soc ***/
 
 	sound {
