@@ -44,7 +44,7 @@ struct media_device *nx_v4l2_get_media_device(void)
 {
 	if (likely(__me))
 		return &__me->media_dev;
-	return NULL;
+	return 0;//NULL;
 }
 EXPORT_SYMBOL_GPL(nx_v4l2_get_media_device);
 
