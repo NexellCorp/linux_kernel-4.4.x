@@ -33,7 +33,7 @@
 	};
 
 	aliases {
-		i2c3 = &i2c_gpio3;
+		/* i2c3 = &i2c_gpio3; */
 		i2c4 = &i2c_gpio4;
 		i2c5 = &i2c_gpio5;
 		i2c6 = &i2c_gpio6;
@@ -332,10 +332,12 @@
 		};
 	};	/*** soc ***/
 
+	/* for 2nd_audio_codec */
+	/*
 	i2c_gpio3: i2c@3 {
 		compatible = "i2c-gpio";
-		gpios = <&gpio_c 26 0 /* sda */
-			&gpio_e 30 0 /* scl */>;
+		gpios = <&gpio_c 26 0
+			&gpio_e 30 0>;
 		i2c-gpio,delay-us = <1>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -350,6 +352,7 @@
 			alc56xx-id = <0x21>;
 		};
 	};
+	*/
 
 	i2c_gpio4: i2c@4 {
 		compatible = "i2c-gpio";
@@ -465,6 +468,7 @@
 			};
 		};
 
+		/*
 		simple-audio-card,dai-link@1 {
 			format = "i2s";
 			cpu {
@@ -497,6 +501,7 @@
 				sound-dai = <&spdif_out>;
 			};
 		};
+		*/
 	};
 
 	spdif_out: spdif-out {
@@ -509,7 +514,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&key_power &key_back >;
+		pinctrl-0 = <&key_power &key_back>;
 
 		power {
 			label = "Power";
@@ -643,6 +648,7 @@
 */
 
 /* for TP2825 */
+/*
 &vip_1 {
 	status = "okay";
 };
@@ -671,9 +677,13 @@
 		>;
 	};
 };
+*/
 
 /* for TW9900 */
-/*
+&vip_1 {
+	status = "okay";
+};
+
 &clipper_1 {
 	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
 	pinctrl-names = "default";
@@ -691,7 +701,6 @@
 		addr = <0x44>;
 	};
 };
-*/
 
 &dp_drm {
 	status = "okay";
@@ -751,6 +760,7 @@
 };
 
 /* for LVDS */
+/*
 &dp_drm_lvds {
 	status = "ok";
 
@@ -786,6 +796,7 @@
 		yc_order = <0>;
 	};
 };
+*/
 
 /* for HDMI */
 /*
@@ -796,6 +807,7 @@
 };
 */
 
+/* for eMMC */
 &dw_mmc_0 {
 	num-slots = <1>;
 	bus-width = <4>;
@@ -855,6 +867,8 @@
 };
 */
 
+/* for can */
+/*
 &spi_2 {
 	status = "okay";
 	cs-gpios = <&gpio_c 10 0>;
@@ -871,6 +885,7 @@
 		};
 	};
 };
+*/
 
 &i2c_gpio6 {
 	compatible = "i2c-gpio";
