@@ -9,7 +9,7 @@
 
 #include <linux/types.h>
 #include <linux/kernel.h>
-
+AAAA
 #ifndef CONFIG_ARCH_NXP3220_COMMON
 #define USE_JPEG
 #define USE_ENCODER
