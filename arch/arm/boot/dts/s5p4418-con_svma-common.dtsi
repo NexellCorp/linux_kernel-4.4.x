@@ -188,6 +188,7 @@
 
 		dwc2otg@c0040000 {
 			gpios = <&alive_0 5 0>;
+			nouse_idcon = <1>;
 			status = "okay";
 		};
 
@@ -330,22 +331,6 @@
 
 		scaler@c0066000 {
 			status = "okay";
-		};
-
-		dw_mmc_1:dwmmc@c0068000 {
-			compatible = "nexell,s5p6818-dw-mshc-sdio1";
-			interrupts = <IRQ_SDMMC1>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <PHYS_BASE_SDMMC1 0x1000>;
-			resets  = <&nexell_reset RESET_ID_SDMMC1>;
-			reset-names = "dw_mmc-reset";
-			clock-names = "biu", "ciu";
-			clocks = <&sdhc1>, <&sdhc1>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&sdmmc1_cclk &sdmmc1_cmd &sdmmc1_bus4>;
-			fifo-detph = <0x20>;
-			status = "disabled";
 		};
 	};	/*** soc ***/
 
@@ -709,7 +694,7 @@
 	data_order = <NX_VIN_CBY0CRY1>;
 	port = <1>;
 	external_sync = <0>;
-	interlace = <1>;
+	interlace = <0>;
 	status = "okay";
 
 	sensor {
