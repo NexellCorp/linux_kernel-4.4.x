@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5b72b15a_f188c6af",
+        "filename": "arch/arm/boot/dts/s5p4418-convergence_daudio-common.dtsi",
+        "patchSetId": 1
+      },
+      "lineNbr": 481,
+      "author": {
+        "id": 1015514
+      },
+      "writtenOn": "2019-02-14T08:57:27Z",
+      "side": 1,
+      "message": "snd_null driver for BT is required.\nPlease enable i2s2.",
+      "range": {
+        "startLine": 471,
+        "startChar": 0,
+        "endLine": 481,
+        "endChar": 4
+      },
+      "revId": "2cfefdc766177b21aaa6db2044e3a14325caafb6",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
