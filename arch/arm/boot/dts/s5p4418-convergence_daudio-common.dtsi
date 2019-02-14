@@ -20,6 +20,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include "nxp4330.dtsi"
+#include "s5p4418-audio-dfs-pll3.dtsi"
 
 / {
 	memory {
@@ -73,7 +74,7 @@
 			};
 
 			i2s1:i2s@c00b3000 {
-				clk-input = <I_PLL2>;
+				clk-input = <I_PLL3>;
 			};
 
 			i2s2:i2s@c00b4000 {
@@ -205,7 +206,7 @@
 
 		i2s_1:i2s@c0056000 {
 			dfs;
-			dfs-pll = <2>;
+			dfs-pll = <3>;
 			#sound-dai-cells = <1>;
 			master-mode = <1>;
 			mclk-in = <0>;
