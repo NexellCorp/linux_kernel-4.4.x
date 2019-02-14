@@ -390,6 +390,8 @@ struct nx_v4l2_i2c_board_info {
 struct nx_clipper_info {
 	u32 module;
 	u32 interface_type;
+	s32 clk_src;
+	u32 clk_freq;
 	u32 external_sync;
 	u32 padclk_sel;
 	u32 h_syncpolarity;
@@ -1178,6 +1180,11 @@ static int nx_clipper_parse_dt(struct device *dev, struct device_node *np,
 		dev_err(dev, "failed to get dt interface_type\n");
 		return -EINVAL;
 	}
+	if (of_property_read_u32(np, "clock_source", &clip->clk_src))
+		clip->clk_src = -1;
+
+	if (of_property_read_u32(np, "clock_frequency", &clip->clk_freq))
+		clip->clk_freq = 0;
 
 	if (clip->interface_type == NX_CAPTURE_INTERFACE_MIPI_CSI) {
 		/* mipi use always saclip config, so ignore user config */
@@ -1956,6 +1963,12 @@ static void set_vip(struct nx_clipper_info *clip)
 
 	if ((clip->sensor_height > 0) && (clip->height < clip->sensor_height))
 		height = clip->sensor_height;
+
+	if (clip->clk_src >= 0) {
+		nx_vip_clock_config(module, clip->clk_src, clip->clk_freq);
+		nx_vip_clock_enable(module, true);
+		nx_vip_reset(module);
+	}
 
 	nx_vip_set_input_port(module, clip->port);
 	nx_vip_set_field_mode(module, false, nx_vip_fieldsel_bypass,
