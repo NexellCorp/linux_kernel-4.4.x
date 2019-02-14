@@ -202,7 +202,7 @@
 			sample-rate = <48000>;
 			pre-supply-mclk = <1>;
 			status = "okay";
-			};
+		};
 
 		i2s_1:i2s@c0056000 {
 			dfs;
@@ -446,36 +446,27 @@
 		reg = <0 0>;
 	};
 
-    sound {
-        compatible = "simple-audio-card";
-        simple-audio-card,name = "s5p4418 Convergence Car Audio";
-        simple-audio-card,mclk-fs = <256>;
-        simple-audio-card,widgets =
-            "Headphone", "Out Jack",
-            "Microphone", "In Jack";
-        status = "okay";
+	sound-main {
+		compatible = "nexell,simple-audio-card";
+		simple-audio-card,name = "s5p4418 Convergence Car Audio Main";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,widgets =
+			"Headphone", "Out Jack",
+			"Microphone", "In Jack";
+		status = "okay";
 
-        simple-audio-card,dai-link@0 {
-            format = "i2s";
-            cpu {
-                sound-dai = <&i2s_1 0>;
-            };
-
-            codec {
-                sound-dai = <&alc5621_2>;
-            };
-        };
-        simple-audio-card,dai-link@1 {
+		simple-audio-card,dai-link@0 {
 			format = "i2s";
 			cpu {
-				sound-dai = <&i2s_0 0>;
+				sound-dai = <&i2s_1 0>;
 			};
 
 			codec {
-				sound-dai = <&alc5621_1>;
+				sound-dai = <&alc5621_2>;
 			};
 		};
-		simple-audio-card,dai-link@2 {
+
+		simple-audio-card,dai-link@1 {
 			format = "i2s";
 			cpu {
 				sound-dai = <&i2s_2 0>;
@@ -485,17 +476,39 @@
 				sound-dai = <&snd_null>;
 			};
 		};
-        simple-audio-card,dai-link@3 {
-            format = "spdif";
-            cpu {
-                sound-dai = <&spdif_tx 0>;
-            };
 
-            codec {
-                sound-dai = <&spdif_out>;
-            };
-        };
-    };
+		simple-audio-card,dai-link@2 {
+			format = "spdif";
+			cpu {
+				sound-dai = <&spdif_tx 0>;
+			};
+
+			codec {
+				sound-dai = <&spdif_out>;
+			};
+		};
+	};
+
+	sound-sub {
+		compatible = "nexell,simple-audio-card";
+		simple-audio-card,name = "s5p4418 Convergence Car Audio Sub";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,widgets =
+			"Headphone", "Out Jack",
+			"Microphone", "In Jack";
+		status = "okay";
+
+		simple-audio-card,dai-link@0 {
+			format = "i2s";
+			cpu {
+			sound-dai = <&i2s_0 0>;
+			};
+
+			codec {
+			sound-dai = <&alc5621_1>;
+			};
+		};
+	};
 
 	spdif_out: spdif-out {
 		#sound-dai-cells = <0>;
