@@ -38,6 +38,7 @@
 
 #define CLK_PLL3		3
 #define CLK_EXT_CLK1		4
+#define AMUNA			1
 
 #define VIP_PCLKENB		3
 #define VIP_BCLKENB		0
