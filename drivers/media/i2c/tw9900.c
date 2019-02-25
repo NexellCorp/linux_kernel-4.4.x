@@ -369,15 +369,12 @@ static int tw9900_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	if (enable) {
 		if (_state.first) {
-			int  i = 0;
 			struct tw9900_state *me = &_state;
 			struct reg_val *reg_val = _sensor_init_data;
 
 			while (reg_val->reg != 0xff) {
 				_i2c_write_byte(me->i2c_client, reg_val->reg,
 					reg_val->val);
-				mdelay(10);
-				i++;
 				reg_val++;
 			}
 			_state.first = false;
