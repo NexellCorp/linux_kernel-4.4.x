@@ -218,6 +218,7 @@ struct pl08x_txd {
 	bool cyclic;
 	/* add wait_to flush dma buffer */
 	int  lli_num;
+	int dsg_len;
 };
 
 /**
@@ -985,6 +986,7 @@ static int pl08x_fill_llis_for_desc(struct pl08x_driver_data *pl08x,
 		bd.srcbus.addr = dsg->src_addr;
 		bd.dstbus.addr = dsg->dst_addr;
 		bd.remainder = dsg->len;
+		txd->dsg_len = dsg->len;
 		bd.srcbus.buswidth = bd.srcbus.maxwidth;
 		bd.dstbus.buswidth = bd.dstbus.maxwidth;
 
@@ -1882,7 +1884,7 @@ static void vchan_useisr(unsigned long arg)
 	}
 	spin_unlock(&vc->lock);
 
-	if (cb)
+	if (cb && vc->cb_en)
 		cb(cb_data);
 
 	while (!list_empty(&head)) {
@@ -1894,7 +1896,7 @@ static void vchan_useisr(unsigned long arg)
 
 		vc->desc_free(vd);
 
-		if (cb)
+		if (cb && vc->cb_en)
 			cb(cb_data);
 	}
 }
@@ -1926,6 +1928,7 @@ static irqreturn_t pl08x_irq(int irq, void *dev)
 			struct pl08x_phy_chan *phychan = &pl08x->phy_chans[i];
 			struct pl08x_dma_chan *plchan = phychan->serving;
 			struct pl08x_txd *tx;
+			size_t bytes = 0;
 
 			if (!plchan) {
 				dev_err(&pl08x->adev->dev,
@@ -1936,13 +1939,23 @@ static irqreturn_t pl08x_irq(int irq, void *dev)
 
 			spin_lock(&plchan->vc.lock);
 			tx = plchan->at;
+
+			if (tx) {
+				vc = to_virt_chan(tx->vd.tx.chan);
+				bytes = pl08x_getbytes_chan(plchan);
+
+				if (bytes%tx->dsg_len > 0)
+					vc->cb_en = false;
+				else
+					vc->cb_en = true;
+			}
+
 			if (tx && tx->cyclic) {
+
 				/* add to use isr instead of tasklet. */
 				if (!pl08x->pd->use_isr) {
 					vchan_cyclic_callback(&tx->vd);
 				} else {
-					vc = to_virt_chan(tx->vd.tx.chan);
-
 					vc->cyclic = &tx->vd;
 
 					spin_unlock(&plchan->vc.lock);
@@ -1961,7 +1974,6 @@ static irqreturn_t pl08x_irq(int irq, void *dev)
 				if (!pl08x->pd->use_isr) {
 					vchan_cookie_complete(&tx->vd);
 				} else {
-					vc = to_virt_chan(tx->vd.tx.chan);
 					dma_cookie_complete(&tx->vd.tx);
 					dev_vdbg(vc->chan.device->dev,
 						"txd %p[%x]: marked complete\n",
