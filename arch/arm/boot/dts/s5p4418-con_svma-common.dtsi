@@ -621,6 +621,7 @@
 		};
 	};
 
+#ifdef CONFIG_VIDEO_TP2825
 	decimator_3:decimator3@c0064000 {
 		compatible = "nexell,nx-decimator";
 		module = <1>;
@@ -657,6 +658,7 @@
 			>;
 		};
 	};
+#endif
 };
 
 &vip_0 {
@@ -709,6 +711,7 @@
 	status = "okay";
 };
 
+#ifdef CONFIG_VIDEO_TW9900
 &clipper_1 {
 	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
 	pinctrl-names = "default";
@@ -730,7 +733,7 @@
 &decimator_1 {
 	status = "okay";
 };
-
+#endif
 /*
 #include "tp2825_rearcam_regset.dtsi"
 &rearcam {
