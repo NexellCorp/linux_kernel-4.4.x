@@ -582,7 +582,7 @@
 			230 231 232 233 234 235 236 237 238 239
 			240 241 242 243 244 245 246 247 248 249
 			>;
-		default-brightness-level = <130>;
+		default-brightness-level = <60>;
 		status = "okay";
 	};
 
