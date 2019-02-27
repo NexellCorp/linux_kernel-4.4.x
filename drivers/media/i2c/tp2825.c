@@ -44,18 +44,24 @@ struct nx_resolution {
 };
 
 static struct nx_resolution supported_resolutions[] = {
+#if 0
+// PAL960_576i
+>>>>>>> 4dcec71... media: tp2825: modify tp2825 driver
 	{
 		.width	= 960,
 		.height = 576,
 		.interval[0] = 15,
 		.interval[1] = 30,
 	},
+// NTSC960_480i
 	{
 		.width	= 960,
 		.height = 480,
 		.interval[0] = 15,
 		.interval[1] = 30,
 	},
+#endif
+// default HD 720P
 	{
 		.width	= 1280,
 		.height = 720,
