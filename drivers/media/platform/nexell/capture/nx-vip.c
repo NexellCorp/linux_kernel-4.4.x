@@ -34,6 +34,7 @@
 #include "nx-vip-primitive.h"
 #include "nx-vip.h"
 
+#define TEST_ON_LAVA		1
 #define NX_VIP_DEV_NAME		"nx-vip"
 
 #define CLK_PLL3		3
