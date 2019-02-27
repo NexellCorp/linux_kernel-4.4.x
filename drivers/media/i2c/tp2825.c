@@ -43,19 +43,24 @@ struct nx_resolution {
 	uint32_t interval[2];
 };
 
-static struct nx_resolution supported_resolutions[] = {	
+static struct nx_resolution supported_resolutions[] = {
+#if 0
+// PAL960_576i
 	{
 		.width	= 960,
 		.height = 576,
 		.interval[0] = 25,
 		.interval[1] = 30,
 	},
+// NTSC960_480i
 	{
 		.width	= 960,
 		.height = 480,
 		.interval[0] = 25,
 		.interval[1] = 30,
 	},
+#endif
+// default HD 720P
 	{
 		.width	= 1280,
 		.height = 720,
