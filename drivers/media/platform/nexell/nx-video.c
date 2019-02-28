@@ -43,7 +43,8 @@
 #define YUV_STRIDE(w)    ALIGN(w, YUV_STRIDE_ALIGN_FACTOR)
 #define YUV_YSTRIDE(w)   (ALIGN(w/2, YUV_STRIDE_ALIGN_FACTOR) * 2)
 #define YUV_VSTRIDE(h)   ALIGN(h, YUV_VSTRIDE_ALIGN_FACTOR)
-
+#define TEST 2
+#define TEST 3
 static int video_device_number = NX_CAPTURE_START;
 /*
  * supported formats
