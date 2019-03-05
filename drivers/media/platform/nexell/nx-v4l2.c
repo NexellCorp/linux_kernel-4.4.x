@@ -32,6 +32,7 @@
 #include "nx-v4l2.h"
 
 #define NX_V4L2_DEV_NAME	"nx-v4l2"
+#define TEST 8
 
 static struct nx_v4l2 {
 	struct media_device media_dev;
