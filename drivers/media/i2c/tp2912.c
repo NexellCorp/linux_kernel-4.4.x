@@ -29,6 +29,7 @@
 
 #include <media/v4l2-device.h>
 #include <media/v4l2-ctrls.h>
+#define TEST 1
 
 MODULE_DESCRIPTION("TP2912 TVI encoder drvier");
 MODULE_LICENSE("GPL");
