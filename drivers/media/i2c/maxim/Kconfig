@@ -23,6 +23,12 @@ config VIDEO_MAX9286_MAX96705
 	  max9286 - max96705 - atina ar0140at sensor
 endchoice
 
+config VIDEO_MAX9286_MCU
+	bool "Use MCU chip initialize"
+	depends on VIDEO_MAX9286
+	help
+	  Support for proceed to setting the MAX9286 register on the MCU.
+
 config MAX9286_BACKWARD
 	bool "backward camera"
 	depends on SLSIAP_BACKWARD_CAMERA
