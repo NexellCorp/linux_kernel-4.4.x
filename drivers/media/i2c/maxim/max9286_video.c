@@ -29,6 +29,9 @@
  * CONFIG_VIDEO_MAX9286_MAX96705
  * - Use max96705 and atina ar0140at senor if available
  * - For chemtronics module
+ *
+ * CONFIG_VIDEO_MAX9286_MCU
+ * - Support for proceed to setting the MAX9286 register on the MCU
  */
 
 #include <linux/slab.h>
@@ -1636,7 +1639,12 @@ static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 	int ret = 0;
 
 	pr_info("## [%s():%s:%d\t] enable:%d \n", __FUNCTION__, strrchr(__FILE__, '/')+1, __LINE__, enable);
-
+#if defined(CONFIG_VIDEO_MAX9286_MAX9271) && defined(CONFIG_VIDEO_MAX9286_MCU)
+	if (enable)
+		max9286_i2c_write(client, ADDR_MAX9286, 0x15, 0x0B);
+	else
+		max9286_i2c_write(client, ADDR_MAX9286, 0x15, 0x03);
+#else
 	if (enable) {
 		//enable_irq(state->irq);
 		ret = max9286_init(sd, enable);
@@ -1647,11 +1655,12 @@ static int max9286_s_stream(struct v4l2_subdev *sd, int enable)
 		state->initialized = false;
 //		cancel_delayed_work(&state->monitor_work);
 	}
+#endif
 	return ret;
 }
 
 static const struct v4l2_subdev_video_ops max9286_video_ops = {
-	.s_stream 		= max9286_s_stream,
+	.s_stream		= max9286_s_stream,
 };
 
 /**
