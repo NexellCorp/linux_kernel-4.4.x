@@ -710,14 +710,15 @@ static int init_v4l2_subdev(struct nx_decimator *me)
 	struct v4l2_subdev *sd = &me->subdev;
 	struct media_pad *pads = me->pads;
 	struct media_entity *entity = &sd->entity;
+	int module = me->module;
 
 	v4l2_subdev_init(sd, &nx_decimator_subdev_ops);
+
 	if (me->logical)
-		snprintf(sd->name, sizeof(sd->name), "%s%d%s%d", NX_DECIMATOR_DEV_NAME,
-				me->module, "-logical", me->logical_num);
-	else
-		snprintf(sd->name, sizeof(sd->name), "%s%d", NX_DECIMATOR_DEV_NAME,
-				me->module);
+		module = me->module*VIP_MAX_LOGICAL_DEV + me->logical_num +
+			VIP_LOGICAL_START;
+	snprintf(sd->name, sizeof(sd->name), "%s%d", NX_DECIMATOR_DEV_NAME,
+			module);
 	v4l2_set_subdevdata(sd, me);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
@@ -734,6 +735,15 @@ static int init_v4l2_subdev(struct nx_decimator *me)
 	return 0;
 }
 
+static void unregister_v4l2(struct nx_decimator *me)
+{
+	if (me->vbuf_obj.video) {
+		nx_video_cleanup(me->vbuf_obj.video);
+		me->vbuf_obj.video = NULL;
+	}
+	v4l2_device_unregister_subdev(&me->subdev);
+}
+
 static int register_v4l2(struct nx_decimator *me)
 {
 	int ret;
@@ -741,16 +751,17 @@ static int register_v4l2(struct nx_decimator *me)
 	struct media_entity *entity = &me->subdev.entity;
 	struct nx_video *video;
 	struct v4l2_subdev *clipper;
+	int module = me->module;
 
 	ret = nx_v4l2_register_subdev(&me->subdev);
 	if (ret)
 		BUG();
+
 	if (me->logical)
-		snprintf(dev_name, sizeof(dev_name), "VIDEO DECIMATOR%d%s%d",
-			me->module, " LOGICAL", me->logical_num);
-	else
-		snprintf(dev_name, sizeof(dev_name), "VIDEO DECIMATOR%d",
-			me->module);	
+		module = me->module*VIP_MAX_LOGICAL_DEV + me->logical_num +
+			VIP_LOGICAL_START;
+	snprintf(dev_name, sizeof(dev_name), "VIDEO DECIMATOR%d",
+		module);
 	video = nx_video_create(dev_name, NX_VIDEO_TYPE_CAPTURE,
 				    nx_v4l2_get_v4l2_device(),
 				    nx_v4l2_get_alloc_ctx());
@@ -770,15 +781,13 @@ static int register_v4l2(struct nx_decimator *me)
 		BUG();
 
 	memset(dev_name, 0x0, sizeof(dev_name));
-	if (me->logical)
-		snprintf(dev_name, sizeof(dev_name), "nx-clipper%d%s%d", me->module,
-				"-logical", me->logical_num);
-	else
-		snprintf(dev_name, sizeof(dev_name), "nx-clipper%d", me->module);
+	snprintf(dev_name, sizeof(dev_name), "nx-clipper%d", module);
+
 	clipper = nx_v4l2_get_subdev(dev_name);
 	if (!clipper) {
 		dev_err(&me->pdev->dev, "can't get clipper(%s) subdev\n",
 				dev_name);
+		unregister_v4l2(me);
 		return -1;
 	}
 
@@ -790,15 +799,6 @@ static int register_v4l2(struct nx_decimator *me)
 			&entity->pads[NX_DECIMATOR_PAD_SINK]);
 
 	return 0;
-}
-
-static void unregister_v4l2(struct nx_decimator *me)
-{
-	if (me->vbuf_obj.video) {
-		nx_video_cleanup(me->vbuf_obj.video);
-		me->vbuf_obj.video = NULL;
-	}
-	v4l2_device_unregister_subdev(&me->subdev);
 }
 
 static int nx_decimator_parse_dt(struct platform_device *pdev,
