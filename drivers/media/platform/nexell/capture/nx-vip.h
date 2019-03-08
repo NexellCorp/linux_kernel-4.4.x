@@ -22,6 +22,10 @@
 #include <linux/atomic.h>
 #include <linux/spinlock.h>
 
+#define VIP_MAX_DEV_NUM		12
+#define VIP_MAX_LOGICAL_DEV	3
+#define VIP_LOGICAL_START	3
+
 enum {
 	VIP_CLIPPER	= (1 << 0),
 	VIP_DECIMATOR	= (1 << 1),
