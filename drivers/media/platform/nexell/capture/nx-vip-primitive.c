@@ -822,7 +822,7 @@ void nx_vip_set_clipper_addr(u32 module_index, u32 format, u32 width,
 
 	p_register = __g_p_register[module_index];
 
-	if (format == nx_vip_format_420) {
+	if (format != nx_vip_format_yuyv) {
 		register u32 segment, left, top;
 
 		segment = lu_addr >> 30;
@@ -835,8 +835,12 @@ void nx_vip_set_clipper_addr(u32 module_index, u32 format, u32 width,
 		writel(top, &p_register->clip_lutop);
 		writel(top + height, &p_register->clip_lubottom);
 
-		width >>= 1;
-		height >>= 1;
+		if (format == nx_vip_format_420) {
+			width >>= 1;
+			height >>= 1;
+		} else if (format == nx_vip_format_422) {
+			width >>= 1;
+		}
 
 		segment = cb_addr >> 30;
 		left = cb_addr & 0x00007fff;
@@ -863,7 +867,6 @@ void nx_vip_set_clipper_addr(u32 module_index, u32 format, u32 width,
 	} else {
 		/* yuyv 422 packed */
 		stride_y >>= 1;
-
 		writel(lu_addr >> 16, &p_register->clip_baseaddrh);
 		writel(lu_addr & 0xffff, &p_register->clip_baseaddrl);
 		writel(stride_y >> 16, &p_register->clip_strideh);
