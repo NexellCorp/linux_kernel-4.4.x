@@ -1843,14 +1843,15 @@ static int init_v4l2_subdev(struct nx_clipper *me)
 	struct v4l2_subdev *sd = &me->subdev;
 	struct media_pad *pads = me->pads;
 	struct media_entity *entity = &sd->entity;
+	int module = me->module;
 
 	v4l2_subdev_init(sd, &nx_clipper_subdev_ops);
+
 	if (me->logical)
-		snprintf(sd->name, sizeof(sd->name), "%s%d%s%d",
-			NX_CLIPPER_DEV_NAME, me->module, "-logical", me->logical_num);
-	else
-		snprintf(sd->name, sizeof(sd->name), "%s%d",
-			NX_CLIPPER_DEV_NAME, me->module);
+		module = me->module*VIP_MAX_LOGICAL_DEV + me->logical_num +
+			VIP_LOGICAL_START;
+	snprintf(sd->name, sizeof(sd->name), "%s%d",
+		NX_CLIPPER_DEV_NAME, module);
 	v4l2_set_subdevdata(sd, me);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
@@ -1870,8 +1871,9 @@ static int init_v4l2_subdev(struct nx_clipper *me)
 
 static struct camera_sensor_info {
 	int is_mipi;
+	int interlaced;
 	char name[V4L2_SUBDEV_NAME_SIZE];
-} camera_sensor_info[NUMBER_OF_VIP_MODULE];
+} camera_sensor_info[VIP_MAX_DEV_NUM];
 
 static ssize_t camera_sensor_show_common(struct device *dev,
 	struct device_attribute *attr, char **buf, u32 module)
@@ -1883,8 +1885,9 @@ static ssize_t camera_sensor_show_common(struct device *dev,
 	if (!strlen(camera_sensor_info[module].name))
 		return scnprintf(*buf, PAGE_SIZE, "no exist");
 	else
-		return scnprintf(*buf, PAGE_SIZE, "is_mipi:%d,name:%s",
+		return scnprintf(*buf, PAGE_SIZE, "is_mipi:%d,interlaced:%d,name:%s",
 				 camera_sensor_info[module].is_mipi,
+				 camera_sensor_info[module].interlaced,
 				 camera_sensor_info[module].name);
 }
 
@@ -1906,17 +1909,98 @@ static ssize_t camera_sensor_show2(struct device *dev,
 	return camera_sensor_show_common(dev, attr, &buf, 2);
 }
 
+static ssize_t camera_sensor_show3(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return camera_sensor_show_common(dev, attr, &buf, 3);
+}
+
+static ssize_t camera_sensor_show4(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return camera_sensor_show_common(dev, attr, &buf, 4);
+}
+
+static ssize_t camera_sensor_show5(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return camera_sensor_show_common(dev, attr, &buf, 5);
+}
+
+static ssize_t camera_sensor_show6(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return camera_sensor_show_common(dev, attr, &buf, 6);
+}
+
+static ssize_t camera_sensor_show7(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return camera_sensor_show_common(dev, attr, &buf, 7);
+}
+
+static ssize_t camera_sensor_show8(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return camera_sensor_show_common(dev, attr, &buf, 8);
+}
+
+static ssize_t camera_sensor_show9(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return camera_sensor_show_common(dev, attr, &buf, 9);
+}
+
+static ssize_t camera_sensor_show10(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return camera_sensor_show_common(dev, attr, &buf, 10);
+}
+
+static ssize_t camera_sensor_show11(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return camera_sensor_show_common(dev, attr, &buf, 11);
+}
+
 static struct device_attribute camera_sensor0_attr =
 __ATTR(info, 0644, camera_sensor_show0, NULL);
 static struct device_attribute camera_sensor1_attr =
 __ATTR(info, 0644, camera_sensor_show1, NULL);
 static struct device_attribute camera_sensor2_attr =
 __ATTR(info, 0644, camera_sensor_show2, NULL);
+static struct device_attribute camera_sensor3_attr =
+__ATTR(info, 0644, camera_sensor_show3, NULL);
+static struct device_attribute camera_sensor4_attr =
+__ATTR(info, 0644, camera_sensor_show4, NULL);
+static struct device_attribute camera_sensor5_attr =
+__ATTR(info, 0644, camera_sensor_show5, NULL);
+static struct device_attribute camera_sensor6_attr =
+__ATTR(info, 0644, camera_sensor_show6, NULL);
+static struct device_attribute camera_sensor7_attr =
+__ATTR(info, 0644, camera_sensor_show7, NULL);
+static struct device_attribute camera_sensor8_attr =
+__ATTR(info, 0644, camera_sensor_show8, NULL);
+static struct device_attribute camera_sensor9_attr =
+__ATTR(info, 0644, camera_sensor_show9, NULL);
+static struct device_attribute camera_sensor10_attr =
+__ATTR(info, 0644, camera_sensor_show10, NULL);
+static struct device_attribute camera_sensor11_attr =
+__ATTR(info, 0644, camera_sensor_show11, NULL);
 
 static struct attribute *camera_sensor_attrs[] = {
 	&camera_sensor0_attr.attr,
 	&camera_sensor1_attr.attr,
 	&camera_sensor2_attr.attr,
+	&camera_sensor3_attr.attr,
+	&camera_sensor4_attr.attr,
+	&camera_sensor5_attr.attr,
+	&camera_sensor6_attr.attr,
+	&camera_sensor7_attr.attr,
+	&camera_sensor8_attr.attr,
+	&camera_sensor9_attr.attr,
+	&camera_sensor10_attr.attr,
+	&camera_sensor11_attr.attr,
 };
 
 static int create_sysfs_for_camera_sensor(struct nx_clipper *me,
@@ -1926,6 +2010,7 @@ static int create_sysfs_for_camera_sensor(struct nx_clipper *me,
 	struct kobject *kobj;
 	char kobject_name[25] = {0, };
 	char sensor_name[V4L2_SUBDEV_NAME_SIZE];
+	int module = me->module;
 
 	memset(sensor_name, 0, V4L2_SUBDEV_NAME_SIZE);
 	snprintf(sensor_name, sizeof(sensor_name), "%s %d-%04x",
@@ -1933,14 +2018,17 @@ static int create_sysfs_for_camera_sensor(struct nx_clipper *me,
 		info->i2c_adapter_id,
 		info->board_info.addr);
 
-	strlcpy(camera_sensor_info[me->module].name, sensor_name,
+	if (me->logical)
+		module = me->module*VIP_MAX_LOGICAL_DEV + me->logical_num +
+			VIP_LOGICAL_START;
+	strlcpy(camera_sensor_info[module].name, sensor_name,
 		V4L2_SUBDEV_NAME_SIZE);
-	camera_sensor_info[me->module].is_mipi =
+	camera_sensor_info[module].is_mipi =
 		me->interface_type == NX_CAPTURE_INTERFACE_MIPI_CSI;
+	camera_sensor_info[module].interlaced = me->interlace;
 
 	snprintf(kobject_name, sizeof(kobject_name), "camerasensor%d",
-			(me->logical) ?
-			(me->module + me->logical_num + 10) : me->module);
+			module);
 	kobj = kobject_create_and_add(kobject_name, &platform_bus.kobj);
 	if (!kobj) {
 		dev_err(&me->pdev->dev, "failed to kobject_create for module %d-%d-%d\n",
@@ -1948,7 +2036,7 @@ static int create_sysfs_for_camera_sensor(struct nx_clipper *me,
 		return -EINVAL;
 	}
 
-	ret = sysfs_create_file(kobj, camera_sensor_attrs[me->module]);
+	ret = sysfs_create_file(kobj, camera_sensor_attrs[module]);
 	if (ret) {
 		dev_err(&me->pdev->dev, "failed to sysfs_create_file for module %d-%d-%d\n",
 			me->module, me->logical, me->logical_num);
@@ -2073,12 +2161,22 @@ error:
 	return ret;
 }
 
+static void unregister_v4l2(struct nx_clipper *me)
+{
+	if (me->vbuf_obj.video) {
+		nx_video_cleanup(me->vbuf_obj.video);
+		me->vbuf_obj.video = NULL;
+	}
+	v4l2_device_unregister_subdev(&me->subdev);
+}
+
 static int register_v4l2(struct nx_clipper *me)
 {
 	int ret;
 	char dev_name[64] = {0, };
 	struct media_entity *entity = &me->subdev.entity;
 	struct nx_video *video;
+	int module = me->module;
 
 	ret = nx_v4l2_register_subdev(&me->subdev);
 	if (ret)
@@ -2087,15 +2185,15 @@ static int register_v4l2(struct nx_clipper *me)
 	ret = register_sensor_subdev(me);
 	if (ret) {
 		dev_info(&me->pdev->dev, "can't register sensor subdev\n");
+		unregister_v4l2(me);
 		return ret;
 	}
 
 	if (me->logical)
-		snprintf(dev_name, sizeof(dev_name), "VIDEO CLIPPER%d%s%d",
-				me->module, " LOGICAL", me->logical_num);
-	else
-		snprintf(dev_name, sizeof(dev_name), "VIDEO CLIPPER%d",
-				me->module);
+		module = me->module*VIP_MAX_LOGICAL_DEV + me->logical_num +
+			VIP_LOGICAL_START;
+	snprintf(dev_name, sizeof(dev_name), "VIDEO CLIPPER%d",
+			module);
 	video = nx_video_create(dev_name, NX_VIDEO_TYPE_CAPTURE,
 				    nx_v4l2_get_v4l2_device(),
 				    nx_v4l2_get_alloc_ctx());
@@ -2116,15 +2214,6 @@ static int register_v4l2(struct nx_clipper *me)
 		BUG();
 
 	return 0;
-}
-
-static void unregister_v4l2(struct nx_clipper *me)
-{
-	if (me->vbuf_obj.video) {
-		nx_video_cleanup(me->vbuf_obj.video);
-		me->vbuf_obj.video = NULL;
-	}
-	v4l2_device_unregister_subdev(&me->subdev);
 }
 
 /**
