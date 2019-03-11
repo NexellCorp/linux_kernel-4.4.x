@@ -449,7 +449,7 @@
 		reg = <0 0>;
 	};
 
-	sound-main {
+	sound {
 		compatible = "nexell,simple-audio-card";
 		simple-audio-card,name = "s5p4418 Convergence Daudio Audio Main";
 		simple-audio-card,mclk-fs = <256>;
