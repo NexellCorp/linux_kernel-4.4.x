@@ -454,39 +454,42 @@
 		simple-audio-card,widgets =
 			"Headphone", "Out Jack",
 			"Microphone", "In Jack";
+		simple-audio-card,routing =
+			"Out Jack", "SPKOUT",
+			"Out Jack", "SPKOUTN",
+			"MIC1", "In Jack";
 		status = "okay";
 
 		simple-audio-card,dai-link@0 {
 			format = "i2s";
-
 			cpu {
-			sound-dai = <&i2s_1 0>;
+				sound-dai = <&i2s_1 0>;
 			};
 
 			codec {
-			sound-dai = <&alc5621_2>;
+				sound-dai = <&alc5621_2>;
 			};
 		};
 
 		simple-audio-card,dai-link@1 {
 			format = "i2s";
 			cpu {
-			sound-dai = <&i2s_2 0>;
+				sound-dai = <&i2s_2 0>;
 			};
 
 			codec {
-			sound-dai = <&snd_null>;
+				sound-dai = <&snd_null>;
 			};
 		};
 
 		simple-audio-card,dai-link@2 {
 			format = "spdif";
 			cpu {
-			sound-dai = <&spdif_tx 0>;
+				sound-dai = <&spdif_tx 0>;
 			};
 
 			codec {
-			sound-dai = <&spdif_out>;
+				sound-dai = <&spdif_out>;
 			};
 		};
 	};
@@ -498,11 +501,17 @@
 		simple-audio-card,widgets =
 			"Headphone", "Out Jack",
 			"Microphone", "In Jack";
+		simple-audio-card,routing =
+			"Out Jack", "SPKOUT",
+			"Out Jack", "SPKOUTN",
+			"Out Jack", "AUXOUTL",
+			"Out Jack", "AUXOUTR",
+			"LINEINL", "In Jack",
+			"LINEINR", "In Jack";
 		status = "okay";
 
 		simple-audio-card,dai-link@0 {
 			format = "i2s";
-
 			cpu {
 			sound-dai = <&i2s_0 0>;
 			};
