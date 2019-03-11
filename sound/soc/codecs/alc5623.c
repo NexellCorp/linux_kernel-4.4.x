@@ -514,9 +514,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 
 	/* left ADC */
 	{"Left ADC", NULL,				"Left Capture Mix"},
+	{"I2S Mix", NULL,				"Left Capture Mix"},
 
 	/* right ADC */
 	{"Right ADC", NULL,				"Right Capture Mix"},
+	{"I2S Mix", NULL,				"Right Capture Mix"},
 
 	{"SpeakerOut N Mux", "RN/-R",			"SpeakerOut"},
 	{"SpeakerOut N Mux", "RP/+R",			"SpeakerOut"},
