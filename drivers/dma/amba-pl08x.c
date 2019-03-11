@@ -986,7 +986,6 @@ static int pl08x_fill_llis_for_desc(struct pl08x_driver_data *pl08x,
 		bd.srcbus.addr = dsg->src_addr;
 		bd.dstbus.addr = dsg->dst_addr;
 		bd.remainder = dsg->len;
-		txd->dsg_len = dsg->len;
 		bd.srcbus.buswidth = bd.srcbus.maxwidth;
 		bd.dstbus.buswidth = bd.dstbus.maxwidth;
 
@@ -1093,9 +1092,15 @@ static int pl08x_fill_llis_for_desc(struct pl08x_driver_data *pl08x,
 			 */
 			max_bytes_per_lli = bd.srcbus.buswidth *
 						pl08x->vd->max_transfer_size;
+
+			if (dsg->len > max_bytes_per_lli)
+				txd->dsg_len = dsg->len;
+			else
+				txd->dsg_len = 0;
+
 			dev_vdbg(&pl08x->adev->dev,
-				"%s max bytes per lli = %zu\n",
-				__func__, max_bytes_per_lli);
+				"%s max bytes per lli = %zu dsg_len = %d\n",
+				__func__, max_bytes_per_lli, txd->dsg_len);
 
 			/*
 			 * Make largest possible LLIs until less than one bus
@@ -1942,11 +1947,14 @@ static irqreturn_t pl08x_irq(int irq, void *dev)
 
 			if (tx) {
 				vc = to_virt_chan(tx->vd.tx.chan);
-				bytes = pl08x_getbytes_chan(plchan);
+				if (tx->dsg_len) {
+					bytes = pl08x_getbytes_chan(plchan);
 
-				if (bytes%tx->dsg_len > 0)
-					vc->cb_en = false;
-				else
+					if (bytes%tx->dsg_len > 0)
+						vc->cb_en = false;
+					else
+						vc->cb_en = true;
+				} else
 					vc->cb_en = true;
 			}
 
