@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4d3eefa0_2f62c633",
+        "filename": "drivers/media/platform/nexell/capture/nx-clipper.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1933,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-03-11T01:00:50Z",
+      "side": 1,
+      "message": "is this right?\nI think this may be 6.",
+      "range": {
+        "startLine": 1933,
+        "startChar": 51,
+        "endLine": 1933,
+        "endChar": 52
+      },
+      "revId": "7fef14ecd9721f5ce326810125714eee67ea303a",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
