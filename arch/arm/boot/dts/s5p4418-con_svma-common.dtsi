@@ -536,14 +536,14 @@
 
 		power {
 			label = "Power";
-			gpios = <&alive_0 0 0>;
+			gpios = <&alive_0 0 GPIO_ACTIVE_LOW>;
 			linux,code = <KEY_POWER>;
 			gpio-key,wakeup;
 		};
 
 		back {
 			label = "Back";
-			gpios = <&gpio_c 4 0>;
+			gpios = <&gpio_c 4 GPIO_ACTIVE_LOW>;
 			linux,code = <KEY_BACK>;
 		};
 	};
