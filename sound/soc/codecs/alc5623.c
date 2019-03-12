@@ -420,8 +420,6 @@ SND_SOC_DAPM_MUX("AB-D Amp Mux", SND_SOC_NOPM, 0, 0,
 
 static const struct snd_soc_dapm_route intercon[] = {
 	/* virtual mixer - mixes left & right channels */
-	{"I2S Mix", NULL,				"Left DAC"},
-	{"I2S Mix", NULL,				"Right DAC"},
 	{"Line Mix", NULL,				"Right LineIn"},
 	{"Line Mix", NULL,				"Left LineIn"},
 	{"AuxI Mix", NULL,				"Left AuxI"},
@@ -438,14 +436,16 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"HP Mix", "AUXI2HP Playback Switch",		"AuxI Mix"},
 	{"HP Mix", "MIC12HP Playback Switch",		"MIC1 PGA"},
 	{"HP Mix", "MIC22HP Playback Switch",		"MIC2 PGA"},
-	{"HP Mix", "DAC2HP Playback Switch",		"I2S Mix"},
+	{"HP Mix", "DAC2HP Playback Switch",		"Left DAC"},
+	{"HP Mix", "DAC2HP Playback Switch",		"Right DAC"},
 
 	/* speaker mixer */
 	{"Speaker Mix", "LI2SPK Playback Switch",	"Line Mix"},
 	{"Speaker Mix", "AUXI2SPK Playback Switch",	"AuxI Mix"},
 	{"Speaker Mix", "MIC12SPK Playback Switch",	"MIC1 PGA"},
 	{"Speaker Mix", "MIC22SPK Playback Switch",	"MIC2 PGA"},
-	{"Speaker Mix", "DAC2SPK Playback Switch",	"I2S Mix"},
+	{"Speaker Mix", "DAC2SPK Playback Switch",	"Left DAC"},
+	{"Speaker Mix", "DAC2SPK Playback Switch",	"Right DAC"},
 
 	/* mono mixer */
 	{"Mono Mix", "ADC2MONO_L Playback Switch",	"Left Capture Mix"},
@@ -454,7 +454,8 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"Mono Mix", "AUXI2MONO Playback Switch",	"AuxI Mix"},
 	{"Mono Mix", "MIC12MONO Playback Switch",	"MIC1 PGA"},
 	{"Mono Mix", "MIC22MONO Playback Switch",	"MIC2 PGA"},
-	{"Mono Mix", "DAC2MONO Playback Switch",	"I2S Mix"},
+	{"Mono Mix", "DAC2MONO Playback Switch",	"Left DAC"},
+	{"Mono Mix", "DAC2MONO Playback Switch",	"Right DAC"},
 
 	/* Left record mixer */
 	{"Left Capture Mix", "LineInL Capture Switch",	"LINEINL"},
@@ -514,11 +515,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 
 	/* left ADC */
 	{"Left ADC", NULL,				"Left Capture Mix"},
-	{"I2S Mix", NULL,				"Left Capture Mix"},
 
 	/* right ADC */
 	{"Right ADC", NULL,				"Right Capture Mix"},
-	{"I2S Mix", NULL,				"Right Capture Mix"},
 
 	{"SpeakerOut N Mux", "RN/-R",			"SpeakerOut"},
 	{"SpeakerOut N Mux", "RP/+R",			"SpeakerOut"},
