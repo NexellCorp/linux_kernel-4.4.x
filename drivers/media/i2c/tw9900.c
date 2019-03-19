@@ -34,6 +34,11 @@
 #define vmsg(a...)
 #endif
 
+enum {
+	TW9900_NTSC,
+	TW9900_PAL,
+};
+
 struct nx_resolution {
 	uint32_t width;
 	uint32_t height;
@@ -73,6 +78,8 @@ struct tw9900_state {
 	/* standard control */
 	struct v4l2_ctrl *ctrl_brightness;
 	int brightness;
+
+	int mode;
 };
 
 struct reg_val {
@@ -82,7 +89,8 @@ struct reg_val {
 
 #define END_MARKER {0xff, 0xff}
 
-static struct reg_val _sensor_init_data[] = {
+/* 704x480i */
+static struct reg_val _sensor_init_data_ntsc[] = {
 	{0x02, 0x40},
 	{0x1c, 0x00},
 	{0x03, 0xa6},
@@ -102,7 +110,27 @@ static struct reg_val _sensor_init_data[] = {
 	{0xaf, 0x40},
 	{0xb1, 0x20},
 	{0xb4, 0x20},
+	END_MARKER
+};
 
+/* 704x576i */
+static struct reg_val _sensor_init_data_pal[] = {
+	{0x88, 12},
+	{0x03, 0xa2},
+	{0x05, 0x01},
+	{0x07, 0x12},
+	{0x08, 0x12},
+	{0x09, 0x20},
+	{0x19, 0x57},
+	{0x1a, 0x0f},
+	{0x1c, 0X17},
+	{0x1d, 0X7f},
+	{0x29, 0x03},
+	{0x2d, 0x07},
+	{0x6b, 0x09},
+	{0x6c, 0x19},
+	{0x6d, 0x0a},
+	{0x06, 0x80},
 	END_MARKER
 };
 
@@ -370,7 +398,12 @@ static int tw9900_s_stream(struct v4l2_subdev *sd, int enable)
 	if (enable) {
 		if (_state.first) {
 			struct tw9900_state *me = &_state;
-			struct reg_val *reg_val = _sensor_init_data;
+			struct reg_val *reg_val;
+
+			if (me->mode == TW9900_PAL)
+				reg_val = _sensor_init_data_pal;
+			else
+				reg_val = _sensor_init_data_ntsc;
 
 			while (reg_val->reg != 0xff) {
 				_i2c_write_byte(me->i2c_client, reg_val->reg,
@@ -389,7 +422,17 @@ static int tw9900_s_fmt(struct v4l2_subdev *sd,
 		struct v4l2_subdev_pad_config *cfg,
 		struct v4l2_subdev_format *fmt)
 {
+	struct v4l2_mbus_framefmt *mf = &fmt->format;
+	struct tw9900_state *me = &_state;
+
 	vmsg("%s\n", __func__);
+
+	/* PAL -> 704x576i */
+	if (mf->width == 704 && mf->height == 576)
+		me->mode = TW9900_PAL;
+	else /* NTSC -> 704x480i */
+		me->mode = TW9900_NTSC;
+
 	return 0;
 }
 
