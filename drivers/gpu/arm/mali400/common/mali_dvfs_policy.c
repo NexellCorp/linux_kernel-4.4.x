@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2010-2012, 2014, 2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2010-2012, 2014, 2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 
 #include <linux/mali/mali_utgard.h>
@@ -151,12 +151,8 @@ void mali_dvfs_policy_realize(struct mali_gpu_utilization_data *data, u64 time_p
 	/* Get current clock value */
 	cur_clk_step = mali_gpu_get_freq();
 
-#ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
-	if (1) {
-#else
 	/* Consider offscreen */
 	if (0 == current_fps) {
-#endif
 		/* GP or PP under perform, need to give full power */
 		if (current_gpu_util > over_perform_boundary_value) {
 			if (cur_clk_step != gpu_clk->num_of_steps - 1) {

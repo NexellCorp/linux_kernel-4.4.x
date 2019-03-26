@@ -1,21 +1,11 @@
 /*
- * Copyright (C) 2010-2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
- * Class Path Exception
- * Linking this library statically or dynamically with other modules is making a combined work based on this library. 
- * Thus, the terms and conditions of the GNU General Public License cover the whole combination.
- * As a special exception, the copyright holders of this library give you permission to link this library with independent modules 
- * to produce an executable, regardless of the license terms of these independent modules, and to copy and distribute the resulting 
- * executable under terms of your choice, provided that you also meet, for each linked independent module, the terms and conditions 
- * of the license of that module. An independent module is a module which is not derived from or based on this library. If you modify 
- * this library, you may extend this exception to your version of the library, but you are not obligated to do so. 
- * If you do not wish to do so, delete this exception statement from your version.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2008-2016, 2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 
 /**
@@ -69,9 +59,6 @@ typedef enum {
 	_MALI_UK_GP_SUBSYSTEM,        /**< Vertex Processor Group of U/K calls */
 	_MALI_UK_PROFILING_SUBSYSTEM, /**< Profiling Group of U/K calls */
 	_MALI_UK_VSYNC_SUBSYSTEM,     /**< VSYNC Group of U/K calls */
-	#if 1 /* NEXELL_FEATURE_IOCTL_PERFORMANCE */
-	_MALI_UK_DBG_SUBSYSTEM,     
-	#endif
 } _mali_uk_subsystem_t;
 
 /** Within a function group each function has its unique sequence number
@@ -142,11 +129,7 @@ typedef enum {
 	_MALI_UK_PROFILING_CONTROL_SET, /** < __mali_uku_profiling_control_set() */
 
 	/** VSYNC reporting fuctions */
-	_MALI_UK_VSYNC_EVENT_REPORT     = 0, /**< _mali_ukk_vsync_event_report() */
-	
-	#if 1 /* NEXELL_FEATURE_IOCTL_PERFORMANCE */
-	_MALI_UK_DBG_GET_GPU_TIME      	= 0,
-	#endif
+	_MALI_UK_VSYNC_EVENT_REPORT      = 0, /**< _mali_ukk_vsync_event_report() */
 } _mali_uk_functions;
 
 /** @defgroup _mali_uk_getsysteminfo U/K Get System Info
@@ -1099,16 +1082,6 @@ typedef struct {
 	u64 response_packet_data; /** < [out] The response packet data */
 	u32 response_packet_size; /** < [in,out] The response packet data */
 } _mali_uk_profiling_control_set_s;
-
-
-#if 1 /* NEXELL_FEATURE_IOCTL_PERFORMANCE */
-typedef struct {
-	u64 ctx;                          /**< [in,out] user-kernel context (trashed on output) */
-	u32 time_val_gp;                         /**< [in,out] id for soft job */
-	u32 time_val_pp;                         /**< [out] id for soft job */
-} _mali_uk_test_job_get_time_s;
-#endif
-
 
 #ifdef __cplusplus
 }

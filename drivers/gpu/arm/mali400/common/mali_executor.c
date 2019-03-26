@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2012-2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2012-2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 
 #include "mali_executor.h"
@@ -1216,7 +1216,7 @@ u32 mali_executor_dump_state(char *buf, u32 size)
 
 
 		_MALI_OSK_LIST_FOREACHENTRY(child, temp, &virtual_group->group_list,
-				    struct mali_group, group_list) {
+					    struct mali_group, group_list) {
 			n += mali_group_dump_state(child, buf + n, size - n);
 		}
 	}
@@ -1985,9 +1985,6 @@ static void mali_executor_complete_group(struct mali_group *group,
 	mali_bool pp_job_is_done = MALI_TRUE;
 
 	if (NULL != gp_core) {
-		#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
-		TestIntStateUpadteGP();
-		#endif
 		gp_job = mali_executor_complete_gp(group, success);
 	} else {
 		MALI_DEBUG_ASSERT_POINTER(pp_core);
@@ -2021,10 +2018,6 @@ static void mali_executor_complete_group(struct mali_group *group,
 		MALI_DEBUG_ASSERT_POINTER(pp_job);
 		MALI_DEBUG_ASSERT_POINTER(pp_job_done);
 		*pp_job_done = pp_job;
-
-		#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
-		TestIntStateUpadtePP();
-		#endif
 	}
 }
 

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2013-2014, 2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2013-2014, 2017-2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 #include <linux/fs.h>       /* file system operations */
 #include <linux/version.h>
@@ -94,43 +94,3 @@ int soft_job_signal_wrapper(struct mali_session_data *session, _mali_uk_soft_job
 
 	return map_errcode(err);
 }
-
-#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
-int test_job_get_time(struct mali_session_data *session, _mali_uk_test_job_get_time_s __user *uargs)
-{
-	u32 time_val_gp, time_val_pp;
-	_mali_osk_errcode_t err;
-
-	MALI_DEBUG_ASSERT_POINTER(session);
-
-	if (0 != get_user(time_val_gp, &uargs->time_val_gp)) return -EFAULT;
-
-	if (1 == time_val_gp)
-	{
-		TestIntTimeEn(1);
-	}
-	else if (0xFFFFFFFF == time_val_gp) 
-	{
-		TestIntTimeEn(0);
-	}
-
-	time_val_gp = TestGetTimeTotalValGP();
-	time_val_pp = TestGetTimeTotalValPP();
-
-	if (0 != put_user(time_val_gp, &uargs->time_val_gp)) {
-		/* Let user space know that something failed after the job was started. */
-		return -ENOENT;
-	}
-
-	if (0 != put_user(time_val_pp, &uargs->time_val_pp)) {
-		/* Let user space know that something failed after the job was started. */
-		return -ENOENT;
-	}
-
-	TestClearTimeTotalValGP();
-	TestClearTimeTotalValPP();
-
-	return map_errcode(err);
-}
-#endif
-

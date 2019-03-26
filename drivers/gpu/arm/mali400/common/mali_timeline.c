@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2013-2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2013-2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 #include <linux/file.h>
 #include "mali_timeline.h"
@@ -460,6 +460,61 @@ static mali_scheduler_mask mali_timeline_update_oldest_point(struct mali_timelin
 	return schedule_mask;
 }
 
+static mali_scheduler_mask mali_timeline_release_with_depended_point(struct mali_timeline_tracker *tracker)
+{
+	struct mali_timeline *timeline;
+	struct mali_timeline_waiter *waiter;
+	mali_scheduler_mask schedule_mask = MALI_SCHEDULER_MASK_EMPTY;
+	
+	timeline = tracker->timeline;
+	MALI_DEBUG_ASSERT_POINTER(timeline);
+	MALI_DEBUG_ASSERT(MALI_TIMELINE_SOFT == timeline->id);
+	
+	MALI_DEBUG_CODE({
+		struct mali_timeline_system *system = timeline->system;
+		MALI_DEBUG_ASSERT_POINTER(system);
+
+		MALI_DEBUG_ASSERT(MALI_TIMELINE_SYSTEM_LOCKED(system));
+	});
+
+	/* Only release the waiter that wait for the tracker. */
+	waiter = timeline->waiter_tail;
+	while (NULL != waiter) {
+		if (waiter->point == tracker->point) {
+
+			struct mali_timeline_waiter *waiter_next;
+			struct mali_timeline_waiter *waiter_prev;
+			
+			waiter_next = waiter->timeline_next;
+			waiter_prev = waiter->timeline_prev;
+			waiter->timeline_next = NULL;
+			waiter->timeline_prev = NULL;
+
+			if (NULL != waiter_prev) {
+				waiter_prev->timeline_next = waiter_next;
+			}
+
+			if (NULL != waiter_next) {
+				waiter_next->timeline_prev = waiter_prev;
+			}
+
+			if (waiter ==  timeline->waiter_tail)
+				 timeline->waiter_tail = waiter_next;
+
+			if (waiter == timeline->waiter_head)
+				timeline->waiter_head = NULL;
+			
+			schedule_mask |= mali_timeline_system_release_waiter(timeline->system, waiter);
+			waiter = waiter_next;
+		}else {
+
+			waiter = waiter->timeline_next;
+		}
+	}
+
+	return schedule_mask;
+}
+
 void mali_timeline_tracker_init(struct mali_timeline_tracker *tracker,
 				mali_timeline_tracker_type type,
 				struct mali_timeline_fence *fence,
@@ -548,6 +603,11 @@ mali_scheduler_mask mali_timeline_tracker_release(struct mali_timeline_tracker *
 		MALI_DEBUG_ASSERT(MALI_TIMELINE_SYSTEM_LOCKED(system));
 	} else {
 		tracker_prev->timeline_next = tracker_next;
+		if (MALI_TIMELINE_SOFT == tracker->timeline->id) {
+			/* Use the signaled soft tracker to release the depended soft waiter */
+			schedule_mask |= mali_timeline_release_with_depended_point(tracker);
+			MALI_DEBUG_ASSERT(MALI_TIMELINE_SYSTEM_LOCKED(system));
+		}
 	}
 
 	MALI_DEBUG_ASSERT(MALI_TIMELINE_SYSTEM_LOCKED(system));
@@ -1147,6 +1207,12 @@ static void mali_timeline_system_create_waiters_and_unlock(struct mali_timeline_
 			 * waiter. */
 			continue;
 		}
+
+		if ((MALI_TIMELINE_SOFT == timeline->id) && mali_timeline_is_tracker_released(timeline, point)) {
+			/* The tracker that the point related to has already been released, so no need to a waiter. */
+			continue;
+		}
+		
 
 		/* The point is on timeline. */
 		MALI_DEBUG_ASSERT(mali_timeline_is_point_on(timeline, point));

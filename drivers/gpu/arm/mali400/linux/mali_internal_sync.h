@@ -1,7 +1,7 @@
 /*
  * This confidential and proprietary software may be used only as
  * authorised by a licensing agreement from ARM Limited
- * (C) COPYRIGHT 2012-2015, 2017 ARM Limited
+ * (C) COPYRIGHT 2012-2015, 2017-2018 ARM Limited
  * ALL RIGHTS RESERVED
  * The entire notice above must be reproduced on all authorised
  * copies and copies may only be made to the extent permitted
@@ -85,15 +85,20 @@ struct mali_internal_sync_fence_cb {
 
 struct mali_internal_sync_fence {
 	struct file             *file;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
 	struct kref             kref;
-	char		name[32];
+#endif
+	char            name[32];
 #ifdef CONFIG_DEBUG_FS
-	struct list_head	sync_file_list;
+	struct list_head        sync_file_list;
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
 	int num_fences;
 #endif
 	wait_queue_head_t       wq;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 12, 0)
+	unsigned long		flags;
+#endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
 	atomic_t                status;
 	struct mali_internal_sync_fence_cb    cbs[];
@@ -112,7 +117,11 @@ typedef void (*mali_internal_sync_callback_t)(struct mali_internal_sync_fence *s
 		struct mali_internal_sync_fence_waiter *waiter);
 
 struct mali_internal_sync_fence_waiter {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+	wait_queue_entry_t work;
+#else
 	wait_queue_t work;
+#endif
 	mali_internal_sync_callback_t callback;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)

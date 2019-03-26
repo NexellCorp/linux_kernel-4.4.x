@@ -847,6 +847,11 @@ static int nexell_set_freq(int setting_clock_step)
 static struct mali_gpu_device_data mali_gpu_data = {
 	.max_job_runtime = 60000, /* 60 seconds */
 
+	/* Mali OS memory limit */
+	#if 0 /* NEXELL_FEATURE_PORTING */
+	.shared_mem_size = 2 * 1024 * 1024 * 1024, /* 2GB */
+	#endif
+
 	/* Some framebuffer drivers get the framebuffer dynamically, such as through GEM,
 	* in which the memory resource can't be predicted in advance.
 	*/

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2010-2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2008-2016, 2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 
 /**
@@ -20,24 +20,6 @@
 #include "mali_osk_types.h"
 #include "mali_osk_specific.h"           /* include any per-os specifics */
 #include "mali_osk_locks.h"
-
-
-/*----------------------------------------*/
-#if 0
-#define NEXELL_FEATURE_IOCTL_PERFORMANCE
-#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
-void TestIntTimeEn(int enable);
-unsigned int TestGetTimeTotalValGP(void);
-void TestIntTimeStartGP(void);
-void TestIntStateUpadteGP(void);
-void TestClearTimeTotalValGP(void);
-unsigned int TestGetTimeTotalValPP(void);
-void TestIntTimeStartPP(void);
-void TestIntStateUpadtePP(void);
-void TestClearTimeTotalValPP(void);
-#endif
-#endif
-
 
 #ifdef __cplusplus
 extern "C" {
