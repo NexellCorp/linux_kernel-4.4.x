@@ -34,6 +34,29 @@
 #define vmsg(a...)
 #endif
 
+#define TW9900_REG_INFORM 0x02
+#define TW9900_REG_SDT 0x1c
+#define TW9900_REG_SDTR 0x1d
+#define TW9900_REG_CLMPG 0x20
+#define TW9900_REG_PCLAMP 0x27
+#define TW9900_REG_CLMD 0x33
+
+#define TW9900_REG_SDT_POS_DETSTUS 7
+#define TW9900_REG_SDT_POS_STDNOW 4
+#define TW9900_REG_SDT_POS_ATREG 3
+#define TW9900_REG_SDT_POS_STD 0
+
+enum {
+	TW9900_INVOKE_NTSC,
+	TW9900_INVOKE_PAL,
+	TW9900_INVOKE_SECAM,
+	TW9900_INVOKE_NTSC_443,
+	TW9900_INVOKE_PAL_M,
+	TW9900_INVOKE_PAL_CN,
+	TW9900_INVOKE_PAL_60,
+	TW9900_INVOKE_MAX,
+};
+
 enum {
 	TW9900_NTSC,
 	TW9900_PAL,
@@ -213,6 +236,7 @@ static int _i2c_write_byte(struct i2c_client *client, u8 addr, u8 val)
 
 #define V4L2_CID_MUX        (V4L2_CTRL_CLASS_USER | 0x1001)
 #define V4L2_CID_STATUS     (V4L2_CTRL_CLASS_USER | 0x1002)
+#define V4L2_CID_CUR_STD    (V4L2_CTRL_CLASS_USER | 0x1003)
 
 static int tw9900_set_mux(struct v4l2_ctrl *ctrl)
 {
@@ -254,6 +278,58 @@ static int tw9900_set_brightness(struct v4l2_ctrl *ctrl)
 		me->brightness = ctrl->val;
 	}
 #endif
+	return 0;
+}
+
+static int tw9900_get_cur_std(struct v4l2_ctrl *ctrl)
+{
+	struct tw9900_state *me = ctrl_to_me(ctrl);
+	int ret = 0;
+	u8 value = 0;
+
+	_i2c_write_byte(me->i2c_client, TW9900_REG_CLMD, 0x05);
+	_i2c_write_byte(me->i2c_client, TW9900_REG_SDT, 0x1f);
+	_i2c_write_byte(me->i2c_client, TW9900_REG_INFORM, 0xc3);
+	_i2c_write_byte(me->i2c_client, TW9900_REG_SDTR, 0xff);
+	_i2c_write_byte(me->i2c_client, TW9900_REG_CLMPG, 0x52);
+	_i2c_write_byte(me->i2c_client, TW9900_REG_PCLAMP, 0x38);
+
+	ret = _i2c_read_byte(me->i2c_client, TW9900_REG_SDT, &value);
+	if (ret)
+		pr_err("%s: TW9900_REG_SDT read fail.\n", __func__);
+
+	vmsg("## %s() TW9900_REG_SDT read value:0x%x\n", __func__, value);
+
+	value = (value & 0x70) >> TW9900_REG_SDT_POS_STDNOW;
+
+	ctrl->val = value;
+
+#ifdef DEBUG_TW9900
+	switch (value) {
+	case TW9900_INVOKE_NTSC:
+		vmsg("## %s() TW9900_INVOKE_NTSC\n", __func__);
+		break;
+	case TW9900_INVOKE_PAL:
+		vmsg("## %s() TW9900_INVOKE_PAL\n", __func__);
+		break;
+	case TW9900_INVOKE_SECAM:
+		vmsg("## %s() TW9900_INVOKE_SECAM\n", __func__);
+		break;
+	case TW9900_INVOKE_NTSC_443:
+		vmsg("## %s() TW9900_INVOKE_NTSC_443\n", __func__);
+		break;
+	case TW9900_INVOKE_PAL_M:
+		vmsg("## %s() TW9900_INVOKE_PAL_M\n", __func__);
+		break;
+	case TW9900_INVOKE_PAL_CN:
+		vmsg("## %s() TW9900_INVOKE_PAL_CN\n", __func__);
+		break;
+	case TW9900_INVOKE_PAL_60:
+		vmsg("## %s() TW9900_INVOKE_PAL_60\n", __func__);
+		break;
+	}
+#endif
+
 	return 0;
 }
 
@@ -302,6 +378,8 @@ static int tw9900_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 	switch (ctrl->id) {
 	case V4L2_CID_STATUS:
 		return tw9900_get_status(ctrl);
+	case V4L2_CID_CUR_STD:
+		return tw9900_get_cur_std(ctrl);
 	default:
 		pr_err("%s: invalid control id 0x%x\n", __func__, ctrl->id);
 		return -EINVAL;
@@ -332,6 +410,17 @@ static const struct v4l2_ctrl_config tw9900_custom_ctrls[] = {
 		.min  = 0,
 		.max  = 1,
 		.def  = 1,
+		.step = 1,
+		.flags = V4L2_CTRL_FLAG_VOLATILE,
+	},
+	{
+		.ops  = &tw9900_ctrl_ops,
+		.id   = V4L2_CID_CUR_STD,
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.name = "cur_std",
+		.min  = TW9900_INVOKE_NTSC,
+		.max  = TW9900_INVOKE_MAX,
+		.def  = TW9900_INVOKE_NTSC,
 		.step = 1,
 		.flags = V4L2_CTRL_FLAG_VOLATILE,
 	}
