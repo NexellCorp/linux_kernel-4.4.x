@@ -773,8 +773,8 @@ static int VPU_DecRegisterFrameBufCommand(struct nx_vpu_codec_inst
 	*pInst, struct vpu_dec_reg_frame_arg *pArg)
 {
 	struct vpu_dec_info *pInfo = &pInst->codecInfo.decInfo;
-	unsigned char frameAddr[MAX_REG_FRAME][3][4];
-	unsigned char colMvAddr[MAX_REG_FRAME][4];
+	unsigned char frameAddr[MAX_REG_FRAME+1][3][4];
+	unsigned char colMvAddr[MAX_REG_FRAME+1][4];
 	int bufferStride = pArg->frameBuffer[0].stride[0];
 	unsigned int val, mvStartAddr;
 	int i;
