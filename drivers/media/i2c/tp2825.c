@@ -44,7 +44,7 @@ struct nx_resolution {
 };
 
 static struct nx_resolution supported_resolutions[] = {
-	{
+/*	{
 		.width	= 960,
 		.height = 576,
 		.interval[0] = 15,
@@ -56,6 +56,7 @@ static struct nx_resolution supported_resolutions[] = {
 		.interval[0] = 15,
 		.interval[1] = 30,
 	},
+*/
 	{
 		.width	= 1280,
 		.height = 720,
