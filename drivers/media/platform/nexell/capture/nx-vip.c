@@ -66,7 +66,6 @@ struct nx_vip {
 	struct nx_vip_clk *clk_base;
 	atomic_t running_bitmap;
 
-	spinlock_t lock;
 	struct nx_v4l2_irq_entry *clipper;
 	struct nx_v4l2_irq_entry *decimator;
 
@@ -148,18 +147,13 @@ static irqreturn_t vip_irq_handler(int irq, void *desc)
 	int clipper = 0, decimator = 0;
 
 	nx_vip_clear_interrupt_pending_all(me->module);
-
 	clipper = me->clipper_enable;
 	decimator = me->decimator_enable;
 
-	spin_lock_irqsave(&me->lock, flags);
 	if (clipper && me->clipper)
 		me->clipper->handler(me->clipper->priv);
 	if (decimator && me->decimator)
 		me->decimator->handler(me->decimator->priv);
-
-	spin_unlock_irqrestore(&me->lock, flags);
-
 	hw_child_enable(me, NX_ATOMIC_READ(&me->running_bitmap));
 	return IRQ_HANDLED;
 }
@@ -330,12 +324,10 @@ int nx_vip_register_irq_entry(u32 module, u32 child, struct nx_v4l2_irq_entry *e
 	}
 	me = _nx_vip_object[module];
 
-	spin_lock_irqsave(&me->lock, flags);
 	if (child & VIP_CLIPPER)
 		me->clipper = e;
 	else if (child & VIP_DECIMATOR)
 		me->decimator = e;
-	spin_unlock_irqrestore(&me->lock, flags);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nx_vip_register_irq_entry);
@@ -351,12 +343,10 @@ int nx_vip_unregister_irq_entry(u32 module, u32 child, struct nx_v4l2_irq_entry 
 	}
 	me = _nx_vip_object[module];
 
-	spin_lock_irqsave(&me->lock, flags);
 	if (child & VIP_CLIPPER)
 		me->clipper = NULL;
 	else if (child & VIP_DECIMATOR)
 		me->decimator = NULL;
-	spin_unlock_irqrestore(&me->lock, flags);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nx_vip_unregister_irq_entry);
@@ -585,7 +575,6 @@ static int nx_vip_probe(struct platform_device *pdev)
 	_nx_vip_object[me->module] = me;
 
 	nx_vip_set_base_address(me->module, me->base);
-	spin_lock_init(&me->lock);
 
 	if (me->clk_base == NULL) {
 		nx_vip_clock_enable(me->module, true);

@@ -428,9 +428,7 @@ static struct nx_buffer_consumer *find_consumer(struct nx_video *me,
 	struct nx_buffer_consumer *c = NULL;
 	struct list_head *cur = head->next;
 
-	spin_lock_irqsave(&me->lock_consumer, flags);
 	if (list_empty(head)) {
-		spin_unlock_irqrestore(&me->lock_consumer, flags);
 		WARN_ON(1);
 		return NULL;
 	}
@@ -438,7 +436,6 @@ static struct nx_buffer_consumer *find_consumer(struct nx_video *me,
 		c = list_entry(cur, struct nx_buffer_consumer, list);
 		cur = cur->next;
 	}
-	spin_unlock_irqrestore(&me->lock_consumer, flags);
 
 	return c;
 }
@@ -1339,7 +1336,6 @@ static int register_buffer_consumer(struct nx_video *me,
 	pr_debug("%s: name(%s) type(0x%x), consumer(%p)\n",
 		 __func__, me->name, type, consumer);
 
-	spin_lock_irqsave(&me->lock_consumer, flags);
 	if (type == NX_BUFFER_CONSUMER_SINK) {
 		list_add_tail(&consumer->list, &me->sink_consumer_list);
 		me->sink_consumer_count++;
@@ -1347,7 +1343,6 @@ static int register_buffer_consumer(struct nx_video *me,
 		list_add_tail(&consumer->list, &me->source_consumer_list);
 		me->source_consumer_count++;
 	}
-	spin_unlock_irqrestore(&me->lock_consumer, flags);
 
 	return 0;
 }
@@ -1366,13 +1361,11 @@ static void unregister_buffer_consumer(struct nx_video *me,
 	pr_debug("%s: type(0x%x), consumer(%p)\n",
 		 __func__, type, consumer);
 
-	spin_lock_irqsave(&me->lock_consumer, flags);
 	list_del(&consumer->list);
 	if (type == NX_BUFFER_CONSUMER_SINK)
 		me->sink_consumer_count--;
 	else
 		me->source_consumer_count--;
-	spin_unlock_irqrestore(&me->lock_consumer, flags);
 }
 
 /*
@@ -1441,7 +1434,6 @@ struct nx_video *nx_video_create(char *name, u32 type,
 
 	INIT_LIST_HEAD(&me->source_consumer_list);
 	INIT_LIST_HEAD(&me->sink_consumer_list);
-	spin_lock_init(&me->lock_consumer);
 
 	me->vdev.v4l2_dev = me->v4l2_dev;
 	ret = video_register_device(&me->vdev, VFL_TYPE_GRABBER,
@@ -1493,7 +1485,6 @@ nx_video_get_next_buffer(struct nx_video_buffer_object *obj, bool remove)
 	unsigned long flags;
 	struct nx_video_buffer *buf = NULL;
 
-	spin_lock_irqsave(&obj->slock, flags);
 	if (!list_empty(&obj->buffer_list)) {
 		buf = list_first_entry(&obj->buffer_list,
 				       struct nx_video_buffer, list);
@@ -1502,7 +1493,6 @@ nx_video_get_next_buffer(struct nx_video_buffer_object *obj, bool remove)
 			atomic_dec(&obj->buffer_count);
 		}
 	}
-	spin_unlock_irqrestore(&obj->slock, flags);
 
 	return buf;
 }
@@ -1537,7 +1527,6 @@ void nx_video_clear_buffer_queued(struct nx_video_buffer_object *obj)
 	if (nx_video_get_buffer_count(obj)) {
 		unsigned long flags;
 
-		spin_lock_irqsave(&obj->slock, flags);
 		while (!list_empty(&obj->buffer_list)) {
 			buf = list_entry(obj->buffer_list.next,
 					 struct nx_video_buffer, list);
@@ -1550,7 +1539,6 @@ void nx_video_clear_buffer_queued(struct nx_video_buffer_object *obj)
 				break;
 		}
 		INIT_LIST_HEAD(&obj->buffer_list);
-		spin_unlock_irqrestore(&obj->slock, flags);
 	}
 
 	atomic_set(&obj->buffer_count, 0);
@@ -1564,7 +1552,6 @@ void nx_video_clear_buffer(struct nx_video_buffer_object *obj)
 	if (nx_video_get_buffer_count(obj)) {
 		unsigned long flags;
 
-		spin_lock_irqsave(&obj->slock, flags);
 		while (!list_empty(&obj->buffer_list)) {
 			buf = list_entry(obj->buffer_list.next,
 					 struct nx_video_buffer, list);
@@ -1576,7 +1563,6 @@ void nx_video_clear_buffer(struct nx_video_buffer_object *obj)
 				break;
 		}
 		INIT_LIST_HEAD(&obj->buffer_list);
-		spin_unlock_irqrestore(&obj->slock, flags);
 	}
 
 	atomic_set(&obj->buffer_count, 0);
@@ -1586,7 +1572,6 @@ EXPORT_SYMBOL_GPL(nx_video_clear_buffer);
 
 void nx_video_init_vbuf_obj(struct nx_video_buffer_object *obj)
 {
-	spin_lock_init(&obj->slock);
 	INIT_LIST_HEAD(&obj->buffer_list);
 	atomic_set(&obj->buffer_count, 0);
 }
@@ -1598,9 +1583,7 @@ void nx_video_add_buffer(struct nx_video_buffer_object *obj,
 	unsigned long flags;
 
 
-	spin_lock_irqsave(&obj->slock, flags);
 	list_add_tail(&buf->list, &obj->buffer_list);
-	spin_unlock_irqrestore(&obj->slock, flags);
 	atomic_inc(&obj->buffer_count);
 }
 EXPORT_SYMBOL_GPL(nx_video_add_buffer);
