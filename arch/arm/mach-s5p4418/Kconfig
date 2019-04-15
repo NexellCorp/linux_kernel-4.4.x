@@ -98,6 +98,10 @@ config V4L2_INIT_LEVEL_UP
 	bool "v4l2 init level up"
 	depends on ARCH_S5P4418 && REDUCE_BOOT_TIME
 
+config BT_INIT_LEVEL_DOWN
+	bool "bluetooth init level down"
+	depends on ARCH_S5P4418 && REDUCE_BOOT_TIME
+
 config V4L2_DEBUG
 	bool "v4l2 probe debug"
 	depends on ARCH_S5P4418 && REDUCE_BOOT_TIME
