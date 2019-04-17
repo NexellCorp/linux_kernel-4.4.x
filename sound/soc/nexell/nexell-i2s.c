@@ -798,6 +798,10 @@ static int nx_i2s_hw_params(struct snd_pcm_substream *substream,
 	int BFS = (i2s->CSR >> CSR_BFS_POS) & 0x3;
 	int BLC = (i2s->CSR >> CSR_BLC_POS) & 0x3;
 	int ret = 0;
+	int sample_ch = params_channels(params);
+	struct nx_pcm_dma_param *dmap
+		= SNDRV_PCM_STREAM_PLAYBACK == substream->stream ?
+		&par->play : &par->capt;
 
 	dev_dbg(par->dev, "nx_i2s_hw_params, %d\n", format);
 
@@ -853,6 +857,11 @@ static int nx_i2s_hw_params(struct snd_pcm_substream *substream,
 		dev_dbg(par->dev, "i2s: default %d\n", format);
 		return -EINVAL;
 	}
+
+	if ((sample_ch == 1) && (format != SNDRV_PCM_FORMAT_S24_LE))
+		dmap->bus_width_byte = I2S_BUS_WIDTH/2;
+	else
+		dmap->bus_width_byte = I2S_BUS_WIDTH;
 
 	if (par->dfs) {
 		par->sample_rate =
