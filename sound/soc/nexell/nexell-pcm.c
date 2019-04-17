@@ -465,6 +465,16 @@ static int nx_pcm_hw_params(struct snd_pcm_substream *substream,
 {
 	struct nx_pcm_runtime_data *prtd = substream_to_prtd(substream);
 	int ret;
+	int sample_bits = snd_pcm_format_physical_width(params_format(params));
+	int sample_ch = params_channels(params);
+	struct nx_pcm_dma_param *dma_param = prtd->dma_param;
+
+	if (strstr(dev_name(prtd->dma_param->dev), "i2s")) {
+		if ((sample_ch == 1) && (sample_bits != 24))
+			dma_param->bus_width_byte = 2;
+		else
+			dma_param->bus_width_byte = 4;
+	}
 
 	ret = nx_pcm_dma_slave_config(prtd, substream->stream);
 	if (0 > ret)
