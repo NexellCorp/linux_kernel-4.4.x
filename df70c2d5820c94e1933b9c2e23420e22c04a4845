@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3cebf362_b2d1a923",
+        "filename": "sound/soc/nexell/nexell-i2s.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 960,
+      "author": {
+        "id": 1015511
+      },
+      "writtenOn": "2019-04-23T05:36:03Z",
+      "side": 1,
+      "message": "If channels_min is changed from 1 to 2, if two I2S channels are used at the same time as BT, ALSA read / write can not be performed because the available frames can not be updated.",
+      "range": {
+        "startLine": 960,
+        "startChar": 30,
+        "endLine": 960,
+        "endChar": 31
+      },
+      "revId": "df70c2d5820c94e1933b9c2e23420e22c04a4845",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6e3a9765_f5c27c8e",
+        "filename": "sound/soc/nexell/nexell-i2s.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 968,
+      "author": {
+        "id": 1015511
+      },
+      "writtenOn": "2019-04-23T05:36:03Z",
+      "side": 1,
+      "message": "If channels_min is changed from 1 to 2, if two I2S channels are used at the same time as BT, ALSA read / write can not be performed because the available frames can not be updated.",
+      "range": {
+        "startLine": 968,
+        "startChar": 29,
+        "endLine": 968,
+        "endChar": 30
+      },
+      "revId": "df70c2d5820c94e1933b9c2e23420e22c04a4845",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
