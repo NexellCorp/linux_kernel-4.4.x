@@ -32,6 +32,11 @@ config SND_NX_I2S_CH2
 	select SND_NX_I2S
 	default n
 
+config SND_NX_I2S_MONO
+	bool "I2S MONO"
+	depends on SND_NX_I2S
+	default n
+
 config SND_NX_SPDIF_TX
 	tristate
 
