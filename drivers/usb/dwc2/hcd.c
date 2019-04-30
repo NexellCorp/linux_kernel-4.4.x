@@ -3331,6 +3331,8 @@ void dwc2_hcd_queue_transactions(struct dwc2_hsotg *hsotg,
 static ssize_t sel_dr_mode_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
+	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
+#if 0
 	enum usb_dr_mode mode;
 
 	mode = usb_get_dr_mode(dev);
@@ -3341,6 +3343,12 @@ static ssize_t sel_dr_mode_show(struct device *dev,
 		return sprintf(buf, "%s", "device\n");
 	else
 		return sprintf(buf, "%s", "otg\n");
+#else
+	if (dwc2_is_host_mode(hsotg))
+		return sprintf(buf, "%s", "host\n");
+	else
+		return sprintf(buf, "%s", "device\n");
+#endif
 }
 
 static ssize_t sel_dr_mode_store(struct device *dev,
