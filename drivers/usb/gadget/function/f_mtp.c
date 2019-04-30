@@ -543,8 +543,11 @@ static ssize_t mtp_read(struct file *fp, char __user *buf,
 	int ret = 0;
 	size_t len = 0;
 
+	if (cdev == NULL) {
+		pr_err("[%s] cdev is NULL\n", __func__);
+		return -ENODEV;
+	}
 	DBG(cdev, "mtp_read(%zu)\n", count);
-
 	/* we will block until we're online */
 	DBG(cdev, "mtp_read: waiting for online state\n");
 	ret = wait_event_interruptible(dev->read_wq,
@@ -626,6 +629,11 @@ static ssize_t mtp_write(struct file *fp, const char __user *buf,
 	unsigned xfer;
 	int sendZLP = 0;
 	int ret;
+
+	if (cdev == NULL) {
+		pr_err("[%s] cdev is NULL\n", __func__);
+		return -ENODEV;
+	}
 
 	DBG(cdev, "mtp_write(%zu)\n", count);
 
