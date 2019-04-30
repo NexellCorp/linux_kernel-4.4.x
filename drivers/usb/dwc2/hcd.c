@@ -3331,16 +3331,12 @@ void dwc2_hcd_queue_transactions(struct dwc2_hsotg *hsotg,
 static ssize_t sel_dr_mode_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
-	enum usb_dr_mode mode;
+	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
 
-	mode = usb_get_dr_mode(dev);
-
-	if (mode == USB_DR_MODE_HOST)
+	if (dwc2_is_host_mode(hsotg))
 		return sprintf(buf, "%s", "host\n");
-	else if (mode == USB_DR_MODE_PERIPHERAL)
-		return sprintf(buf, "%s", "device\n");
 	else
-		return sprintf(buf, "%s", "otg\n");
+		return sprintf(buf, "%s", "device\n");
 }
 
 static ssize_t sel_dr_mode_store(struct device *dev,
