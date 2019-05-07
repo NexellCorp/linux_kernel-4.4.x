@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "60735e85_5a810f1e",
+        "filename": "drivers/usb/dwc2/hcd.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3346,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-05-07T02:28:27Z",
+      "side": 1,
+      "message": "Remove this part",
+      "range": {
+        "startLine": 3335,
+        "startChar": 0,
+        "endLine": 3346,
+        "endChar": 5
+      },
+      "revId": "05cd3bc1f6816fdb1942e55448fe03649f6cc31f",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
