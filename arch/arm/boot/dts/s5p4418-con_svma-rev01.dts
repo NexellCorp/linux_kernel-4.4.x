@@ -1,0 +1,83 @@
+/*
+ * Copyright (C) 2016  Nexell Co., Ltd.
+ * Author: Hyunseok, Jung <hsjung@nexell.co.kr>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/dts-v1/;
+#include "s5p4418-con_svma-common.dtsi"
+/ {
+	i2c_gpio3: i2c@3 {
+		/delete-property/ alc5621_1;
+		rt5633_1: rt5633_1@1c {
+			#sound-dai-cells = <0>;
+			compatible = "realtek,rt5633";
+			reg = <0x1c>;
+		};
+	};
+
+	i2c_gpio4: i2c@4 {
+		/delete-property/ alc5621_2;
+		rt5633_2: rt5633_2@1c {
+			#sound-dai-cells = <0>;
+			compatible = "realtek,rt5633";
+			reg = <0x1c>;
+		};
+	};
+
+	sound {
+		simple-audio-card,widgets =
+			"Microphone", "Mic Jack",
+			"Line", "Line In",
+			"Line", "Line Out",
+			"Speaker", "Speaker Out";
+		simple-audio-card,routing =
+			"Line Out", "AUXOUTL",
+			"Line Out", "AUXOUTR",
+			"Speaker Out", "SPOL",
+			"Speaker Out", "SPOR",
+			"MIC1", "Mic Jack",
+			"LINE1L", "Line In",
+			"LINE1R", "Line In";
+
+		simple-audio-card,dai-link@0 {
+			codec {
+				sound-dai = <&rt5633_2>;
+			};
+		};
+	};
+
+	sound-sub {
+		simple-audio-card,widgets =
+			"Microphone", "Mic Jack",
+			"Line", "Line In",
+			"Line", "Line Out",
+			"Speaker", "Speaker Out";
+		simple-audio-card,routing =
+			"Line Out", "AUXOUTL",
+			"Line Out", "AUXOUTR",
+			"Speaker Out", "SPOL",
+			"Speaker Out", "SPOR",
+			"MIC1", "Mic Jack",
+			"LINE1L", "Line In",
+			"LINE1R", "Line In";
+
+		simple-audio-card,dai-link@0 {
+			codec {
+				sound-dai = <&rt5633_1>;
+			};
+		};
+	};
+};
