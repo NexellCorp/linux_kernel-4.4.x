@@ -91,6 +91,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_RT286 if I2C
 	select SND_SOC_RT298 if I2C
 	select SND_SOC_RT5631 if I2C
+	select SND_SOC_RT5633 if I2C
 	select SND_SOC_RT5640 if I2C
 	select SND_SOC_RT5645 if I2C
 	select SND_SOC_RT5651 if I2C
@@ -560,6 +561,10 @@ config SND_SOC_RT298
 
 config SND_SOC_RT5631
 	tristate "Realtek ALC5631/RT5631 CODEC"
+	depends on I2C
+
+config SND_SOC_RT5633
+	tristate "Realtek ALC5633/RT5633 CODEC"
 	depends on I2C
 
 config SND_SOC_RT5640
