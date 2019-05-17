@@ -966,11 +966,7 @@ static void nx_i2s_dai_init(struct snd_soc_dai_driver *dai)
 	dai->symmetric_rates = 1;
 
 	dai->playback.stream_name = "Playback";
-#if defined(CONFIG_SND_NX_I2S_MONO)
 	dai->playback.channels_min = 1;
-#else
-	dai->playback.channels_min = 2;
-#endif
 	dai->playback.channels_max = 2;
 	dai->playback.formats = SND_SOC_I2S_FORMATS;
 	dai->playback.rates = SND_SOC_I2S_RATES;
@@ -978,11 +974,7 @@ static void nx_i2s_dai_init(struct snd_soc_dai_driver *dai)
 	dai->playback.rate_max = 192000;
 
 	dai->capture.stream_name = "Capture";
-#if defined(CONFIG_SND_NX_I2S_MONO)
 	dai->capture.channels_min = 1;
-#else
-	dai->capture.channels_min = 2;
-#endif
 	dai->capture.channels_max = 2;
 	dai->capture.formats = SND_SOC_I2S_FORMATS;
 	dai->capture.rates = SND_SOC_I2S_RATES;
