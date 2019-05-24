@@ -73,10 +73,12 @@ struct nx_decimator {
 	struct media_pad pads[NX_DECIMATOR_PAD_MAX];
 	struct nx_dma_buf buf;
 
-	u32 width;
-	u32 height;
+	u32 src_width;
+	u32 src_height;
 	u32 clip_width;
 	u32 clip_height;
+	u32 dst_width;
+	u32 dst_height;
 
 	atomic_t state;
 	struct completion stop_done;
@@ -199,7 +201,7 @@ static int handle_buffer_underrun(struct nx_decimator *me)
 {
 	if (me->buf.addr) {
 		nx_vip_set_decimator_addr(me->module, me->mem_fmt,
-					me->width, me->height,
+					me->dst_width, me->dst_height,
 					me->buf.handle[0], me->buf.handle[1],
 					me->buf.handle[2], me->buf.stride[0],
 					me->buf.stride[1]);
@@ -218,7 +220,7 @@ static int update_buffer(struct nx_decimator *me)
 	}
 
 	nx_vip_set_decimator_addr(me->module, me->mem_fmt,
-				me->width, me->height,
+				me->dst_width, me->dst_height,
 				buf->dma_addr[0], buf->dma_addr[1],
 				buf->dma_addr[2], buf->stride[0],
 				buf->stride[1]);
@@ -367,7 +369,7 @@ static struct v4l2_subdev *get_remote_source_subdev(struct nx_decimator *me)
 static void set_vip(struct nx_decimator *me, u32 clip_width, u32 clip_height)
 {
 	nx_vip_set_decimation(me->module, clip_width, clip_height,
-			      me->width, me->height);
+			      me->dst_width, me->dst_height);
 	nx_vip_set_decimator_format(me->module, me->mem_fmt);
 }
 
@@ -436,7 +438,7 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 				nx_video_clear_buffer(&me->vbuf_obj);
 				goto UP_AND_OUT;
 			}
-			set_vip(me, me->width, me->height);
+			set_vip(me, me->clip_width, me->clip_height);
 			ret = register_irq_handler(me);
 			if (ret) {
 				WARN_ON(1);
@@ -504,6 +506,7 @@ static int nx_decimator_set_selection(struct v4l2_subdev *sd,
 				      struct v4l2_subdev_selection *sel)
 {
 	struct nx_decimator *me = v4l2_get_subdevdata(sd);
+#if 0
 	struct v4l2_subdev *remote = get_remote_source_subdev(me);
 	int ret;
 
@@ -512,9 +515,9 @@ static int nx_decimator_set_selection(struct v4l2_subdev *sd,
 		dev_err(&me->pdev->dev, "failed to remote set_selection!\n");
 		return ret;
 	}
-
-	me->width = sel->r.width;
-	me->height = sel->r.height;
+#endif
+	me->dst_width = sel->r.width;
+	me->dst_height = sel->r.height;
 
 	return 0;
 }
@@ -534,8 +537,8 @@ static int nx_decimator_get_fmt(struct v4l2_subdev *sd,
 		return ret;
 	}
 	format->format.code = mem_fmt;
-	format->format.width = me->width;
-	format->format.height = me->height;
+	format->format.width = me->src_width;
+	format->format.height = me->src_height;
 
 	return 0;
 }
@@ -558,8 +561,10 @@ static int nx_decimator_set_fmt(struct v4l2_subdev *sd,
 	}
 	me->buf.format = format->format.code;
 	me->mem_fmt = nx_mem_fmt;
-	me->width = format->format.width;
-	me->height = format->format.height;
+	me->src_width = me->dst_width = me->clip_width
+		= format->format.width;
+	me->src_height = me->dst_height = me->clip_height
+		= format->format.height;
 	format->pad = 1;
 	ret = v4l2_subdev_call(remote, pad, set_fmt, NULL, format);
 	return ret;
@@ -621,12 +626,12 @@ static int nx_decimator_s_crop(struct v4l2_subdev *sd,
 	struct v4l2_subdev *remote = get_remote_source_subdev(me);
 	int ret;
 
-	if (me->width < (crop->c.width - crop->c.left) ||
-			me->height < (crop->c.height - crop->c.top)) {
+	if (me->src_width < (crop->c.width - crop->c.left) ||
+			me->src_height < (crop->c.height - crop->c.top)) {
 		dev_err(&me->pdev->dev, "Invalid scaledown size.\n");
 		dev_err(&me->pdev->dev, "The size must be less than");
 		dev_err(&me->pdev->dev, " w(%d)xh(%d)\n",
-			me->width, me->height);
+			me->src_width, me->src_height);
 
 		return -EINVAL;
 	}
@@ -635,8 +640,8 @@ static int nx_decimator_s_crop(struct v4l2_subdev *sd,
 	if (!ret) {
 		pr_debug("[%s] crop %d:%d:%d:%d\n", __func__, crop->c.left,
 				crop->c.top, crop->c.width, crop->c.height);
-		me->width = crop->c.width;
-		me->height = crop->c.height;
+		me->clip_width = me->dst_width = crop->c.width;
+		me->clip_height = me->dst_height = crop->c.height;
 	}
 	return 0;
 }
