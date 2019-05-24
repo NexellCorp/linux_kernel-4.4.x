@@ -1620,9 +1620,6 @@ static int nx_clipper_set_selection(struct v4l2_subdev *sd,
 				    struct v4l2_subdev_pad_config *cfg,
 				    struct v4l2_subdev_selection *sel)
 {
-	struct nx_clipper *me = v4l2_get_subdevdata(sd);
-
-	memcpy(&me->crop, &sel->r, sizeof(struct v4l2_rect));
 	return 0;
 }
 
