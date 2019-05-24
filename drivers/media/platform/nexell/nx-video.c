@@ -991,6 +991,24 @@ static int nx_video_set_crop(struct file *file, void *fh,
 	return v4l2_subdev_call(subdev, video, s_crop, a);
 }
 
+static int nx_video_set_selection(struct file *file, void *fh,
+			     const struct v4l2_selection *a)
+{
+	u32 pad;
+	struct nx_video *me = file->private_data;
+	struct v4l2_subdev *subdev = get_remote_subdev(me, a->type, &pad);
+	struct v4l2_subdev_selection s;
+
+	if (!subdev) {
+		WARN_ON(1);
+		return -ENODEV;
+	}
+	s.r.width = a->r.width;
+	s.r.height = a->r.height;
+
+	return v4l2_subdev_call(subdev, pad, set_selection, NULL, &s);
+}
+
 static int nx_video_g_ctrl(struct file *file, void *fh,
 			   struct v4l2_control *ctrl)
 {
@@ -1191,6 +1209,7 @@ static struct v4l2_ioctl_ops nx_video_ioctl_ops = {
 	.vidioc_cropcap                 = nx_video_cropcap,
 	.vidioc_g_crop                  = nx_video_get_crop,
 	.vidioc_s_crop                  = nx_video_set_crop,
+	.vidioc_s_selection		= nx_video_set_selection,
 	.vidioc_g_ctrl                  = nx_video_g_ctrl,
 	.vidioc_s_ctrl                  = nx_video_s_ctrl,
 	.vidioc_g_input			= nx_video_g_input,
