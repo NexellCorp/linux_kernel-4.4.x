@@ -568,7 +568,7 @@
 		data_order = <NX_VIN_CBY0CRY1>;
 		port = <1>;
 		external_sync = <0>;
-		interlace = <0>;
+		interlace = <1>;
 		clock_source = <4>;
 		clock_frequency = <300000000>;
 		status = "okay";
