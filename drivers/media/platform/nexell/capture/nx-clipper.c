@@ -680,7 +680,6 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 		me->clock_invert = 0;
 #endif
 		me->bus_fmt = NX_VIN_CBY0CRY1;
-		me->interlace = 0;
 	} else {
 		if (of_property_read_u32(np, "port", &me->port)) {
 			dev_err(dev, "failed to get dt port\n");
@@ -747,10 +746,10 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 				return -EINVAL;
 			}
 		}
-
-		/* optional */
-		of_property_read_u32(np, "interlace", &me->interlace);
 	}
+
+	/* optional */
+	of_property_read_u32(np, "interlace", &me->interlace);
 
 	/* common property */
 	if (of_property_read_u32(np, "data_order", &me->bus_fmt)) {
@@ -1153,7 +1152,8 @@ static irqreturn_t nx_clipper_irq_handler(void *data)
 {
 	struct nx_clipper *me = data;
 
-	bool interlace = me->interlace;
+	bool is_mipi = me->interface_type == NX_CAPTURE_INTERFACE_MIPI_CSI;
+	bool interlace = (!is_mipi) ? me->interlace : 0;
 	bool do_process = true;
 
 	if (NX_ATOMIC_READ(&me->state) & STATE_MEM_STOPPING) {
@@ -1248,7 +1248,7 @@ static void set_vip(struct nx_clipper *me)
 	}
 	nx_vip_set_input_port(module, me->port);
 	nx_vip_set_field_mode(module, false, nx_vip_fieldsel_bypass,
-			      me->interlace, false);
+			(!is_mipi) ? me->interlace : 0, false);
 
 	if (is_mipi) {
 		nx_vip_set_data_mode(module, me->bus_fmt, 16);
@@ -1262,6 +1262,11 @@ static void set_vip(struct nx_clipper *me)
 					   me->v_syncwidth,
 					   me->v_frontporch,
 					   me->v_backporch);
+		nx_vip_set_clip_region(module,
+				me->crop.left,
+				me->crop.top,
+				me->crop.left + me->crop.width,
+				me->crop.top + me->crop.height);
 	} else {
 		nx_vip_set_data_mode(module, me->bus_fmt, 8);
 		nx_vip_set_dvalid_mode(module, false, false, false);
@@ -1279,17 +1284,16 @@ static void set_vip(struct nx_clipper *me)
 				  me->v_syncwidth,
 				  me->v_frontporch,
 				  me->v_backporch);
+		nx_vip_set_clip_region(module,
+				me->crop.left,
+				me->crop.top,
+				me->crop.left + me->crop.width,
+				me->interlace ?
+				(me->crop.top + me->crop.height) >> 1 :
+				(me->crop.top + me->crop.height));
 	}
 
 	nx_vip_set_fiforeset_mode(module, nx_vip_fiforeset_all);
-
-	nx_vip_set_clip_region(module,
-			       me->crop.left,
-			       me->crop.top,
-			       me->crop.left + me->crop.width,
-			       me->interlace ?
-			       (me->crop.top + me->crop.height) >> 1 :
-			       (me->crop.top + me->crop.height));
 }
 
 /**
