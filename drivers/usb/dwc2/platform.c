@@ -55,6 +55,211 @@
 
 static const char dwc2_driver_name[] = "dwc2";
 
+
+static struct kobject *otg_kobj;
+struct dwc2_hsotg *g_hsotg;
+
+static int dwc2_usbotg_device_set_test_mode(struct dwc2_hsotg *hsotg, int testmode)
+{
+	int val = 0;
+
+	switch (testmode) {
+	case 0:
+	case TEST_J:
+	case TEST_K:
+	case TEST_SE0_NAK:
+	case TEST_PACKET:
+	case TEST_FORCE_EN:
+		val = testmode << DCTL_TSTCTL_SHIFT;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	dwc2_writel(val, hsotg->regs + DCTL);
+
+	return 0;
+}
+
+static ssize_t show_device_test_mode(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	dev_info(dev, "ex) # echo test_packet > /sys/usbotg_test_mode/device \n");
+	dev_info(dev, "           test_j \n");
+	dev_info(dev, "           test_k \n");
+	dev_info(dev, "           test_se0_nak \n");
+	dev_info(dev, "           test_packet \n");
+	dev_info(dev, "           test_force_enable \n");
+	dev_info(dev, "           test_mode_disable \n");
+
+	return 0;
+}
+
+static ssize_t store_device_test_mode(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long flags;
+	ssize_t ret;
+	u32 testmode = 0;
+
+	if (!strncmp(buf, "test_j", 6)) {
+		testmode = TEST_J;
+	}
+	else if (!strncmp(buf, "test_k", 6)) {
+		testmode = TEST_K;
+	}
+	else if (!strncmp(buf, "test_se0_nak", 12)) {
+		testmode = TEST_SE0_NAK;
+	}
+	else if (!strncmp(buf, "test_packet", 11)) {
+		testmode = TEST_PACKET;
+	}
+	else if (!strncmp(buf, "test_force_enable", 17)) {
+		testmode = TEST_FORCE_EN;
+	}
+	else if (!strncmp(buf, "test_mode_disable", 17)) {
+		testmode = 0;
+	} else {
+		ret = count;
+		return ret;
+	}
+
+	dev_info(dev, " [\e[31m%s\e[0m():%d] otg device testmode:%d, buf:%s\n",
+		__func__, __LINE__, testmode, buf);
+
+	spin_lock_irqsave(&g_hsotg->lock, flags);
+
+	dwc2_usbotg_device_set_test_mode(g_hsotg, testmode);
+
+	spin_unlock_irqrestore(&g_hsotg->lock, flags);
+
+	ret = count;
+
+	return ret;
+}
+static DEVICE_ATTR(device, 0644, show_device_test_mode, store_device_test_mode);
+
+static int dwc2_usbotg_host_set_test_mode(struct dwc2_hsotg *hsotg, int testmode)
+{
+	int val = 0;
+
+	switch (testmode) {
+	case 0:
+	case TEST_J:
+	case TEST_K:
+	case TEST_SE0_NAK:
+	case TEST_PACKET:
+	case TEST_FORCE_EN:
+		val = testmode << HPRT0_TSTCTL_SHIFT;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	dwc2_writel(val, hsotg->regs + HPRT0);
+
+	return 0;
+}
+
+static ssize_t show_host_test_mode(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	dev_info(dev, "ex) # echo test_packet > /sys/usbotg_test_mode/host \n");
+	dev_info(dev, "           test_j \n");
+	dev_info(dev, "           test_k \n");
+	dev_info(dev, "           test_se0_nak \n");
+	dev_info(dev, "           test_packet \n");
+	dev_info(dev, "           test_force_enable \n");
+	dev_info(dev, "           test_mode_disable \n");
+
+	return 0;
+}
+
+static ssize_t store_host_test_mode(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long flags;
+	ssize_t ret;
+	u32 testmode = 0;
+
+	if (!strncmp(buf, "test_j", 6)) {
+		testmode = TEST_J;
+	}
+	else if (!strncmp(buf, "test_k", 6)) {
+		testmode = TEST_K;
+	}
+	else if (!strncmp(buf, "test_se0_nak", 12)) {
+		testmode = TEST_SE0_NAK;
+	}
+	else if (!strncmp(buf, "test_packet", 11)) {
+		testmode = TEST_PACKET;
+	}
+	else if (!strncmp(buf, "test_force_enable", 17)) {
+		testmode = TEST_FORCE_EN;
+	}
+	else if (!strncmp(buf, "test_mode_disable", 17)) {
+		testmode = 0;
+	} else {
+		ret = count;
+		return ret;
+	}
+
+	dev_info(dev, " [\e[31m%s\e[0m():%d] otg host testmode:%d, buf:%s\n",
+		__func__, __LINE__, testmode, buf);
+
+	spin_lock_irqsave(&g_hsotg->lock, flags);
+
+	dwc2_usbotg_host_set_test_mode(g_hsotg, testmode);
+
+	spin_unlock_irqrestore(&g_hsotg->lock, flags);
+
+	ret = count;
+
+	return ret;
+}
+static DEVICE_ATTR(host, 0644, show_host_test_mode, store_host_test_mode);
+
+static int create_test_mode_sysfs_files(struct dwc2_hsotg *hsotg)
+{
+	int	ret = 0;
+
+	g_hsotg = hsotg;
+
+	otg_kobj = kobject_create_and_add("usbotg_test_mode", NULL);
+	if (otg_kobj == NULL) {
+		dev_err(hsotg->dev, "otg_kobj:" "kobject_create_and_add failed\n");
+		ret = -ENOMEM;
+		return ret;
+	}
+
+	ret = sysfs_create_file(otg_kobj, &dev_attr_host.attr);
+	if (ret) {
+		dev_err(hsotg->dev, "otg host:" "sysfs_create_group failed\n");
+		kobject_del(otg_kobj);
+		return ret;
+	}
+
+	ret = sysfs_create_file(otg_kobj, &dev_attr_device.attr);
+	if (ret) {
+		dev_err(hsotg->dev, "otg device:" "sysfs_create_group failed\n");
+		sysfs_remove_file(otg_kobj, &dev_attr_host.attr);
+		kobject_del(otg_kobj);
+		return ret;
+	}
+	return ret;
+}
+
+static inline void remove_test_mode_sysfs_files(struct dwc2_hsotg *hsotg)
+{
+	sysfs_remove_file(otg_kobj, &dev_attr_host.attr);
+	sysfs_remove_file(otg_kobj, &dev_attr_device.attr);
+	kobject_del(otg_kobj);
+}
+
 /*
  * Check the dr_mode against the module configuration and hardware
  * capabilities.
@@ -334,6 +539,8 @@ static int dwc2_driver_remove(struct platform_device *dev)
 
 	reset_control_assert(hsotg->reset);
 
+	remove_test_mode_sysfs_files(hsotg);
+
 	return 0;
 }
 
@@ -488,6 +695,8 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	platform_set_drvdata(dev, hsotg);
 
 	dwc2_debugfs_init(hsotg);
+
+	create_test_mode_sysfs_files(hsotg);
 
 	/* Gadget code manages lowlevel hw on its own */
 	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL)
