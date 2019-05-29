@@ -20,6 +20,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include "s5p6818.dtsi"
+#include "../../../../include/generated/autoconf.h"
 
 / {
 	memory {
@@ -49,7 +50,7 @@
 			uart3:uart@c00ab000 { clock-frequency = <147500000>; };
 			uart4:uart@c006e000 { clock-frequency = <147500000>; };
 
-			vip0:vip@c00c1000 { clock-frequency = <300000000>; };
+			vip2:vip@c009a000 { src-force = <4>; };
 
 			spi2:spi@c00a7000  { clock-frequency = <20000000>; };
 
@@ -336,6 +337,7 @@
 			i2s2_bus:i2s2 {
 				/delete-node/ i2s2-mclk;
 			};
+
 		};
 	}; /*** soc ***/
 
@@ -624,7 +626,73 @@
 			};
 		};
 	};
+#ifdef CONFIG_VIDEO_TW9900
+	decimator_10:decimator10@c0099000 {
+		compatible = "nexell,nx-decimator";
+		module = <2>;
+		logical = <1>;
+		logical_num = <0>;
+		status = "disabled";
+	};
+
+	clipper_10:clipper10@c0099000 {
+		compatible = "nexell,nx-clipper";
+		module = <2>;
+		logical = <1>;
+		logical_num = <0>;
+		interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&vid0_data_clk>;
+		data_order = <NX_VIN_CBY0CRY1>;
+		port = <0>;
+		external_sync = <0>;
+		interlace = <1>;
+		status = "disabled";
+
+		sensor {
+			type = <NX_CAPTURE_SENSOR_I2C>;
+			i2c_name = "tw9900";
+			i2c_adapter = <8>;
+			addr = <0x44>;
+		};
+	};
+#endif
 };
+
+&vip_2 {
+	status = "okay";
+};
+
+#ifdef CONFIG_VIDEO_TP2825
+&clipper_2 {
+	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&tp2825_reset &vid0_data_clk>;
+	gpios = <&gpio_c 2 0>;
+	data_order = <NX_VIN_CBY0CRY1>;
+	port = <0>;
+	external_sync = <0>;
+	interlace = <0>;
+	status = "okay";
+
+	sensor {
+		type = <NX_CAPTURE_SENSOR_I2C>;
+		i2c_name = "tp2825";
+		i2c_adapter = <7>;
+		addr = <0x45>;
+	};
+
+	power {
+		enable_seq = <
+		NX_ACTION_START NX_ACTION_TYPE_GPIO 0 1 1 NX_ACTION_END
+		>;
+	};
+};
+
+&decimator_2 {
+	status = "okay";
+};
+#endif
 
 &dp_drm {
 	status = "okay";
