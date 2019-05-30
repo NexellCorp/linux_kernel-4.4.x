@@ -712,8 +712,8 @@ void nx_vip_get_clip_region(u32 module_index, u32 *p_left, u32 *p_top,
 		*p_bottom = (u32)p_register->clip_bottom;
 }
 
-static u32 deci_src_width[2];
-static u32 deci_src_height[2];
+static u32 deci_src_width[3];
+static u32 deci_src_height[3];
 void nx_vip_set_decimation(u32 module_index, u32 src_width, u32 src_height,
 			   u32 dst_width, u32 dst_height)
 {
