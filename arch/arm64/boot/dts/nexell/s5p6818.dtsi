@@ -807,6 +807,19 @@
 			status = "disabled";
 		};
 
+		/* logical device
+		 * the number of the logical device is calculated by following way
+		 * ((module * VIP_MAX_LOGICAL_DEV(3)) + logical_num +
+		 * VIP_LOGICAL_START(3))
+		 */
+		clipper_9:clipper9@c0099000 {
+			compatible = "nexell,nx-clipper";
+			module = <2>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
 		decimator_0:decimator0@c0063000 {
 			compatible = "nexell,nx-decimator";
 			module = <0>;
@@ -822,6 +835,19 @@
 		decimator_2:decimator2@c0099000 {
 			compatible = "nexell,nx-decimator";
 			module = <2>;
+			status = "disabled";
+		};
+
+		/* logical device
+		 * the number of the logical device is calculated by following way
+		 * ((module * VIP_MAX_LOGICAL_DEV(3)) + logical_num +
+		 * VIP_LOGICAL_START(3))
+		 */
+		decimator_9:decimator9@c0099000 {
+			compatible = "nexell,nx-decimator";
+			module = <2>;
+			logical = <1>;
+			logical_num = <0>;
 			status = "disabled";
 		};
 
