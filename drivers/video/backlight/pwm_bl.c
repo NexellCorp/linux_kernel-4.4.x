@@ -105,6 +105,17 @@ static int pwm_backlight_update_status(struct backlight_device *bl)
 
 	if (brightness > 0) {
 		duty_cycle = compute_duty_cycle(pb, brightness);
+#ifdef CONFIG_ARCH_S5P4418
+		/**
+		 * WORKAROUND: PWM issue
+		 *
+		 * when duty_cycle and pb->period max value are same,
+		 * pwm does not maintain high level.
+		 * A workaround code to avoid turning off the backlight.
+		 */
+		if(duty_cycle >= pb->period)
+			duty_cycle = pb->period - 1;
+#endif
 		pwm_config(pb->pwm, duty_cycle, pb->period);
 		pwm_backlight_power_on(pb, brightness);
 	} else
