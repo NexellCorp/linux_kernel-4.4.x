@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5b3325d3_0e1c0b46",
+        "filename": "drivers/video/backlight/pwm_bl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-05-30T02:27:29Z",
+      "side": 1,
+      "message": "Does s5p6818 also need this patch?",
+      "range": {
+        "startLine": 108,
+        "startChar": 7,
+        "endLine": 108,
+        "endChar": 26
+      },
+      "revId": "6ee9579e6d1378f3bec1b6dd61a4990e3805afc7",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
