@@ -681,6 +681,10 @@
 	status = "disabled";
 };
 
+&deinterlacer {
+	status = "okay";
+};
+
 &dp_drm {
 	status = "okay";
 	ports {
