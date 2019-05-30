@@ -22,6 +22,30 @@
       "revId": "6ee9579e6d1378f3bec1b6dd61a4990e3805afc7",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ff26182_cfc2e8d1",
+        "filename": "drivers/video/backlight/pwm_bl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 1015521
+      },
+      "writtenOn": "2019-05-30T02:38:18Z",
+      "side": 1,
+      "message": "this fix has been tested on the s5p4418_convergence board only.",
+      "parentUuid": "5b3325d3_0e1c0b46",
+      "range": {
+        "startLine": 108,
+        "startChar": 7,
+        "endLine": 108,
+        "endChar": 26
+      },
+      "revId": "6ee9579e6d1378f3bec1b6dd61a4990e3805afc7",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
     }
   ]
 }
