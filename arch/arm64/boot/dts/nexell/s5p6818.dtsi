@@ -807,6 +807,83 @@
 			status = "disabled";
 		};
 
+		/*
+		 * logical device started from clipper3
+		 * the number of the device is calculated by following way
+		 * ((module * VIP_MAX_LOGICAL_DEV(3)) + logical_num)
+		 */
+		clipper_3:clipper3@c0063000 {
+			compatible = "nexell,nx-clipper";
+			module = <0>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		clipper_4:clipper4@c0063000 {
+			compatible = "nexell,nx-clipper";
+			module = <0>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		clipper_5:clipper5@c0063000 {
+			compatible = "nexell,nx-clipper";
+			module = <0>;
+			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
+		};
+
+		clipper_6:clipper6@c0064000 {
+			compatible = "nexell,nx-clipper";
+			module = <1>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		clipper_7:clipper7@c0064000 {
+			compatible = "nexell,nx-clipper";
+			module = <1>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		clipper_8:clipper8@c0064000 {
+			compatible = "nexell,nx-clipper";
+			module = <1>;
+			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
+		};
+
+		clipper_9:clipper9@c0099000 {
+			compatible = "nexell,nx-clipper";
+			module = <2>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		clipper_10:clipper10@c0099000 {
+			compatible = "nexell,nx-clipper";
+			module = <2>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		clipper_11:clipper11@c0099000 {
+			compatible = "nexell,nx-clipper";
+			module = <2>;
+			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
+		};
+
 		decimator_0:decimator0@c0063000 {
 			compatible = "nexell,nx-decimator";
 			module = <0>;
@@ -822,6 +899,84 @@
 		decimator_2:decimator2@c0099000 {
 			compatible = "nexell,nx-decimator";
 			module = <2>;
+			status = "disabled";
+		};
+
+		/*
+		 * logical device started from decimator3
+		 * the number of the device is calculated by following way
+		 * ((module * VIP_MAX_LOGICAL_DEV(3)) + logical_num)
+		 */
+
+		decimator_3:decimator3@c0063000 {
+			compatible = "nexell,nx-decimator";
+			module = <0>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		decimator_4:decimator4@c0063000 {
+			compatible = "nexell,nx-decimator";
+			module = <0>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		decimator_5:decimator5@c0063000 {
+			compatible = "nexell,nx-decimator";
+			module = <0>;
+			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
+		};
+
+		decimator_6:decimator6@c0064000 {
+			compatible = "nexell,nx-decimator";
+			module = <1>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		decimator_7:decimator7@c0064000 {
+			compatible = "nexell,nx-decimator";
+			module = <1>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		decimator_8:decimator8@c0064000 {
+			compatible = "nexell,nx-decimator";
+			module = <1>;
+			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
+		};
+
+		decimator_9:decimator9@c0099000 {
+			compatible = "nexell,nx-decimator";
+			module = <2>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		decimator_10:decimator10@c0099000 {
+			compatible = "nexell,nx-decimator";
+			module = <2>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		decimator_11:decimator11@c0099000 {
+			compatible = "nexell,nx-decimator";
+			module = <2>;
+			logical = <1>;
+			logical_num = <2>;
 			status = "disabled";
 		};
 
