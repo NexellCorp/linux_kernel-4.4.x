@@ -33,6 +33,14 @@
 				clk-input = <(CLK_INPUT_UART & ~I_PLL2)>;
 			};
 
+			uart4:uart@c006e000 {
+				clk-input = <(CLK_INPUT_UART & ~I_PLL2)>;
+			};
+
+			uart5:uart@c0084000 {
+				clk-input = <(CLK_INPUT_UART & ~I_PLL2)>;
+			};
+
 			pwm0:pwm0@c00ba000 {
 				clk-input = <(CLK_INPUT_PWM & ~I_PLL2)>;
 			};
