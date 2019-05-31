@@ -440,6 +440,7 @@
 		simple-audio-card,name = "s5p6818 Convergence Car Audio Main";
 		simple-audio-card,mclk-fs = <256>;
 		simple-audio-card,widgets =
+			"Line", "Line Out",
 			"Microphone", "Mic Jack",
 			"Line", "Line In",
 			"Speaker", "Speaker Out";
@@ -493,6 +494,7 @@
 		simple-audio-card,name = "s5p6818 Convergence Car Audio Sub";
 		simple-audio-card,mclk-fs = <256>;
 		simple-audio-card,widgets =
+			"Line", "Line Out",
 			"Microphone", "Mic Jack",
 			"Line", "Line In",
 			"Speaker", "Speaker Out";
