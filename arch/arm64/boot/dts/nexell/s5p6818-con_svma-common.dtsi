@@ -20,6 +20,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include "s5p6818.dtsi"
+#include "s5p6818-audio-dfs-pll3.dtsi"
 
 / {
 	memory {
