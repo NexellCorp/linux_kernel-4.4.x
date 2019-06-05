@@ -28,6 +28,7 @@ int quiet;		/* Level of quietness */
 int reservenum;		/* Number of memory reservation slots */
 int minsize;		/* Minimum blob size */
 int padsize;		/* Additional padding to blob */
+int align_size;		/* Additional padding to blob accroding to the align size */
 int phandle_format = PHANDLE_BOTH;	/* Use linux,phandle or phandle properties */
 int symbol_fixup_support = 0;
 
@@ -52,7 +53,7 @@ static void fill_fullpaths(struct node *tree, const char *prefix)
 #define FDT_VERSION(version)	_FDT_VERSION(version)
 #define _FDT_VERSION(version)	#version
 static const char usage_synopsis[] = "dtc [options] <input file>";
-static const char usage_short_opts[] = "qI:O:o:V:d:R:S:p:fb:i:H:sW:E:@hv";
+static const char usage_short_opts[] = "qI:O:o:V:d:R:S:p:a:fb:i:H:sW:E:@hv";
 static struct option const usage_long_opts[] = {
 	{"quiet",            no_argument, NULL, 'q'},
 	{"in-format",         a_argument, NULL, 'I'},
@@ -63,6 +64,7 @@ static struct option const usage_long_opts[] = {
 	{"reserve",           a_argument, NULL, 'R'},
 	{"space",             a_argument, NULL, 'S'},
 	{"pad",               a_argument, NULL, 'p'},
+	{"align",             a_argument, NULL, 'a'},
 	{"boot-cpu",          a_argument, NULL, 'b'},
 	{"force",            no_argument, NULL, 'f'},
 	{"include",           a_argument, NULL, 'i'},
@@ -91,6 +93,7 @@ static const char * const usage_opts_help[] = {
 	"\n\tMake space for <number> reserve map entries (for dtb and asm output)",
 	"\n\tMake the blob at least <bytes> long (extra space)",
 	"\n\tAdd padding to the blob of <bytes> long (extra space)",
+	"\n\tMake the blob align to the <bytes> (extra space)",
 	"\n\tSet the physical boot cpu",
 	"\n\tTry to produce output even if the input tree has errors",
 	"\n\tAdd a path to search for include files",
@@ -125,6 +128,7 @@ int main(int argc, char *argv[])
 	reservenum = 0;
 	minsize    = 0;
 	padsize    = 0;
+	align_size = 0;
 
 	while ((opt = util_getopt_long()) != EOF) {
 		switch (opt) {
@@ -151,6 +155,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'p':
 			padsize = strtol(optarg, NULL, 0);
+			break;
+		case 'a':
+			align_size = strtol(optarg, NULL, 0);
 			break;
 		case 'f':
 			force = true;
