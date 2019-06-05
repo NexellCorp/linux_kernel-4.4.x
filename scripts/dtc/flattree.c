@@ -615,6 +615,13 @@ void dt_to_blob(FILE *f, struct boot_info *bi, int version)
 		fdt.totalsize = cpu_to_fdt32(tsize);
 	}
 
+	if (align_size > 0) {
+		int tsize = fdt32_to_cpu(fdt.totalsize);
+		padlen += (align_size - tsize % align_size);
+		tsize += padlen;
+		fdt.totalsize = cpu_to_fdt32(tsize);
+	}
+
 	/*
 	 * Assemble the blob: start with the header, add with alignment
 	 * the reserve buffer, add the reserve map terminating zeroes,
@@ -773,6 +780,9 @@ void dt_to_asm(FILE *f, struct boot_info *bi, int version)
 	}
 	if (padsize > 0) {
 		fprintf(f, "\t.space\t%d, 0\n", padsize);
+	}
+	if (align_size > 0) {
+		fprintf(f, "\t.space\t%d, 0\n", align_size);
 	}
 	emit_label(f, symprefix, "blob_abs_end");
 
