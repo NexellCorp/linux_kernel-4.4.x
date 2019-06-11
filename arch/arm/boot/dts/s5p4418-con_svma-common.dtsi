@@ -963,7 +963,7 @@
 		compatible = "nexell,nxe2000";
 		reg = <0x32>;
 		interrupt-parent = <&alive_0>;
-		interrupts = <0x5 IRQ_TYPE_EDGE_FALLING>;
+		interrupts = <0x4 IRQ_TYPE_EDGE_FALLING>;
 
 		regulators {
 			VCC_DCDC0:
