@@ -11,7 +11,7 @@ dtb-$(CONFIG_ARCH_S5P6818) += s5p6818-kick-st-rev00.dtb
 dtb-$(CONFIG_ARCH_NXP5540) += nxp5540-evb.dtb
 
 ifeq ($(CONFIG_ARCH_S5P6818),y)
-	DTC_FLAGS	?= -@ -H epapr
+	DTC_FLAGS	?= -@ -H epapr -a 2048
 endif
 
 always		:= $(dtb-y)
