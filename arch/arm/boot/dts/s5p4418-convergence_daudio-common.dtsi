@@ -682,7 +682,7 @@
 	data_order = <NX_VIN_CBY0CRY1>;
 	port = <1>;
 	external_sync = <0>;
-	interlace = <1>;
+	interlace = <0>;
 	status = "okay";
 
 	sensor {
