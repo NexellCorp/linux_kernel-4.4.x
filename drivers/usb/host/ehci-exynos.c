@@ -29,6 +29,13 @@
 
 #include "ehci.h"
 
+#if defined(CONFIG_ARCH_S5P4418)
+#include <dt-bindings/tieoff/s5p4418-tieoff.h>
+#elif defined(CONFIG_ARCH_S5P6818)
+#include <dt-bindings/tieoff/s5p6818-tieoff.h>
+#endif
+#include <soc/nexell/tieoff.h>
+
 #define DRIVER_DESC "EHCI EXYNOS driver"
 
 #define EHCI_INSNREG00(base)			(base + 0x90)
@@ -40,11 +47,17 @@
 	(EHCI_INSNREG00_ENA_INCR16 | EHCI_INSNREG00_ENA_INCR8 |	\
 	 EHCI_INSNREG00_ENA_INCR4 | EHCI_INSNREG00_ENA_INCRX_ALIGN)
 #if defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818)
+#define PORTSC_1(base)					(base + 0x54)
 #define EHCI_INSNREG08(base)			(base + 0xb0)
 #endif
 
 static const char hcd_name[] = "ehci-exynos";
 static struct hc_driver __read_mostly exynos_ehci_hc_driver;
+
+#ifdef CONFIG_USB_EHCI_EXYNOS_TEST_MODE
+static struct kobject *host_kobj;
+struct usb_hcd *host_hcd;
+#endif
 
 #define PHY_NUMBER 3
 
@@ -158,6 +171,433 @@ static void exynos_setup_vbus_gpio(struct device *dev)
 		dev_err(dev, "can't request ehci vbus gpio %d", gpio);
 }
 
+#ifdef CONFIG_USB_EHCI_EXYNOS_TEST_MODE
+static ssize_t show_host_test_mode(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	int32_t readVal;
+
+	readVal = readl(PORTSC_1(host_hcd->regs));
+
+	pr_info("%s():%d host testmode HOST_PORTSC_1:0x%x\n", __func__,
+		__LINE__, readVal);
+
+	return sprintf(buf, "HOST_PORTSC_1 Port Test Control [0x%x]\n",
+		       (readVal >> 16) & 0xf);
+}
+
+static ssize_t store_host_test_mode(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 5))
+		return -EINVAL;
+
+	pr_info("HOST_PORTSC_1 value = 0x%x\n", value);
+
+	writel((readl(PORTSC_1(host_hcd->regs)) & 0xfff0ffff) | (value << 16),
+	       PORTSC_1(host_hcd->regs));
+
+	return len;
+}
+
+static DEVICE_ATTR(host_test_mode, 0644, show_host_test_mode,
+		   store_host_test_mode);
+
+/* NX_TIEOFF_USB20HOST0_i_COMPDISTUNE */
+static ssize_t show_host_compdistune(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20HOST0_i_COMPDISTUNE);
+
+	return sprintf(buf, "HOST_COMPDISTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_host_compdistune(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 7))
+		return -EINVAL;
+
+	pr_info("HOST_COMPDISTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20HOST0_i_COMPDISTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(host_compdistune, 0644, show_host_compdistune,
+		   store_host_compdistune);
+
+/* NX_TIEOFF_USB20HOST0_i_SQRXTUNE */
+static ssize_t show_host_sqrxtune(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20HOST0_i_SQRXTUNE);
+
+	return sprintf(buf, "HOST_SQRXTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_host_sqrxtune(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 7))
+		return -EINVAL;
+
+	pr_info("HOST_SQRXTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20HOST0_i_SQRXTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(host_sqrxtune, 0644, show_host_sqrxtune,
+		   store_host_sqrxtune);
+
+/* NX_TIEOFF_USB20HOST0_i_OTGTUNE */
+static ssize_t show_host_otgtune(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20HOST0_i_OTGTUNE);
+
+	return sprintf(buf, "HOST_OTGTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_host_otgtune(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 7))
+		return -EINVAL;
+
+	pr_info("HOST_OTGTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20HOST0_i_OTGTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(host_otgtune, 0644, show_host_otgtune, store_host_otgtune);
+
+/* NX_TIEOFF_USB20HOST0_i_TXHSXVTUNE */
+static ssize_t show_host_txhsxvtune(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20HOST0_i_TXHSXVTUNE);
+
+	return sprintf(buf, "HOST_TXHSXVTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_host_txhsxvtune(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 3))
+		return -EINVAL;
+
+	pr_info("HOST_TXHSXVTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20HOST0_i_TXHSXVTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(host_txhsxvtune, 0644, show_host_txhsxvtune,
+		   store_host_txhsxvtune);
+
+/* NX_TIEOFF_USB20HOST0_i_TXFSLSTUNE */
+static ssize_t show_host_txfslstune(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20HOST0_i_TXFSLSTUNE);
+
+	return sprintf(buf, "HOST_TXFSLSTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_host_txfslstune(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value == 0) || (value == 1) || (value == 3) || (value == 7) ||
+	    (value == 15))
+		pr_info("%s() valid value = 0x%x\n", __func__, value);
+	else
+		return -EINVAL;
+
+	pr_info("HOST_TXFSLSTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20HOST0_i_TXFSLSTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(host_txfslstune, 0644, show_host_txfslstune,
+		   store_host_txfslstune);
+
+/* NX_TIEOFF_USB20HOST0_i_TXVREFTUNE */
+static ssize_t show_host_txvreftune(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20HOST0_i_TXVREFTUNE);
+
+	return sprintf(buf, "HOST_TXVREFTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_host_txvreftune(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 15))
+		return -EINVAL;
+
+	pr_info("HOST_TXVREFTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20HOST0_i_TXVREFTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(host_txvreftune, 0644, show_host_txvreftune,
+		   store_host_txvreftune);
+
+/* NX_TIEOFF_USB20HOST0_i_TXRISETUNE */
+static ssize_t show_host_txrisetune(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20HOST0_i_TXRISETUNE);
+
+	return sprintf(buf, "HOST_TXRISETUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_host_txrisetune(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 3))
+		return -EINVAL;
+
+	pr_info("HOST_TXRISETUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20HOST0_i_TXRISETUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(host_txrisetune, 0644, show_host_txrisetune,
+		   store_host_txrisetune);
+
+/* NX_TIEOFF_USB20HOST0_i_TXRESTUNE */
+static ssize_t show_host_txrestune(struct device *dev,
+				   struct device_attribute *attr,
+				   char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20HOST0_i_TXRESTUNE);
+
+	return sprintf(buf, "HOST_TXRESTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_host_txrestune(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 3))
+		return -EINVAL;
+
+	pr_info("HOST_TXRESTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20HOST0_i_TXRESTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(host_txrestune, 0644, show_host_txrestune,
+		   store_host_txrestune);
+
+/* NX_TIEOFF_USB20HOST0_i_TXPREEMPAMPTUNE */
+static ssize_t show_host_txpreempamptune(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20HOST0_i_TXPREEMPAMPTUNE);
+
+	return sprintf(buf, "HOST_TXPREEMPAMPTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_host_txpreempamptune(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 3))
+		return -EINVAL;
+
+	pr_info("HOST_TXPREEMPAMPTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20HOST0_i_TXPREEMPAMPTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(host_txpreempamptune, 0644, show_host_txpreempamptune,
+		   store_host_txpreempamptune);
+
+/* NX_TIEOFF_USB20HOST0_i_TXPREEMPPULSETUNE */
+static ssize_t show_host_txpreemppulsetune(struct device *dev,
+					   struct device_attribute *attr,
+					   char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20HOST0_i_TXPREEMPPULSETUNE);
+
+	return sprintf(buf, "HOST_TXPREEMPPULSETUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_host_txpreemppulsetune(struct device *dev,
+					    struct device_attribute *attr,
+					    const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 1))
+		return -EINVAL;
+
+	pr_info("HOST_TXPREEMPPULSETUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20HOST0_i_TXPREEMPPULSETUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(host_txpreemppulsetune, 0644, show_host_txpreemppulsetune,
+		   store_host_txpreemppulsetune);
+
+static struct attribute *host_attrs[] = {
+	&dev_attr_host_test_mode.attr,
+	&dev_attr_host_compdistune.attr,
+	&dev_attr_host_sqrxtune.attr,
+	&dev_attr_host_otgtune.attr,
+	&dev_attr_host_txhsxvtune.attr,
+	&dev_attr_host_txfslstune.attr,
+	&dev_attr_host_txvreftune.attr,
+	&dev_attr_host_txrisetune.attr,
+	&dev_attr_host_txrestune.attr,
+	&dev_attr_host_txpreempamptune.attr,
+	&dev_attr_host_txpreemppulsetune.attr,
+	NULL,
+};
+
+static struct attribute_group usb_host_attr_group = {
+	.attrs = (struct attribute **)host_attrs,
+};
+
+static int create_host_test_mode_sysfs(struct device *dev)
+{
+	struct usb_hcd *hcd = dev_get_drvdata(dev);
+	int	ret = 0;
+
+	host_hcd = hcd;
+
+	host_kobj = kobject_create_and_add("usb_host_test", NULL);
+	if (host_kobj == NULL) {
+		dev_err(dev, "host_kobj: kobject_create_and_add failed\n");
+		ret = -ENOMEM;
+		return ret;
+	}
+
+	ret = sysfs_create_group(host_kobj, &usb_host_attr_group);
+	if (ret) {
+		dev_err(dev, "%s: Failed, sysfs group for usb_host\n",
+				__func__);
+		kobject_del(host_kobj);
+	}
+
+	return ret;
+}
+
+static inline void remove_host_test_mode_sysfs(struct device *dev)
+{
+	if (host_kobj) {
+		sysfs_remove_group(host_kobj, &usb_host_attr_group);
+		kobject_del(host_kobj);
+	}
+}
+#endif
+
 static int exynos_ehci_probe(struct platform_device *pdev)
 {
 	struct exynos_ehci_hcd *exynos_ehci;
@@ -246,6 +686,10 @@ skip_phy:
 	if (of_device_is_compatible(pdev->dev.of_node, "nexell,nexell-ehci"))
 		pm_runtime_forbid(&hcd->self.root_hub->dev);
 
+#ifdef CONFIG_USB_EHCI_EXYNOS_TEST_MODE
+	create_host_test_mode_sysfs(&pdev->dev);
+#endif
+
 	platform_set_drvdata(pdev, hcd);
 
 	return 0;
@@ -271,7 +715,9 @@ static int exynos_ehci_remove(struct platform_device *pdev)
 	clk_disable_unprepare(exynos_ehci->clk);
 
 	usb_put_hcd(hcd);
-
+#ifdef CONFIG_USB_EHCI_EXYNOS_TEST_MODE
+	remove_host_test_mode_sysfs(&pdev->dev);
+#endif
 	return 0;
 }
 
