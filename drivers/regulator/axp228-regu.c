@@ -193,6 +193,17 @@ static int axp_list_voltage(struct regulator_dev *rdev, unsigned selector)
 	return ret;
 }
 
+static int axp_map_voltage(struct regulator_dev *rdev,
+				       int min_uV, int max_uV)
+{
+	struct axp_regulator_info *info = rdev_get_drvdata(rdev);
+	int sel;
+
+	sel = DIV_ROUND_UP(min_uV - info->min_uV, info->step_uV);
+
+	return sel;
+}
+
 static int axp_set_suspend_voltage(struct regulator_dev *rdev, int uV)
 {
 	return axp_set_voltage(rdev, uV, uV, NULL);
@@ -203,6 +214,7 @@ static struct regulator_ops axp22_dcdc_ops = {
 	.set_voltage_time_sel = axp_set_voltage_time_sel,
 	.get_voltage_sel = axp_get_voltage_sel,
 	.list_voltage = axp_list_voltage,
+	.map_voltage = axp_map_voltage,
 	.enable = axp_enable,
 	.disable = axp_disable,
 	.is_enabled = axp_is_enabled,
@@ -215,6 +227,7 @@ static struct regulator_ops axp22_ops = {
 	.set_voltage = axp_set_voltage,
 	.get_voltage = axp_get_voltage,
 	.list_voltage = axp_list_voltage,
+	.map_voltage = axp_map_voltage,
 	.enable = axp_enable,
 	.disable = axp_disable,
 	.is_enabled = axp_is_enabled,
