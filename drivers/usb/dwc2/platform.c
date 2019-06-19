@@ -53,212 +53,491 @@
 #include "hcd.h"
 #include "debug.h"
 
+#if defined(CONFIG_ARCH_S5P4418)
+#include <dt-bindings/tieoff/s5p4418-tieoff.h>
+#elif defined(CONFIG_ARCH_S5P6818)
+#include <dt-bindings/tieoff/s5p6818-tieoff.h>
+#endif
+#include <soc/nexell/tieoff.h>
+
 static const char dwc2_driver_name[] = "dwc2";
 
-
+#ifdef CONFIG_USB_DWC2_TEST_MODE
 static struct kobject *otg_kobj;
 struct dwc2_hsotg *g_hsotg;
 
-static int dwc2_usbotg_device_set_test_mode(struct dwc2_hsotg *hsotg, int testmode)
-{
-	int val = 0;
-
-	switch (testmode) {
-	case 0:
-	case TEST_J:
-	case TEST_K:
-	case TEST_SE0_NAK:
-	case TEST_PACKET:
-	case TEST_FORCE_EN:
-		val = testmode << DCTL_TSTCTL_SHIFT;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	dwc2_writel(val, hsotg->regs + DCTL);
-
-	return 0;
-}
-
 static ssize_t show_device_test_mode(struct device *dev,
-					struct device_attribute *attr,
-					char *buf)
+				     struct device_attribute *attr,
+				     char *buf)
 {
-	dev_info(dev, "ex) # echo test_packet > /sys/usbotg_test_mode/device \n");
-	dev_info(dev, "           test_j \n");
-	dev_info(dev, "           test_k \n");
-	dev_info(dev, "           test_se0_nak \n");
-	dev_info(dev, "           test_packet \n");
-	dev_info(dev, "           test_force_enable \n");
-	dev_info(dev, "           test_mode_disable \n");
+	u32 dctl = dwc2_readl(g_hsotg->regs + DCTL);
 
-	return 0;
+	pr_info("%s():%d otg device testmode dctl:0x%x\n",
+		__func__, __LINE__, dctl);
+
+	return sprintf(buf, "DCTL Test Control [0x%x]\n",
+		       (dctl >> DCTL_TSTCTL_SHIFT) & 0x7);
 }
 
 static ssize_t store_device_test_mode(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
 {
 	unsigned long flags;
-	ssize_t ret;
-	u32 testmode = 0;
+	int value;
 
-	if (!strncmp(buf, "test_j", 6)) {
-		testmode = TEST_J;
-	}
-	else if (!strncmp(buf, "test_k", 6)) {
-		testmode = TEST_K;
-	}
-	else if (!strncmp(buf, "test_se0_nak", 12)) {
-		testmode = TEST_SE0_NAK;
-	}
-	else if (!strncmp(buf, "test_packet", 11)) {
-		testmode = TEST_PACKET;
-	}
-	else if (!strncmp(buf, "test_force_enable", 17)) {
-		testmode = TEST_FORCE_EN;
-	}
-	else if (!strncmp(buf, "test_mode_disable", 17)) {
-		testmode = 0;
-	} else {
-		ret = count;
-		return ret;
-	}
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
 
-	dev_info(dev, " [\e[31m%s\e[0m():%d] otg device testmode:%d, buf:%s\n",
-		__func__, __LINE__, testmode, buf);
+	if ((value < 0) || (value > 5))
+		return -EINVAL;
+
+
+	pr_info("%s():%d otg device testmode value:0x%x\n",
+		__func__, __LINE__, value);
 
 	spin_lock_irqsave(&g_hsotg->lock, flags);
-
-	dwc2_usbotg_device_set_test_mode(g_hsotg, testmode);
-
+	dwc2_writel((dwc2_readl(g_hsotg->regs + DCTL) & 0xffffff8f |
+		(value << DCTL_TSTCTL_SHIFT)), g_hsotg->regs + DCTL);
 	spin_unlock_irqrestore(&g_hsotg->lock, flags);
 
-	ret = count;
-
-	return ret;
+	return count;
 }
-static DEVICE_ATTR(device, 0644, show_device_test_mode, store_device_test_mode);
-
-static int dwc2_usbotg_host_set_test_mode(struct dwc2_hsotg *hsotg, int testmode)
-{
-	int val = 0;
-
-	switch (testmode) {
-	case 0:
-	case TEST_J:
-	case TEST_K:
-	case TEST_SE0_NAK:
-	case TEST_PACKET:
-	case TEST_FORCE_EN:
-		val = testmode << HPRT0_TSTCTL_SHIFT;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	dwc2_writel(val, hsotg->regs + HPRT0);
-
-	return 0;
-}
+static DEVICE_ATTR(otg_device_test_mode, 0644, show_device_test_mode,
+		   store_device_test_mode);
 
 static ssize_t show_host_test_mode(struct device *dev,
-					struct device_attribute *attr,
-					char *buf)
+				   struct device_attribute *attr,
+				   char *buf)
 {
-	dev_info(dev, "ex) # echo test_packet > /sys/usbotg_test_mode/host \n");
-	dev_info(dev, "           test_j \n");
-	dev_info(dev, "           test_k \n");
-	dev_info(dev, "           test_se0_nak \n");
-	dev_info(dev, "           test_packet \n");
-	dev_info(dev, "           test_force_enable \n");
-	dev_info(dev, "           test_mode_disable \n");
+	u32 hprt0 = dwc2_readl(g_hsotg->regs + HPRT0);
 
-	return 0;
+	pr_info("%s():%d otg host testmode hprt0:0x%x\n",
+		__func__, __LINE__, hprt0);
+
+	return sprintf(buf, "HPRT Port Test Control [0x%x]\n",
+		      (hprt0 >> HPRT0_TSTCTL_SHIFT) & 0xf);
 }
 
 static ssize_t store_host_test_mode(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
 {
 	unsigned long flags;
-	ssize_t ret;
-	u32 testmode = 0;
+	int value;
 
-	if (!strncmp(buf, "test_j", 6)) {
-		testmode = TEST_J;
-	}
-	else if (!strncmp(buf, "test_k", 6)) {
-		testmode = TEST_K;
-	}
-	else if (!strncmp(buf, "test_se0_nak", 12)) {
-		testmode = TEST_SE0_NAK;
-	}
-	else if (!strncmp(buf, "test_packet", 11)) {
-		testmode = TEST_PACKET;
-	}
-	else if (!strncmp(buf, "test_force_enable", 17)) {
-		testmode = TEST_FORCE_EN;
-	}
-	else if (!strncmp(buf, "test_mode_disable", 17)) {
-		testmode = 0;
-	} else {
-		ret = count;
-		return ret;
-	}
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
 
-	dev_info(dev, " [\e[31m%s\e[0m():%d] otg host testmode:%d, buf:%s\n",
-		__func__, __LINE__, testmode, buf);
+	if ((value < 0) || (value > 5))
+		return -EINVAL;
+
+	pr_info("%s():%d otg host testmode value:0x%x\n",
+		__func__, __LINE__, value);
 
 	spin_lock_irqsave(&g_hsotg->lock, flags);
 
-	dwc2_usbotg_host_set_test_mode(g_hsotg, testmode);
+	dwc2_writel(((dwc2_readl(g_hsotg->regs + HPRT0) & 0xfff61fff) |
+		(value << HPRT0_TSTCTL_SHIFT)), g_hsotg->regs + HPRT0);
+
 
 	spin_unlock_irqrestore(&g_hsotg->lock, flags);
 
-	ret = count;
-
-	return ret;
+	return count;
 }
-static DEVICE_ATTR(host, 0644, show_host_test_mode, store_host_test_mode);
 
-static int create_test_mode_sysfs_files(struct dwc2_hsotg *hsotg)
+static DEVICE_ATTR(otg_host_test_mode, 0644, show_host_test_mode,
+		   store_host_test_mode);
+
+/* NX_TIEOFF_USB20OTG0_i_COMPDISTUNE */
+static ssize_t show_otg_compdistune(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20OTG0_i_COMPDISTUNE);
+
+	return sprintf(buf, "OTG_COMPDISTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_otg_compdistune(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 7))
+		return -EINVAL;
+
+	pr_info("OTG_COMPDISTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20OTG0_i_COMPDISTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(otg_compdistune, 0644, show_otg_compdistune,
+		   store_otg_compdistune);
+
+/* NX_TIEOFF_USB20OTG0_i_SQRXTUNE */
+static ssize_t show_otg_sqrxtune(struct device *dev,
+				 struct device_attribute *attr,
+				 char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20OTG0_i_SQRXTUNE);
+
+	return sprintf(buf, "OTG_SQRXTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_otg_sqrxtune(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 7))
+		return -EINVAL;
+
+	pr_info("OTG_SQRXTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20OTG0_i_SQRXTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(otg_sqrxtune, 0644, show_otg_sqrxtune, store_otg_sqrxtune);
+
+/* NX_TIEOFF_USB20OTG0_i_OTGTUNE */
+static ssize_t show_otg_otgtune(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20OTG0_i_OTGTUNE);
+
+	return sprintf(buf, "OTG_OTGTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_otg_otgtune(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 7))
+		return -EINVAL;
+
+	pr_info("OTG_OTGTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20OTG0_i_OTGTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(otg_otgtune, 0644, show_otg_otgtune, store_otg_otgtune);
+
+/* NX_TIEOFF_USB20OTG0_i_TXHSXVTUNE */
+static ssize_t show_otg_txhsxvtune(struct device *dev,
+				   struct device_attribute *attr,
+				   char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20OTG0_i_TXHSXVTUNE);
+
+	return sprintf(buf, "OTG_TXHSXVTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_otg_txhsxvtune(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 3))
+		return -EINVAL;
+
+	pr_info("OTG_TXHSXVTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20OTG0_i_TXHSXVTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(otg_txhsxvtune, 0644, show_otg_txhsxvtune,
+		   store_otg_txhsxvtune);
+
+/* NX_TIEOFF_USB20OTG0_i_TXFSLSTUNE */
+static ssize_t show_otg_txfslstune(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20OTG0_i_TXFSLSTUNE);
+
+	return sprintf(buf, "OTG_TXFSLSTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_otg_txfslstune(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value == 0) || (value == 1) || (value == 3) || (value == 7) ||
+	    (value == 15))
+		pr_info("%s() valid value = 0x%x\n", __func__, value);
+	else
+		return -EINVAL;
+
+	pr_info("OTG_TXFSLSTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20OTG0_i_TXFSLSTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(otg_txfslstune, 0644, show_otg_txfslstune,
+		   store_otg_txfslstune);
+
+/* NX_TIEOFF_USB20OTG0_i_TXVREFTUNE */
+static ssize_t show_otg_txvreftune(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20OTG0_i_TXVREFTUNE);
+
+	return sprintf(buf, "OTG_TXVREFTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_otg_txvreftune(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 15))
+		return -EINVAL;
+
+	pr_info("OTG_TXVREFTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20OTG0_i_TXVREFTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(otg_txvreftune, 0644, show_otg_txvreftune,
+		   store_otg_txvreftune);
+
+/* NX_TIEOFF_USB20OTG0_i_TXRISETUNE */
+static ssize_t show_otg_txrisetune(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20OTG0_i_TXRISETUNE);
+
+	return sprintf(buf, "OTG_TXRISETUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_otg_txrisetune(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 3))
+		return -EINVAL;
+
+	pr_info("OTG_TXRISETUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20OTG0_i_TXRISETUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(otg_txrisetune, 0644, show_otg_txrisetune,
+		   store_otg_txrisetune);
+
+/* NX_TIEOFF_USB20OTG0_i_TXRESTUNE */
+static ssize_t show_otg_txrestune(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20OTG0_i_TXRESTUNE);
+
+	return sprintf(buf, "OTG_TXRESTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_otg_txrestune(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 3))
+		return -EINVAL;
+
+	pr_info("OTG_TXRESTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20OTG0_i_TXRESTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(otg_txrestune, 0644, show_otg_txrestune,
+		   store_otg_txrestune);
+
+/* NX_TIEOFF_USB20OTG0_i_TXPREEMPAMPTUNE */
+static ssize_t show_otg_txpreempamptune(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20OTG0_i_TXPREEMPAMPTUNE);
+
+	return sprintf(buf, "OTG_TXPREEMPAMPTUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_otg_txpreempamptune(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 3))
+		return -EINVAL;
+
+	pr_info("OTG_TXPREEMPAMPTUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20OTG0_i_TXPREEMPAMPTUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(otg_txpreempamptune, 0644, show_otg_txpreempamptune,
+		   store_otg_txpreempamptune);
+
+/* NX_TIEOFF_USB20OTG0_i_TXPREEMPPULSETUNE */
+static ssize_t show_otg_txpreemppulsetune(struct device *dev,
+					  struct device_attribute *attr,
+					  char *buf)
+{
+	int32_t readVal;
+
+	readVal = nx_tieoff_get(NX_TIEOFF_USB20OTG0_i_TXPREEMPPULSETUNE);
+
+	return sprintf(buf, "OTG_TXPREEMPPULSETUNE [0x%x]\n", readVal);
+}
+
+static ssize_t store_otg_txpreemppulsetune(struct device *dev,
+					   struct device_attribute *attr,
+					   const char *buf, size_t len)
+{
+	int value;
+
+	if (kstrtoint(buf, 0, &value))
+		return -EINVAL;
+
+	if ((value < 0) || (value > 1))
+		return -EINVAL;
+
+	pr_info("OTG_TXPREEMPPULSETUNE value = 0x%x\n", value);
+
+	nx_tieoff_set(NX_TIEOFF_USB20OTG0_i_TXPREEMPPULSETUNE, value);
+
+	return len;
+}
+
+static DEVICE_ATTR(otg_txpreemppulsetune, 0644, show_otg_txpreemppulsetune,
+		   store_otg_txpreemppulsetune);
+
+
+static struct attribute *otg_attrs[] = {
+	&dev_attr_otg_device_test_mode.attr,
+	&dev_attr_otg_host_test_mode.attr,
+	&dev_attr_otg_compdistune.attr,
+	&dev_attr_otg_sqrxtune.attr,
+	&dev_attr_otg_otgtune.attr,
+	&dev_attr_otg_txhsxvtune.attr,
+	&dev_attr_otg_txfslstune.attr,
+	&dev_attr_otg_txvreftune.attr,
+	&dev_attr_otg_txrisetune.attr,
+	&dev_attr_otg_txrestune.attr,
+	&dev_attr_otg_txpreempamptune.attr,
+	&dev_attr_otg_txpreemppulsetune.attr,
+	NULL,
+};
+
+static struct attribute_group usb_otg_attr_group = {
+	.attrs = (struct attribute **)otg_attrs,
+};
+
+static int create_otg_test_mode_sysfs(struct dwc2_hsotg *hsotg)
 {
 	int	ret = 0;
 
 	g_hsotg = hsotg;
 
-	otg_kobj = kobject_create_and_add("usbotg_test_mode", NULL);
+	otg_kobj = kobject_create_and_add("usb_otg_test", NULL);
 	if (otg_kobj == NULL) {
-		dev_err(hsotg->dev, "otg_kobj:" "kobject_create_and_add failed\n");
+		dev_err(hsotg->dev, "otg_kobj:kobject_create_and_add failed\n");
 		ret = -ENOMEM;
 		return ret;
 	}
 
-	ret = sysfs_create_file(otg_kobj, &dev_attr_host.attr);
+	ret = sysfs_create_group(otg_kobj, &usb_otg_attr_group);
 	if (ret) {
-		dev_err(hsotg->dev, "otg host:" "sysfs_create_group failed\n");
+		dev_err(hsotg->dev, "%s: Failed, sysfs group for usb_otg\n",
+				__func__);
 		kobject_del(otg_kobj);
-		return ret;
 	}
 
-	ret = sysfs_create_file(otg_kobj, &dev_attr_device.attr);
-	if (ret) {
-		dev_err(hsotg->dev, "otg device:" "sysfs_create_group failed\n");
-		sysfs_remove_file(otg_kobj, &dev_attr_host.attr);
-		kobject_del(otg_kobj);
-		return ret;
-	}
 	return ret;
 }
 
-static inline void remove_test_mode_sysfs_files(struct dwc2_hsotg *hsotg)
+static inline void remove_otg_test_mode_sysfs(struct dwc2_hsotg *hsotg)
 {
-	sysfs_remove_file(otg_kobj, &dev_attr_host.attr);
-	sysfs_remove_file(otg_kobj, &dev_attr_device.attr);
-	kobject_del(otg_kobj);
+	if (otg_kobj) {
+		sysfs_remove_group(otg_kobj, &usb_otg_attr_group);
+		kobject_del(otg_kobj);
+	}
 }
+#endif
 
 /*
  * Check the dr_mode against the module configuration and hardware
@@ -538,9 +817,9 @@ static int dwc2_driver_remove(struct platform_device *dev)
 		dwc2_lowlevel_hw_disable(hsotg);
 
 	reset_control_assert(hsotg->reset);
-
-	remove_test_mode_sysfs_files(hsotg);
-
+#ifdef CONFIG_USB_DWC2_TEST_MODE
+	remove_otg_test_mode_sysfs(hsotg);
+#endif
 	return 0;
 }
 
@@ -696,8 +975,9 @@ static int dwc2_driver_probe(struct platform_device *dev)
 
 	dwc2_debugfs_init(hsotg);
 
-	create_test_mode_sysfs_files(hsotg);
-
+#ifdef CONFIG_USB_DWC2_TEST_MODE
+	create_otg_test_mode_sysfs(hsotg);
+#endif
 	/* Gadget code manages lowlevel hw on its own */
 	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL)
 		dwc2_lowlevel_hw_disable(hsotg);
@@ -855,7 +1135,7 @@ static struct platform_driver dwc2_platform_driver = {
 #if CONFIG_DWC_INIT_LEVEL_UP
 static int __init dwc2_pltfm_init(void)
 {
-    return platform_driver_register(&dwc2_platform_driver);
+	return platform_driver_register(&dwc2_platform_driver);
 }
 fs_initcall(dwc2_pltfm_init)
 #else
