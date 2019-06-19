@@ -92,4 +92,11 @@ config USB_DWC2_DEBUG_PERIODIC
 	  non-periodic transfers, but of course the debug logs will be
 	  incomplete. Note that this also disables some debug messages
 	  for which the transfer type cannot be deduced.
+
+config USB_DWC2_TEST_MODE
+	bool "Enable OTG pattern test and tune"
+	default n
+	depends on ARCH_S5P4418 || ARCH_S5P6818
+	help
+		Say Y here to pattern test and tune in the DWC2 Driver.
 endif
