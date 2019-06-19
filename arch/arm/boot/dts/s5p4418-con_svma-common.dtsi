@@ -626,7 +626,7 @@
 		};
 	};
 
-	decimator_3:decimator3@c0064000 {
+	decimator_6:decimator6@c0064000 {
 		compatible = "nexell,nx-decimator";
 		module = <1>;
 		logical = <1>;
@@ -634,14 +634,14 @@
 		status = "okay";
 	};
 
-	clipper_3:clipper3@c0064000 {
+	clipper_6:clipper6@c0064000 {
 		compatible = "nexell,nx-clipper";
 		module = <1>;
 		logical = <1>;
 		logical_num = <0>;
 		interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&tp2825_reset>;
+		pinctrl-0 = <&vid2_data_clk &tp2825_reset>;
 		gpios = <&gpio_c 2 0>;
 		data_order = <NX_VIN_CBY0CRY1>;
 		port = <1>;
