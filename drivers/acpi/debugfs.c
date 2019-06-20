@@ -1,7 +1,7 @@
 /*
  * debugfs.c - ACPI debugfs interface to userspace.
  */
-
+#define TEST 1
 #include <linux/export.h>
 #include <linux/init.h>
 #include <linux/debugfs.h>
