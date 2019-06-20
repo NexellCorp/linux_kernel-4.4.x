@@ -80,7 +80,7 @@ static const struct reg_sequence rt5633_init_list[] = {
 	{RT5633_SPKMIXER_CTRL		, 0x08fc}, //"SPK Mixer Control"
 	{RT5633_ZC_SM_CTRL_1		, 0x0001}, //Disable Zero Cross
 	{RT5633_ZC_SM_CTRL_2		, 0x3000}, //Disable Zero cross
-	{RT5633_MIC_CTRL_1       	, 0x8808}, //set mic1 to differnetial mode
+	{RT5633_MIC_CTRL_1		, 0x8808}, //set mic1 to differnetial mode
 	{RT5633_DEPOP_CTRL_2		, 0xb000},
 	{RT5633_PRI_REG_ADD		, 0x0056},
 	{RT5633_PRI_REG_DATA		, 0x303f},
@@ -260,6 +260,8 @@ static const struct snd_kcontrol_new rt5633_snd_controls[] = {
 				RT5633_R_MUTE_SFT, 1, 1),
 	SOC_DOUBLE_TLV("HP Playback Volume", RT5633_HP_OUT_VOL,
 		RT5633_L_VOL_SFT, RT5633_R_VOL_SFT, 31, 1, out_vol_tlv),
+	SOC_SINGLE("DAC Mute Control", RT5633_DAC_CTRL,
+				RT5633_DA2MIX_MUTE_SFT, 1, 0),
 };
 
 static const struct snd_kcontrol_new rt5633_recmixl_mixer_controls[] = {
