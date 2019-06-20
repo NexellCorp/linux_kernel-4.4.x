@@ -109,6 +109,9 @@
 #define RT5633_MIC_2_MODE_SEL_SE		(0x0 << 7)
 #define RT5633_MIC_2_MODE_SEL_DIFF		(0x1 << 7)
 
+/* DAC Control(0x0c) */
+#define RT5633_DA2MIX_MUTE_SFT	 		14
+
 /* ADC Recording Mixer Control (0x14) */
 #define RT5633_M_RM_L_HPM			(0x1 << 14)
 #define RT5633_M_RM_L_HPM_SFT			14
