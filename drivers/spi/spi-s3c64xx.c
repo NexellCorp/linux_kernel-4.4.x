@@ -785,6 +785,9 @@ static int s3c64xx_spi_transfer_one(struct spi_master *master,
 	nx_spi_qos_update(NX_BUS_CLK_IDLE_KHZ);
 #endif
 
+	if (!(sdd->port_conf->quirks & S3C64XX_SPI_QUIRK_CS_AUTO))
+		writel(1, sdd->regs + S3C64XX_SPI_SLAVE_SEL);
+
 	return status;
 }
 
