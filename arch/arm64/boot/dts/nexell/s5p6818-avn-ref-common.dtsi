@@ -20,6 +20,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include "s5p6818.dtsi"
+#include "../../../../../include/generated/autoconf.h"
 
 #define PMIC_PDATA_INIT(_id, _rname, _minuv,    \
                         _maxuv, _init_uv, _init_enable,         \
@@ -549,7 +550,7 @@
 		default-brightness-level = <45>;
 		status = "okay";
 	};
-
+#if defined(CONFIG_VIDEO_TW9992)
 	decimator_3:decimator3@c0063000 {
 		compatible = "nexell,nx-decimator";
 		module = <0>;
@@ -590,6 +591,7 @@
 				>;
 		};
 	};
+#endif
 
 };
 
@@ -606,6 +608,7 @@
 	status = "okay";
 };
 
+#if defined(CONFIG_VIDEO_TW9900)
 &clipper_0 {
 	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
 	pinctrl-names = "default";
@@ -633,6 +636,7 @@
 		>;
 	};
 };
+#endif
 
 #include "tw9900_rearcam_regset.dtsi"
 &rearcam {
