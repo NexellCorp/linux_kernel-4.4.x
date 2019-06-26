@@ -652,13 +652,35 @@
 &clipper_2 {
 	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
 	pinctrl-names = "default";
+	pinctrl-0 = <&vid0_data_clk>;
+	data_order = <NX_VIN_CBY0CRY1>;
+	port = <0>;
+	external_sync = <0>;
+	interlace = <1>;
+	status = "okay";
+
+	sensor {
+		type = <NX_CAPTURE_SENSOR_I2C>;
+		i2c_name = "tw9900";
+		i2c_adapter = <8>;
+		addr = <0x44>;
+	};
+};
+
+&decimator_2 {
+	status = "okay";
+};
+
+&clipper_9 {
+	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
+	pinctrl-names = "default";
 	pinctrl-0 = <&tp2825_reset &vid0_data_clk>;
 	gpios = <&gpio_c 2 0>;
 	data_order = <NX_VIN_CBY0CRY1>;
 	port = <0>;
 	external_sync = <0>;
 	interlace = <0>;
-	status = "okay";
+	status = "disabled";
 
 	sensor {
 		type = <NX_CAPTURE_SENSOR_I2C>;
@@ -671,28 +693,6 @@
 		enable_seq = <
 		NX_ACTION_START NX_ACTION_TYPE_GPIO 0 1 1 NX_ACTION_END
 		>;
-	};
-};
-
-&decimator_2 {
-	status = "okay";
-};
-
-&clipper_9 {
-	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&vid0_data_clk>;
-	data_order = <NX_VIN_CBY0CRY1>;
-	port = <0>;
-	external_sync = <0>;
-	interlace = <1>;
-	status = "disabled";
-
-	sensor {
-		type = <NX_CAPTURE_SENSOR_I2C>;
-		i2c_name = "tw9900";
-		i2c_adapter = <8>;
-		addr = <0x44>;
 	};
 };
 
