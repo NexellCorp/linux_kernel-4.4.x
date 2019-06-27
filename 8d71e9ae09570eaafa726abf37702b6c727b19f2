@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bae61967_4cbf9f89",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-06-27T01:00:55Z",
+      "side": 1,
+      "message": "Follow previous commit rule!\n\ns5p4418_con_svma_pie: configs: Enable broadcom Wifi feature\n\nThis patch enables features related to broadcom wifi.",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 1
+      },
+      "revId": "8d71e9ae09570eaafa726abf37702b6c727b19f2",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ef17df8f_ef279aae",
+        "filename": "arch/arm/configs/s5p4418_con_svma_pie_defconfig",
+        "patchSetId": 1
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-06-27T01:00:55Z",
+      "side": 1,
+      "message": "Is this related to broadcom wifi feature?",
+      "range": {
+        "startLine": 97,
+        "startChar": 0,
+        "endLine": 97,
+        "endChar": 1
+      },
+      "revId": "8d71e9ae09570eaafa726abf37702b6c727b19f2",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9c29ef6a_c74d990a",
+        "filename": "arch/arm/configs/s5p4418_con_svma_pie_defconfig",
+        "patchSetId": 1
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-06-27T01:00:55Z",
+      "side": 1,
+      "message": "ditto",
+      "range": {
+        "startLine": 187,
+        "startChar": 0,
+        "endLine": 187,
+        "endChar": 1
+      },
+      "revId": "8d71e9ae09570eaafa726abf37702b6c727b19f2",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7f26f631_2710828a",
+        "filename": "arch/arm/configs/s5p4418_con_svma_pie_defconfig",
+        "patchSetId": 1
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-06-27T01:00:55Z",
+      "side": 1,
+      "message": "ditto",
+      "range": {
+        "startLine": 268,
+        "startChar": 0,
+        "endLine": 273,
+        "endChar": 34
+      },
+      "revId": "8d71e9ae09570eaafa726abf37702b6c727b19f2",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    }
+  ]
+}
