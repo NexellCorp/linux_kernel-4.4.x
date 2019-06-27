@@ -13,6 +13,8 @@ Required properties for display controller driver:
    - back_color: top layer's background color
    - color_key: video layer's color key value
    - plane-names: multi layer's type and order ("primary", "cursor", "rgb", "video")
+   - color-key-disable: disable color-key at boot time
+   - alphablend-disable: disable alpha blend at boot time
 
 Example:
 

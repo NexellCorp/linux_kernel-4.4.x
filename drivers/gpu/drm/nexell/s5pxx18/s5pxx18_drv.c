@@ -322,6 +322,7 @@ static int crtc_ops_begin(struct drm_crtc *crtc)
 	struct nx_top_plane *top = nx_crtc->context;
 	struct nx_plane_layer *primary = to_nx_plane(crtc->primary)->context;
 	int crtc_w, crtc_h;
+	bool colorkey_enb = false;
 	int i = 0;
 
 	crtc_w = crtc->state->mode.hdisplay;
@@ -337,13 +338,16 @@ static int crtc_ops_begin(struct drm_crtc *crtc)
 		fb->bits_per_pixel >> 3,
 		top->back_color, top->color_key);
 
+	if (top->color_key_on | primary->colorkey_on)
+		colorkey_enb = true;
+
 	if (!nx_crtc->cluster) {
 		nx_soc_dp_plane_top_prepare(top);
 		nx_soc_dp_plane_top_set_bg_color(top);
 		nx_soc_dp_plane_top_set_format(top, crtc_w, crtc_h);
 		/* color key */
 		nx_soc_dp_plane_rgb_set_color(primary,
-			NX_COLOR_TRANS, top->color_key, true, false);
+			NX_COLOR_TRANS, top->color_key, colorkey_enb, false);
 		return 0;
 	}
 
@@ -358,7 +362,7 @@ static int crtc_ops_begin(struct drm_crtc *crtc)
 		nx_soc_dp_plane_top_set_format(top, crtc_w, crtc_h);
 		/* color key */
 		nx_soc_dp_plane_rgb_set_color(primary,
-			NX_COLOR_TRANS, top->color_key, true, false);
+			NX_COLOR_TRANS, top->color_key, colorkey_enb, false);
 	}
 
 	return 0;
@@ -482,8 +486,18 @@ static int crtc_planes_parse(struct device *dev, struct nx_drm_crtc *nx_crtc,
 	}
 
 	nx_crtc->num_planes = size;
+
+	top->color_key_on = true;
+	top->alpla_blend_on = true;
+
 	property_read(np, "back_color", top->back_color);
 	property_read(np, "color_key", top->color_key);
+
+	if (of_property_read_bool(np, "color-key-disable"))
+		top->color_key_on = false;
+
+	if (of_property_read_bool(np, "alphablend-disable"))
+		top->alpla_blend_on = false;
 
 	return 0;
 }
@@ -848,7 +862,8 @@ static void plane_ops_disable(struct drm_plane *plane)
 }
 
 static void plane_set_color(struct drm_plane *plane,
-			enum nx_color_type type, unsigned int color)
+			enum nx_color_type type, unsigned int color,
+			bool enable)
 {
 	struct nx_plane_layer *layer = to_nx_plane(plane)->context;
 	struct nx_top_plane *top = layer->top_plane;
@@ -870,11 +885,11 @@ static void plane_set_color(struct drm_plane *plane,
 			layer = primary;
 			type = NX_COLOR_TRANS;
 			nx_soc_dp_plane_rgb_set_color(
-				layer, type, color, true, true);
+				layer, type, color, enable, true);
 		} else {
 			LIST_LAYER_ENTRY(layer, top, num);
 			nx_soc_dp_plane_rgb_set_color(
-				layer, type, color, true, true);
+				layer, type, color, enable, true);
 		}
 	}
 }
@@ -912,22 +927,26 @@ static int plane_set_property(struct drm_plane *plane,
 
 	if (property == color->yuv.colorkey) {
 		layer->color.colorkey = val;
-		plane_set_color(plane, NX_COLOR_COLORKEY, val);
+		plane_set_color(plane, NX_COLOR_COLORKEY,
+			layer->color.colorkey, layer->colorkey_on);
 	}
 
 	if (property == color->yuv.transcolor) {
 		layer->color.yuv_transcolor = val;
-		plane_set_color(plane, NX_COLOR_TRANS, val);
+		plane_set_color(plane, NX_COLOR_TRANS,
+			layer->color.yuv_transcolor, true);
 	}
 
 	if (property == color->rgb.transcolor) {
 		layer->color.transcolor = val;
-		plane_set_color(plane, NX_COLOR_TRANS, val);
+		plane_set_color(plane, NX_COLOR_TRANS,
+			layer->color.transcolor, layer->transcolor_on);
 	}
 
 	if (property == color->rgb.alphablend) {
 		layer->color.alphablend = val;
-		plane_set_color(plane, NX_COLOR_ALPHA, val);
+		plane_set_color(plane, NX_COLOR_ALPHA,
+			layer->color.alphablend, layer->alphablend_on);
 	}
 
 	if (property == prop->priority) {
@@ -1051,9 +1070,11 @@ static int plane_create(struct drm_device *drm,
 	layer->module = top->module;
 	layer->num = plane_num;
 	layer->is_bgr = bgr;
-	layer->type |= plane_num == PLANE_VIDEO_NUM ?
-				NX_PLANE_TYPE_VIDEO : 0;
+	layer->type |= plane_num == PLANE_VIDEO_NUM ? NX_PLANE_TYPE_VIDEO : 0;
 	layer->color.alpha = layer->type & NX_PLANE_TYPE_VIDEO ? 15 : 0;
+	layer->alphablend_on = top->alpla_blend_on;
+	layer->colorkey_on = top->color_key_on;
+	layer->transcolor_on = true;
 
 	ret = snprintf(layer->name, 16, "%d-%s%d", top->module,
 		layer->type & NX_PLANE_TYPE_VIDEO ? "vid" : "rgb", plane_num);
