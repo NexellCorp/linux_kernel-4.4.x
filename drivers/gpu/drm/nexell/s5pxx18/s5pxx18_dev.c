@@ -572,6 +572,9 @@ int nx_soc_dp_plane_rgb_set_format(struct nx_plane_layer *layer,
 	    format == nx_mlc_rgbfmt_a8b8g8r8)
 		en_alpha = 1;
 
+	if (!layer->alphablend_on)
+		en_alpha = 0;
+
 	if (layer->is_bgr) {
 		format |= 1<<31;
 		pr_debug("%s: BGR plane fmt:0x%x\n", __func__, format);
