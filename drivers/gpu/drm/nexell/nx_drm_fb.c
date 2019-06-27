@@ -707,7 +707,8 @@ static struct dma_buf *nx_drm_fb_dmabuf_export(struct fb_info *info)
 	struct dma_buf *buf = NULL;
 
 	if (dev->driver->gem_prime_export) {
-		buf = dev->driver->gem_prime_export(dev, &nx_gem_obj->base, O_RDWR);
+		buf = dev->driver->gem_prime_export(dev,
+						&nx_gem_obj->base, O_RDWR);
 		if (buf)
 			drm_gem_object_reference(&nx_gem_obj->base);
 	}
@@ -826,7 +827,8 @@ struct drm_framebuffer *nx_drm_fb_mode_create(struct drm_device *drm,
 	return nx_drm_fb_create(drm, file_priv, mode_cmd);
 }
 
-static uint32_t nx_drm_mode_fb_format(uint32_t bpp, uint32_t depth, bool bgr, bool argb)
+static uint32_t nx_drm_mode_fb_format(uint32_t bpp, uint32_t depth,
+				      bool bgr, bool argb)
 {
 	uint32_t fmt;
 
@@ -854,6 +856,8 @@ static uint32_t nx_drm_mode_fb_format(uint32_t bpp, uint32_t depth, bool bgr, bo
 		fmt = DRM_FORMAT_XRGB8888;
 		break;
 	}
+
+	DRM_INFO("FB format:%s\n", drm_get_format_name(fmt));
 
 	return fmt;
 }
@@ -972,7 +976,7 @@ static int nx_drm_framebuffer_dev_init(struct drm_device *drm,
 	struct nx_drm_fbdev *nx_fbdev;
 	struct drm_fb_helper *fb_helper;
 	struct drm_connector *connector;
-	int conn = 0,ret;
+	int conn = 0, ret;
 
 	nx_fbdev = kzalloc(sizeof(*nx_fbdev), GFP_KERNEL);
 	if (!nx_fbdev)
