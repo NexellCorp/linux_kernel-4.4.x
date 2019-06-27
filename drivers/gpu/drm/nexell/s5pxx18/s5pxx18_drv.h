@@ -108,6 +108,12 @@ struct nx_plane_layer {
 	int dst_top;
 	int dst_width;
 	int dst_height;
+
+	/* color control */
+	bool transcolor_on;
+	bool alphablend_on;
+	bool colorkey_on;
+
 	/* color */
 	union {
 		struct {
@@ -144,6 +150,8 @@ struct nx_top_plane {
 	struct list_head plane_list;
 	unsigned int back_color;
 	unsigned int color_key;
+	bool color_key_on;
+	bool alpla_blend_on;
 	int interlace;
 	int enable;
 	void *regs[sizeof(struct nx_mlc_register_set)/sizeof(void *)];
