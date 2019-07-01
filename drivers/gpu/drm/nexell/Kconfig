@@ -132,3 +132,12 @@ config DRM_NX_FB_PAN_DISPLAY
 
 	  If in doubt, say "Y".
 
+config DRM_NX_OVERRIDE_XRGB
+	bool "Override XRGB by ARGB"
+	depends on DRM_NX
+	default n
+	help
+	 Choose this option if you want to override XRGB format by ARGB
+	 regardless of your format. Sometimes UI framework only supports
+	 XRGB format but platform needs actually the ARGB format, so this
+	 workaround is added.
