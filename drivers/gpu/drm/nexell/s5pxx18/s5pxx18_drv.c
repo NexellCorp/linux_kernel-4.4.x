@@ -115,10 +115,18 @@ static int convert_format_rgb(uint32_t pixel_format,
 		break;
 	/* 32 bpp RGB */
 	case DRM_FORMAT_XRGB8888:
+#ifdef CONFIG_DRM_NX_OVERRIDE_XRGB
+		fmt = nx_mlc_rgbfmt_a8r8g8b8;
+#else
 		fmt = nx_mlc_rgbfmt_x8r8g8b8;
+#endif
 		break;
 	case DRM_FORMAT_XBGR8888:
+#ifdef CONFIG_DRM_NX_OVERRIDE_XRGB
+		fmt = nx_mlc_rgbfmt_a8b8g8r8;
+#else
 		fmt = nx_mlc_rgbfmt_x8b8g8r8;
+#endif
 		break;
 	case DRM_FORMAT_ARGB8888:
 		fmt = nx_mlc_rgbfmt_a8r8g8b8;
