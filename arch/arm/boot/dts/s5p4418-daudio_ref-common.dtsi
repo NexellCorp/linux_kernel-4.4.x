@@ -609,7 +609,7 @@
 		port@0 {
 			reg = <0>;
 			back_color = < 0x0 >;
-			color_key = < 0x0 >;
+			color-key-disable;
 			plane-names = "rgb", "primary", "video";
 		};
 		port@1 {
