@@ -880,15 +880,20 @@ static void __init do_initcalls(void)
 #ifdef CONFIG_INITCALLS_THREAD
 	for (level = 0; level < CONFIG_INITCALLS_THREAD_LEVEL; level++)
 		do_initcall_level(level);
-
-	init_thread_level = level;
-	kthread_run(do_initcalls_kth,
-		(void *)&init_thread_level, "initcalls:thread");
 #else
 	for (level = 0; level < ARRAY_SIZE(initcall_levels) - 1; level++)
 		do_initcall_level(level);
 #endif
 }
+
+#ifdef CONFIG_INITCALLS_THREAD
+static void __init do_initcalls_thread(void)
+{
+	init_thread_level = CONFIG_INITCALLS_THREAD_LEVEL;
+	kthread_run(do_initcalls_kth,
+		(void *)&init_thread_level, "initcalls:thread");
+}
+#endif
 
 /*
  * Ok, the machine is now initialized. None of the devices
@@ -990,6 +995,9 @@ static int __ref kernel_init(void *unused)
 
 	flush_delayed_fput();
 
+#ifdef CONFIG_INITCALLS_THREAD
+	do_initcalls_thread();
+#endif
 	if (ramdisk_execute_command) {
 		ret = run_init_process(ramdisk_execute_command);
 		if (!ret)
