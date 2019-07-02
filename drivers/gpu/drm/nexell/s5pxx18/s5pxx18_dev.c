@@ -468,8 +468,10 @@ void nx_soc_dp_plane_top_set_format(struct nx_top_plane *top,
 	if (!(topform->mask & NX_PLANE_FORMAT_SCREEN_SIZE))
 		nx_mlc_set_screen_size(module, top->width, top->height);
 
+#ifndef CONFIG_VIDEO_NEXELL_REARCAM
 	if (!(topform->mask & NX_PLANE_FORMAT_VIDEO_PRIORITY))
 		nx_mlc_set_layer_priority(module, priority);
+#endif
 
 	if (!(topform->mask & NX_PLANE_FORMAT_BACK_COLOR))
 		nx_mlc_set_background(module, bgcolor & 0x00FFFFFF);
