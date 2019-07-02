@@ -588,8 +588,9 @@ static void debug_sync(unsigned long priv)
 		nx_vip_get_ver_count(module),
 		nx_vip_get_hor_count(module));
 
-	mod_timer(&me->timer,
-		jiffies + msecs_to_jiffies(DEBUG_SYNC_TIMEOUT_MS));
+	if (me->is_on)
+		mod_timer(&me->timer,
+			jiffies + msecs_to_jiffies(DEBUG_SYNC_TIMEOUT_MS));
 }
 #endif
 
@@ -2185,14 +2186,16 @@ static void _vip_run(struct nx_rearcam *me)
 	} else
 		WARN_ON(true);
 
+	_set_vip_interrupt(me, true);
 	nx_vip_set_vipenable(module, true, true, true, false);
-	/*nx_vip_dump_register(module);*/
+	/*	nx_vip_dump_register(module);	*/
 }
 
 static void _vip_stop(struct nx_rearcam *me)
 {
 	int module = me->clipper_info.module;
 
+	_set_vip_interrupt(me, false);
 	nx_vip_set_vipenable(module, false, false, false, false);
 }
 
@@ -2657,8 +2660,14 @@ static void _turn_on(struct nx_rearcam *me)
 		return;
 
 	nx_mlc_set_layer_priority(me->mlc_module, nx_mlc_priority_videosecond);
+	nx_mlc_set_layer_enable(me->mlc_module, MLC_LAYER_VIDEO, 3);
 
 	me->is_on = true;
+
+#ifdef DEBUG_SYNC
+	mod_timer(&me->timer, jiffies +
+		msecs_to_jiffies(DEBUG_SYNC_TIMEOUT_MS));
+#endif
 
 	if (me->pre_turn_on) {
 		if (!me->pre_turn_on(me->vendor_context)) {
@@ -2673,10 +2682,6 @@ static void _turn_on(struct nx_rearcam *me)
 
 	_reset_values(me);
 	_all_buffer_to_empty_queue(me);
-
-	_setup_me(me);
-
-	_set_vip_interrupt(me, true);
 	_vip_run(me);
 
 	if (me->vendor_context && me->set_enable)
@@ -2686,16 +2691,13 @@ static void _turn_on(struct nx_rearcam *me)
 static void _turn_off(struct nx_rearcam *me)
 {
 	_mlc_overlay_stop(me);
-
 	_mlc_video_stop(me);
-
 	_vip_stop(me);
-
-	_cleanup_me(me);
-	_reset_queue(me);
 
 	me->is_display_on = false;
 	me->is_on = false;
+
+	_reset_queue(me);
 
 	if (me->post_turn_off)
 		me->post_turn_off(me->vendor_context);
@@ -2712,7 +2714,7 @@ static void _decide(struct nx_rearcam *me)
 		me->running, me->reargear_on);
 	if (me->reargear_on && !me->running) {
 		_turn_on(me);
-	} else if (me->running && !me->reargear_on) {
+	} else if (me->running) {
 		_turn_off(me);
 	} else if (!me->running && is_reargear_on(me)) {
 		dev_err(&me->pdev->dev, "Recheck Rear Camera!!\n");
@@ -2730,8 +2732,10 @@ static void _work_handler_reargear(void * devdata)
 static irqreturn_t _irq_handler(int irq, void *devdata)
 {
 	struct nx_rearcam *me = devdata;
+
 	nx_soc_gpio_clr_int_pend(me->event_gpio);
 	tasklet_schedule(&me->work);
+
 	return IRQ_HANDLED;
 }
 
@@ -2766,6 +2770,7 @@ static irqreturn_t _dpc_irq_handler(int irq, void *devdata)
 	return IRQ_HANDLED;
 }
 
+
 static irqreturn_t _vip_irq_handler(int irq, void *devdata)
 {
 	unsigned long flags;
@@ -2779,11 +2784,13 @@ static irqreturn_t _vip_irq_handler(int irq, void *devdata)
 	struct queue_entry *entry = NULL;
 	struct nx_video_buf *buf = NULL;
 
+	if (!me->is_on)
+		return IRQ_NONE;
+
 	nx_vip_clear_interrupt_pending_all(module);
 
 	if (me->skip_frame_count < me->skip_frame) {
 		me->skip_frame_count++;
-
 		return IRQ_HANDLED;
 	}
 
@@ -2819,7 +2826,7 @@ static irqreturn_t _vip_irq_handler(int irq, void *devdata)
 
 	entry = me->frame_set.cur_entry_vip;
 	buf = (struct nx_video_buf *)(entry->data);
-	pr_debug("%s - lu_addr : 0x%x", __func__, buf->lu_addr);
+	pr_debug("%s - lu_addr : 0x%x\n", __func__, buf->lu_addr);
 
 	if (entry) {
 		me->q_vip_done.enqueue(&me->q_vip_done, entry);
@@ -3453,7 +3460,7 @@ static int _get_i2c_client(struct nx_rearcam *me)
 
 static int _init_camera_sensor(struct nx_rearcam *me)
 {
-	int ret, i;
+	int ret, i = 0;
 	struct reg_val *reg_val;
 	struct device *dev = &me->pdev->dev;
 
@@ -3540,6 +3547,7 @@ static void _display_worker(struct nx_rearcam *me)
 			_mlc_overlay_run(me);
 		}
 		pr_debug("[%s] mlc on\n", __func__);
+
 		me->is_mlc_on = true;
 	}
 
@@ -3990,6 +3998,7 @@ static void _init_hw_display(struct nx_rearcam *me)
 		_init_hw_display_top(me);
 		_init_hw_lvds(me);
 	}
+
 	if (_is_enable_mlc(me) == false)
 		_init_hw_mlc(me);
 }
@@ -4004,6 +4013,7 @@ static int init_me(struct nx_rearcam *me)
 	_reset_hw_display(me);
 	_init_hw_mlc(me);
 	_init_hw_display(me);
+	_setup_me(me);
 	_init_camera_sensor(me);
 	_enable_gpio_irq_ctx(me);
 
@@ -4037,7 +4047,7 @@ static int deinit_me(struct nx_rearcam *me)
 	}
 
 	_disable_gpio_irq_ctx(me);
-
+	_cleanup_me(me);
 	_free_buffer(me);
 
 	me->removed = true;
@@ -4402,9 +4412,6 @@ static int nx_rearcam_probe(struct platform_device *pdev)
 
 #ifdef DEBUG_SYNC
 	setup_timer(&me->timer, debug_sync, (long)me);
-
-	mod_timer(&me->timer, jiffies +
-		msecs_to_jiffies(DEBUG_SYNC_TIMEOUT_MS));
 #endif
 
 	ret = cdevice_init(me);
@@ -4412,6 +4419,7 @@ static int nx_rearcam_probe(struct platform_device *pdev)
 		dev_err(dev, "faile cdevice!\n");
 		return ret;
 	}
+
 
 	return 0;
 ERROR:
@@ -4430,6 +4438,7 @@ static int nx_rearcam_remove(struct platform_device *pdev)
 	if (unlikely(!me))
 		return 0;
 
+	_cleanup_me(me);
 	cdevice_exit(me);
 	deinit_me(me);
 
