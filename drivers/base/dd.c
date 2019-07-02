@@ -429,6 +429,12 @@ int driver_probe_device(struct device_driver *drv, struct device *dev)
 
 	pm_runtime_barrier(dev);
 	ret = really_probe(dev, drv);
+#ifdef CONFIG_DELAY_DEVICE_PROBES
+	if (!driver_deferred_probe_enable && dev->probe_late) {
+		driver_deferred_probe_add(dev);
+		ret = 0;
+	}
+#endif
 	pm_request_idle(dev);
 
 	if (dev->parent)
