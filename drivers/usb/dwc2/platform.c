@@ -1132,7 +1132,7 @@ static struct platform_driver dwc2_platform_driver = {
 	.remove = dwc2_driver_remove,
 	.shutdown = dwc2_driver_shutdown,
 };
-#if CONFIG_DWC_INIT_LEVEL_UP
+#ifdef CONFIG_DWC_INIT_LEVEL_UP
 static int __init dwc2_pltfm_init(void)
 {
 	return platform_driver_register(&dwc2_platform_driver);
