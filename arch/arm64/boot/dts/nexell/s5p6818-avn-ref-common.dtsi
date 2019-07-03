@@ -108,6 +108,7 @@
 
 		amba {
 			pl08xdma0:pl08xdma@c0000000 {
+				deferred-probe;
 				use_isr;
 
 				ch12 {
@@ -128,6 +129,7 @@
 			};
 
 			pl08xdma1:pl08xdma@c0001000 {
+				deferred-probe;
 				use_isr;
 
 				ch0 {
@@ -161,6 +163,7 @@
 		};
 
 		dw_mmc_0:dw_mmc@c0062000 {
+			deferred-probe;
 			num-slots = <1>;
 			bus-width = <4>;
 			cap-sd-highspeed;
@@ -177,7 +180,7 @@
 		};
 
 		tmuctrl_0: tmuctrl@c0096000 {
-			status = "okay";
+			status = "disabled";
 		};
 
 		thermal-zones {
@@ -312,6 +315,7 @@
 	};	/*** soc ***/
 
 	vcc_spk: regulator-fix@2 {
+		deferred-probe;
 		compatible = "regulator-fixed";
 
 		regulator-name = "SPK Vcc";
@@ -325,6 +329,7 @@
 	};
 
 	vdd_a: regulator-fix@3 {
+		deferred-probe;
 		compatible = "regulator-fixed";
 
 		regulator-name = "A Vdd";
@@ -338,6 +343,7 @@
 	};
 
 	vdd_db: regulator-fix@4 {
+		deferred-probe;
 		compatible = "regulator-fixed";
 
 		regulator-name = "DB Vdd";
@@ -351,6 +357,7 @@
 	};
 
 	vcc_monoamp: regulator-fix@5 {
+		deferred-probe;
 		compatible = "regulator-fixed";
 
 		regulator-name = "MONOAMP Vcc";
@@ -364,6 +371,7 @@
 	};
 
 	amp2_en: regulator-fix@6 {
+		deferred-probe;
 		compatible = "regulator-fixed";
 
 		regulator-name = "AMP2 EN";
@@ -556,6 +564,7 @@
 		module = <0>;
 		logical = <1>;
 		logical_num = <0>;
+		sync_dev = <&clipper_3>;
 		status = "okay";
 	};
 
@@ -638,6 +647,11 @@
 };
 #endif
 
+&decimator_0 {
+	sync_dev = <&clipper_0>;
+	status = "okay";
+};
+
 #include "tw9900_rearcam_regset.dtsi"
 &rearcam {
 	rotation = <0>;
@@ -648,7 +662,7 @@
 	width = <704>;
 	height = <480>;
 	skip_frame = <0>;
-	status = "okay";
+	status = "disabled";
 
 	gpio {
 		event-gpio = <&alive_0 3 0>;
@@ -755,6 +769,7 @@
 	status = "okay";
 
 	nxe2000@32 {
+		deferred-probe;
 		compatible = "nexell,nxe2000";
 		reg = <0x32>;
 		interrupt-parent = <&alive_0>;
