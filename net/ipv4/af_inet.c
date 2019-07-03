@@ -1843,7 +1843,11 @@ out_unregister_tcp_proto:
 	goto out;
 }
 
+#ifdef CONFIG_IPV4_INIT_LEVEL_UP
 fs_initcall(inet_init);
+#else
+module_init(inet_init);
+#endif
 
 /* ------------------------------------------------------------------------ */
 
