@@ -572,6 +572,14 @@ static int nxe2000_i2c_probe(struct i2c_client *client,
 	struct nxe2000_platform_data *pdata = NULL;
 	int ret = 0;
 
+#ifdef CONFIG_PMIC_INIT_LEVEL_DOWN
+	if (device_property_read_bool(&client->dev, "deferred-probe")) {
+		if (!client->dev.probe_late) {
+			client->dev.probe_late = true;
+			return -ENODEV;
+		}
+	}
+#endif
 	nxe2000 = devm_kzalloc(&client->dev, sizeof(struct nxe2000), GFP_KERNEL);
 	if (!nxe2000)
 		return -ENOMEM;
