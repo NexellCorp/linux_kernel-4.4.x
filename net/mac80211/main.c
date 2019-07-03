@@ -1247,8 +1247,11 @@ static void __exit ieee80211_exit(void)
 	rcu_barrier();
 }
 
-
+#ifdef CONFIG_WIRELESS_INIT_LEVEL_DOWN
+module_init(ieee80211_init);
+#else
 subsys_initcall(ieee80211_init);
+#endif
 module_exit(ieee80211_exit);
 
 MODULE_DESCRIPTION("IEEE 802.11 subsystem");

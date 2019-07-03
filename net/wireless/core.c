@@ -1220,7 +1220,12 @@ out_fail_sysfs:
 out_fail_pernet:
 	return err;
 }
+
+#ifdef CONFIG_WIRELESS_INIT_LEVEL_DOWN
+module_init(cfg80211_init);
+#else
 subsys_initcall(cfg80211_init);
+#endif
 
 static void __exit cfg80211_exit(void)
 {
