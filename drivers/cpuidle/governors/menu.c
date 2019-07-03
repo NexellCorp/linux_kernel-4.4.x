@@ -486,4 +486,8 @@ static int __init init_menu(void)
 	return cpuidle_register_governor(&menu_governor);
 }
 
+#ifdef CONFIG_GOVERNOR_INIT_LEVEL_DOWN
+device_initcall(init_menu);
+#else
 postcore_initcall(init_menu);
+#endif
