@@ -147,6 +147,14 @@ static int dw_mci_nexell_probe(struct platform_device *pdev)
 	const struct dw_mci_drv_data *drv_data;
 	const struct of_device_id *match;
 
+#ifdef CONFIG_MMC_INIT_LEVEL_DOWN
+	if (device_property_read_bool(&pdev->dev, "deferred-probe")) {
+		if (!pdev->dev.probe_late) {
+			pdev->dev.probe_late = true;
+			return -ENODEV;
+		}
+	}
+#endif
 	match = of_match_node(dw_mci_nexell_match, pdev->dev.of_node);
 	drv_data = match->data;
 	return dw_mci_pltfm_register(pdev, drv_data);
