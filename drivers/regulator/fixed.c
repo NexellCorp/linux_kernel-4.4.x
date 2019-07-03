@@ -114,6 +114,14 @@ static int reg_fixed_voltage_probe(struct platform_device *pdev)
 	struct regulator_config cfg = { };
 	int ret;
 
+#ifdef CONFIG_REGULATOR_INIT_LEVEL_DOWN
+	if (device_property_read_bool(&pdev->dev, "deferred-probe")) {
+		if (!pdev->dev.probe_late) {
+			pdev->dev.probe_late = true;
+			return -ENODEV;
+		}
+	}
+#endif
 	drvdata = devm_kzalloc(&pdev->dev, sizeof(struct fixed_voltage_data),
 			       GFP_KERNEL);
 	if (!drvdata)
