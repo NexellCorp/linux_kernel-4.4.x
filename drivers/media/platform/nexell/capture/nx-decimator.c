@@ -64,12 +64,30 @@ enum {
 	STATE_STOPPING = (1 << 1),
 };
 
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+struct async_device {
+	struct device *dev;
+	struct v4l2_device *v4l2_dev;
+	struct v4l2_async_notifier notifier;
+	struct nx_decimator *me;
+};
+
+struct async_subdev {
+	struct v4l2_async_subdev asd;
+	struct v4l2_subdev *sd;
+};
+#endif
+
 struct nx_decimator {
 	u32 module;
 	u32 logical;
 	u32 logical_num;
 
 	struct v4l2_subdev subdev;
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+	struct async_device *async_dev;
+	struct async_subdev *async_subdev;
+#endif
 	struct media_pad pads[NX_DECIMATOR_PAD_MAX];
 	struct nx_dma_buf buf;
 
@@ -823,6 +841,82 @@ static int nx_decimator_parse_dt(struct platform_device *pdev,
 	return 0;
 }
 
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+static struct device_node *of_get_node_by_property(struct device *dev,
+		struct device_node *np, char *prop_name)
+{
+	const __be32 *list;
+	int size;
+	struct device_node *node = NULL;
+	phandle phandle;
+
+	list = of_get_property(np, prop_name, &size);
+	if (!list) {
+		dev_err(dev, "%s: could not find list. name : %s\n",
+				np->full_name, prop_name);
+		return NULL;
+	}
+
+	phandle = be32_to_cpup(list++);
+	if (phandle) {
+		node = of_find_node_by_phandle(phandle);
+		if (!node) {
+			dev_err(dev, "%s: could not find phandle\n",
+				np->full_name);
+				return NULL;
+		}
+	}
+
+	return node;
+}
+
+static void async_dev_parse_node(struct nx_decimator *me)
+{
+	struct async_device *async_dev = me->async_dev;
+	struct device *dev = async_dev->dev;
+	struct v4l2_async_notifier *n = &async_dev->notifier;
+	struct device_node *np =
+		of_get_node_by_property(dev, dev->of_node, "sync_dev");
+
+	if (!np) {
+		dev_err(dev, "could not find sync_dev property from dts.\n");
+		return;
+	}
+
+	me->async_subdev = devm_kmalloc(dev, sizeof(*me->async_subdev),
+			GFP_KERNEL);
+	me->async_subdev->asd.match_type = V4L2_ASYNC_MATCH_OF;
+	me->async_subdev->asd.match.of.node = np;
+	n->subdevs[n->num_subdevs++] = &me->async_subdev->asd;
+}
+
+static int async_dev_bound(struct v4l2_async_notifier *n,
+			   struct v4l2_subdev *sd,
+			   struct v4l2_async_subdev *asd)
+{
+	struct async_subdev *asubdev = container_of(asd, struct async_subdev,
+			asd);
+	asubdev->sd = sd;
+
+	return 0;
+}
+
+static int async_dev_complete(struct v4l2_async_notifier *n)
+{
+	int ret;
+	struct async_device *adev = container_of(
+			n, struct async_device, notifier);
+
+	ret = register_v4l2(adev->me);
+	if (ret)
+		return ret;
+
+	ret = v4l2_device_register_subdev_nodes(adev->v4l2_dev);
+
+	return ret;
+}
+#endif
+
 /**
  * platform driver
  */
@@ -849,15 +943,32 @@ static int nx_decimator_probe(struct platform_device *pdev)
 
 	init_me(me);
 
+	me->pdev = pdev;
+
 	ret = init_v4l2_subdev(me);
 	if (ret)
 		return ret;
 
+#ifndef CONFIG_V4L2_INIT_LEVEL_UP
 	ret = register_v4l2(me);
 	if (ret)
 		return ret;
+#else
+	me->async_dev = devm_kmalloc(dev, sizeof(*me->async_dev), GFP_KERNEL);
+	me->async_dev->dev = dev;
+	me->async_dev->me = me;
+	me->async_dev->v4l2_dev = nx_v4l2_get_v4l2_device();
+	me->async_dev->notifier.subdevs = devm_kcalloc(dev, 1,
+			sizeof(struct v4l2_async_subdev), GFP_KERNEL);
+	me->async_dev->notifier.num_subdevs = 0;
+	async_dev_parse_node(me);
+	me->async_dev->notifier.bound = async_dev_bound;
+	me->async_dev->notifier.complete = async_dev_complete;
 
-	me->pdev = pdev;
+	v4l2_async_notifier_register(me->async_dev->v4l2_dev,
+			&me->async_dev->notifier);
+#endif
+
 	me->buf.addr = NULL;
 	me->buffer_underrun = false;
 	platform_set_drvdata(pdev, me);
