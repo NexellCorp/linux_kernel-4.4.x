@@ -2448,6 +2448,14 @@ static int pl08x_probe(struct amba_device *adev, const struct amba_id *id)
 	int ret = 0;
 	int i;
 
+#ifdef CONFIG_DMA_INIT_LEVEL_DOWN
+	if (device_property_read_bool(&adev->dev, "deferred-probe")) {
+		if (!adev->dev.probe_late) {
+			adev->dev.probe_late = true;
+			return -ENODEV;
+		}
+	}
+#endif
 	ret = amba_request_regions(adev, NULL);
 	if (ret)
 		return ret;
