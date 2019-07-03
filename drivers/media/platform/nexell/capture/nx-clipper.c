@@ -191,6 +191,9 @@ struct nx_clipper {
 	struct nx_v4l2_i2c_board_info sensor_info;
 
 	struct v4l2_subdev subdev;
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+	struct v4l2_subdev async_sd;
+#endif
 	struct media_pad pads[NX_CLIPPER_PAD_MAX];
 
 	struct v4l2_rect crop;
@@ -2201,7 +2204,6 @@ static int register_v4l2(struct nx_clipper *me)
 	if (!video)
 		BUG();
 
-
 	ret = media_entity_create_link(entity, NX_CLIPPER_PAD_SOURCE_MEM,
 				       &video->vdev.entity, 0, 0);
 	if (ret < 0)
@@ -2292,6 +2294,24 @@ static const struct dev_pm_ops nx_clipper_pm_ops = {
 #endif
 
 #ifdef CONFIG_V4L2_INIT_LEVEL_UP
+static int register_device_for_async(struct nx_clipper *me)
+{
+	int ret;
+
+	snprintf(me->async_sd.name, sizeof(me->async_sd.name),
+			"async-clipper%d-dev",
+			me->module);
+	me->async_sd.of_node = me->pdev->dev.of_node;
+	ret = v4l2_async_register_subdev(&me->async_sd);
+	if (ret) {
+		dev_err(&me->pdev->dev,
+			"failed to registration of asynchonous sub device!\n");
+		return ret;
+	}
+
+	return 0;
+}
+
 static int init_clipper_th(void *args)
 {
 	int ret = 0;
@@ -2309,6 +2329,10 @@ static int init_clipper_th(void *args)
 		return ret;
 
 	ret = register_v4l2(me);
+	if (ret)
+		return ret;
+
+	ret = register_device_for_async(me);
 	if (ret)
 		return ret;
 
@@ -2336,6 +2360,9 @@ static void init_clipper_work(struct work_struct *work)
 	if (ret)
 		return;
 
+	ret = register_device_for_async(me);
+	if (ret)
+		return;
 }
 #endif
 
