@@ -610,15 +610,15 @@
 		status = "okay";
 	};
 
-	decimator_3:decimator3@c0064000 {
+	decimator_6:decimator6@c0064000 {
 		compatible = "nexell,nx-decimator";
 		module = <1>;
 		logical = <1>;
 		logical_num = <0>;
-		status = "okay";
+		status = "disabled";
 	};
 
-	clipper_3:clipper3@c0064000 {
+	clipper_6:clipper6@c0064000 {
 		compatible = "nexell,nx-clipper";
 		module = <1>;
 		logical = <1>;
@@ -631,7 +631,7 @@
 		port = <1>;
 		external_sync = <0>;
 		interlace = <0>;
-		status = "okay";
+		status = "disabled";
 
 		sensor {
 			type = <NX_CAPTURE_SENSOR_I2C>;
