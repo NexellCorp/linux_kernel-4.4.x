@@ -631,7 +631,7 @@
 		module = <1>;
 		logical = <1>;
 		logical_num = <0>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	clipper_6:clipper6@c0064000 {
@@ -647,7 +647,7 @@
 		port = <1>;
 		external_sync = <0>;
 		interlace = <0>;
-		status = "okay";
+		status = "disabled";
 
 		sensor {
 			type = <NX_CAPTURE_SENSOR_I2C>;
