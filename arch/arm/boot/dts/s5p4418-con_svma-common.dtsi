@@ -610,7 +610,7 @@
 		status = "okay";
 	};
 
-	decimator_3:decimator3@c0064000 {
+	decimator_6:decimator6@c0064000 {
 		compatible = "nexell,nx-decimator";
 		module = <1>;
 		logical = <1>;
@@ -618,7 +618,7 @@
 		status = "okay";
 	};
 
-	clipper_3:clipper3@c0064000 {
+	clipper_6:clipper6@c0064000 {
 		compatible = "nexell,nx-clipper";
 		module = <1>;
 		logical = <1>;
