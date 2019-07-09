@@ -251,6 +251,23 @@ static void debug_sync(unsigned long priv)
 }
 #endif
 
+static unsigned int __initdata selected_rear_cam;
+
+static int __init nx_rearcam(char *str)
+{
+	int value;
+
+	if (get_option(&str, &value)) {
+		selected_rear_cam = value;
+		// printk(KERN_ERR "selected_rear_cam=%d\n", selected_rear_cam);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+__setup("nx_rearcam=", nx_rearcam);
+
 /**
  * parse device tree
  */
@@ -1745,8 +1762,8 @@ static int nx_clipper_enum_frame_size(struct v4l2_subdev *sd,
 }
 
 static int nx_clipper_enum_frame_interval(struct v4l2_subdev *sd,
-			      		  struct v4l2_subdev_pad_config *cfg,
-			      		  struct v4l2_subdev_frame_interval_enum
+					  struct v4l2_subdev_pad_config *cfg,
+					  struct v4l2_subdev_frame_interval_enum
 						*frame)
 {
 	struct nx_clipper *me = v4l2_get_subdevdata(sd);
@@ -2359,6 +2376,7 @@ static int nx_clipper_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to parse dt\n");
 		return ret;
 	}
+
 #ifndef CONFIG_V4L2_INIT_LEVEL_UP
 	if (!nx_vip_is_valid(me->module)) {
 		dev_err(dev, "NX VIP %d is not valid\n", me->module);
@@ -2375,18 +2393,34 @@ static int nx_clipper_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 #else
-	if (me->module == 1) {
-		if (g_ClipperThread == NULL)
-			g_ClipperThread = kthread_run(init_clipper_th,
-				me, "KthreadForNxClipper");
-	}
+	if(selected_rear_cam == 2) {
+		if (me->module == 0) {
+			if (g_ClipperThread == NULL)
+				g_ClipperThread = kthread_run(init_clipper_th,
+					me, "KthreadForNxClipper");
+		}
 
-	if (me->module == 0) {
-		me->w_queue = create_singlethread_workqueue("clipper_wqueue");
-		INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
+		if (me->module == 1) {
+			me->w_queue = create_singlethread_workqueue("clipper_wqueue");
+			INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
 
-		queue_delayed_work(me->w_queue, &me->w_delay,
-							msecs_to_jiffies(2000));
+			queue_delayed_work(me->w_queue, &me->w_delay,
+								msecs_to_jiffies(2000));
+		}
+	} else {
+		if (me->module == 1) {
+			if (g_ClipperThread == NULL)
+				g_ClipperThread = kthread_run(init_clipper_th,
+					me, "KthreadForNxClipper");
+		}
+
+		if (me->module == 0) {
+			me->w_queue = create_singlethread_workqueue("clipper_wqueue");
+			INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
+
+			queue_delayed_work(me->w_queue, &me->w_delay,
+								msecs_to_jiffies(2000));
+		}
 	}
 #endif
 
