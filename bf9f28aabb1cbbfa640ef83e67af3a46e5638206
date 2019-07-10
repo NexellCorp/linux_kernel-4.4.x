@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a66a892b_6e03f860",
+        "filename": "arch/arm64/boot/dts/nexell/s5p6818-avn-ref-common.dtsi",
+        "patchSetId": 1
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-07-10T01:32:50Z",
+      "side": 1,
+      "message": "change this field like upper",
+      "range": {
+        "startLine": 201,
+        "startChar": 6,
+        "endLine": 201,
+        "endChar": 7
+      },
+      "revId": "bf9f28aabb1cbbfa640ef83e67af3a46e5638206",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    }
+  ]
+}
