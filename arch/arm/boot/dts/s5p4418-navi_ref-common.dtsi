@@ -311,7 +311,7 @@
 				};
 				cpu-crit-0 {
 					temperature = <115000>;
-					hysteresis = <100000>;
+					hysteresis = <0>;
 					type = "critical";
 				};
 			};
@@ -323,7 +323,7 @@
 				};
 				map1 {
 					trip = <&cpu_alert1>;
-					cooling-device = <&cpu0 6 6>;
+					cooling-device = <&cpu0 5 6>;
 				};
 			};
 		};
