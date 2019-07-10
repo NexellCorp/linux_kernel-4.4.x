@@ -596,6 +596,38 @@ static int nx_decimator_s_crop(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int nx_decimator_g_ctrl(struct v4l2_subdev *sd,
+			     struct v4l2_control *ctrl)
+{
+	struct nx_decimator *me = v4l2_get_subdevdata(sd);
+	struct v4l2_subdev *remote = get_remote_source_subdev(me);
+
+	if (!remote) {
+		WARN_ON(1);
+		return -ENODEV;
+	}
+	return v4l2_subdev_call(remote, core, g_ctrl, ctrl);
+}
+
+static int nx_decimator_s_ctrl(struct v4l2_subdev *sd,
+			     struct v4l2_control *ctrl)
+{
+	struct nx_decimator *me = v4l2_get_subdevdata(sd);
+	struct v4l2_subdev *remote = get_remote_source_subdev(me);
+
+	if (!remote) {
+		WARN_ON(1);
+		return -ENODEV;
+	}
+
+	return v4l2_subdev_call(remote, core, s_ctrl, ctrl);
+}
+
+static const struct v4l2_subdev_core_ops nx_decimator_core_ops = {
+	.s_ctrl = nx_decimator_s_ctrl,
+	.g_ctrl = nx_decimator_g_ctrl,
+};
+
 static const struct v4l2_subdev_video_ops nx_decimator_video_ops = {
 	.s_stream = nx_decimator_s_stream,
 	.g_crop = nx_decimator_g_crop,
@@ -614,6 +646,7 @@ static const struct v4l2_subdev_pad_ops nx_decimator_pad_ops = {
 static const struct v4l2_subdev_ops nx_decimator_subdev_ops = {
 	.video = &nx_decimator_video_ops,
 	.pad = &nx_decimator_pad_ops,
+	.core = &nx_decimator_core_ops,
 };
 /**
  * media_entity_operations
