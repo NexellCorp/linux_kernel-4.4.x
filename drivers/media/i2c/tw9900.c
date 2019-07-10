@@ -26,6 +26,7 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-ctrls.h>
+#include <linux/v4l2-controls.h>
 
 /* #define DEBUG_TW9900 */
 #ifdef DEBUG_TW9900
@@ -58,11 +59,12 @@ enum {
 };
 
 enum {
-	TW9900_NTSC,
+	TW9900_NTSC = 0,
 	TW9900_PAL,
 };
 
 struct nx_resolution {
+	uint32_t mode;
 	uint32_t width;
 	uint32_t height;
 	uint32_t interval[2];
@@ -70,17 +72,19 @@ struct nx_resolution {
 
 static struct nx_resolution supported_resolutions[] = {
 	{
+		.mode = TW9900_NTSC,
 		.width	= 704,
 		.height = 480,
 		.interval[0] = 15,
 		.interval[1] = 30,
-	}/*,
+	},
 	{
-		.width	= 640,
-		.height = 480,
+		.mode = TW9900_PAL,
+		.width	= 704,
+		.height = 576,
 		.interval[0] = 15,
 		.interval[1] = 30,
-	}*/
+	}
 };
 
 /* #define BRIGHTNESS_TEST */
@@ -138,7 +142,7 @@ static struct reg_val _sensor_init_data_ntsc[] = {
 
 /* 704x576i */
 static struct reg_val _sensor_init_data_pal[] = {
-	{0x88, 12},
+	{0x02, 0x40},
 	{0x03, 0xa2},
 	{0x05, 0x01},
 	{0x07, 0x12},
@@ -146,8 +150,8 @@ static struct reg_val _sensor_init_data_pal[] = {
 	{0x09, 0x20},
 	{0x19, 0x57},
 	{0x1a, 0x0f},
-	{0x1c, 0X17},
-	{0x1d, 0X7f},
+	{0x1c, 0x17},
+	{0x1d, 0x7f},
 	{0x29, 0x03},
 	{0x2d, 0x07},
 	{0x6b, 0x09},
@@ -234,10 +238,6 @@ static int _i2c_write_byte(struct i2c_client *client, u8 addr, u8 val)
 	return 0;
 }
 
-#define V4L2_CID_MUX        (V4L2_CTRL_CLASS_USER | 0x1001)
-#define V4L2_CID_STATUS     (V4L2_CTRL_CLASS_USER | 0x1002)
-#define V4L2_CID_CUR_STD    (V4L2_CTRL_CLASS_USER | 0x1003)
-
 static int tw9900_set_mux(struct v4l2_ctrl *ctrl)
 {
 	struct tw9900_state *me = ctrl_to_me(ctrl);
@@ -281,28 +281,29 @@ static int tw9900_set_brightness(struct v4l2_ctrl *ctrl)
 	return 0;
 }
 
-static int tw9900_get_cur_std(struct v4l2_ctrl *ctrl)
+static int tw9900_get_cur_std(uint32_t *val)
 {
-	struct tw9900_state *me = ctrl_to_me(ctrl);
+	struct tw9900_state *me = &_state;
 	int ret = 0;
 	u8 value = 0;
 
 	_i2c_write_byte(me->i2c_client, TW9900_REG_CLMD, 0x05);
 	_i2c_write_byte(me->i2c_client, TW9900_REG_SDT, 0x1f);
-	_i2c_write_byte(me->i2c_client, TW9900_REG_INFORM, 0xc3);
 	_i2c_write_byte(me->i2c_client, TW9900_REG_SDTR, 0xff);
+	_i2c_write_byte(me->i2c_client, TW9900_REG_INFORM, 0xc3);
 	_i2c_write_byte(me->i2c_client, TW9900_REG_CLMPG, 0x52);
 	_i2c_write_byte(me->i2c_client, TW9900_REG_PCLAMP, 0x38);
-
 	ret = _i2c_read_byte(me->i2c_client, TW9900_REG_SDT, &value);
-	if (ret)
+	if (ret) {
 		pr_err("%s: TW9900_REG_SDT read fail.\n", __func__);
+		return ret;
+	}
 
 	vmsg("## %s() TW9900_REG_SDT read value:0x%x\n", __func__, value);
 
 	value = (value & 0x70) >> TW9900_REG_SDT_POS_STDNOW;
 
-	ctrl->val = value;
+	*val = value;
 
 #ifdef DEBUG_TW9900
 	switch (value) {
@@ -363,7 +364,7 @@ static int tw9900_get_status(struct v4l2_ctrl *ctrl)
 static int tw9900_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	switch (ctrl->id) {
-	case V4L2_CID_MUX:
+	case V4L2_CID_NX_MUX:
 		return tw9900_set_mux(ctrl);
 	case V4L2_CID_BRIGHTNESS:
 		return tw9900_set_brightness(ctrl);
@@ -375,15 +376,26 @@ static int tw9900_s_ctrl(struct v4l2_ctrl *ctrl)
 
 static int tw9900_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 {
+	int ret = 0;
+
 	switch (ctrl->id) {
-	case V4L2_CID_STATUS:
+	case V4L2_CID_NX_STATUS:
 		return tw9900_get_status(ctrl);
-	case V4L2_CID_CUR_STD:
-		return tw9900_get_cur_std(ctrl);
+	case V4L2_CID_NX_CUR_STD:
+	{
+		struct tw9900_state *me = ctrl_to_me(ctrl);
+
+		ret = tw9900_get_cur_std(&ctrl->val);
+		if (!ret)
+			me->mode = ctrl->val;
+		break;
+	}
 	default:
 		pr_err("%s: invalid control id 0x%x\n", __func__, ctrl->id);
 		return -EINVAL;
 	}
+
+	return ret;
 }
 
 static const struct v4l2_ctrl_ops tw9900_ctrl_ops = {
@@ -394,7 +406,7 @@ static const struct v4l2_ctrl_ops tw9900_ctrl_ops = {
 static const struct v4l2_ctrl_config tw9900_custom_ctrls[] = {
 	{
 		.ops  = &tw9900_ctrl_ops,
-		.id   = V4L2_CID_MUX,
+		.id   = V4L2_CID_NX_MUX,
 		.type = V4L2_CTRL_TYPE_INTEGER,
 		.name = "MuxControl",
 		.min  = 0,
@@ -404,7 +416,7 @@ static const struct v4l2_ctrl_config tw9900_custom_ctrls[] = {
 	},
 	{
 		.ops  = &tw9900_ctrl_ops,
-		.id   = V4L2_CID_STATUS,
+		.id   = V4L2_CID_NX_STATUS,
 		.type = V4L2_CTRL_TYPE_INTEGER,
 		.name = "Status",
 		.min  = 0,
@@ -415,7 +427,7 @@ static const struct v4l2_ctrl_config tw9900_custom_ctrls[] = {
 	},
 	{
 		.ops  = &tw9900_ctrl_ops,
-		.id   = V4L2_CID_CUR_STD,
+		.id   = V4L2_CID_NX_CUR_STD,
 		.type = V4L2_CTRL_TYPE_INTEGER,
 		.name = "cur_std",
 		.min  = TW9900_INVOKE_NTSC,
@@ -501,7 +513,8 @@ static int tw9900_s_stream(struct v4l2_subdev *sd, int enable)
 			}
 			_state.first = false;
 		}
-	}
+	} else
+		_state.first = true;
 
 	return 0;
 }
@@ -515,33 +528,94 @@ static int tw9900_s_fmt(struct v4l2_subdev *sd,
 	struct tw9900_state *me = &_state;
 
 	vmsg("%s\n", __func__);
+	return 0;
+}
 
-	/* PAL -> 704x576i */
-	if (mf->width == 704 && mf->height == 576)
-		me->mode = TW9900_PAL;
-	else /* NTSC -> 704x480i */
-		me->mode = TW9900_NTSC;
+static int tw9900_set_ctrl(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
+{
+	struct tw9900_state *me = &_state;
+
+	vmsg("%s: id:0x%x, val:%d\n", __func__, ctrl->id, ctrl->value);
 
 	return 0;
 }
 
+static int tw9900_get_ctrl(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
+{
+	int ret = 0;
+
+	vmsg("%s: id:0x%x, value:%d\n", __func__, ctrl->id, ctrl->value);
+	switch (ctrl->id) {
+	case V4L2_CID_NX_CUR_STD:
+	{
+		struct tw9900_state *me = &_state;
+
+		ret = tw9900_get_cur_std(&ctrl->value);
+		if (!ret)
+			me->mode = ctrl->value;
+		break;
+	}
+	default:
+		vmsg("%s: the cmd:0x%x is not supported\n",
+				__func__, ctrl->id);
+		break;
+	}
+	return ret;
+}
+
 static int tw9900_s_power(struct v4l2_subdev *sd, int on)
 {
+	struct tw9900_state *me = &_state;
+
 	vmsg("%s: %d\n", __func__, on);
+
 	return 0;
+}
+
+static int get_array_size(struct tw9900_state *me, int mode)
+{
+	int count = 0, i;
+
+	for (i = 0; i < ARRAY_SIZE(supported_resolutions); i++) {
+		if (supported_resolutions[i].mode == mode)
+			count++;
+	}
+	return count;
+}
+
+static int get_array_data(struct tw9900_statue *me, int mode, uint32_t index)
+{
+	int count = 0, ret = -EINVAL, i =0;
+
+	for (i = 0; i < ARRAY_SIZE(supported_resolutions); i++) {
+		if (supported_resolutions[i].mode == mode) {
+			if (count == index)
+				return i;
+			else
+				count++;
+		}
+	}
+	return ret;
 }
 
 static int tw9900_enum_frame_size(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_pad_config *cfg,
 				  struct v4l2_subdev_frame_size_enum *frame)
 {
-	vmsg("%s, index:%d\n", __func__, frame->index);
+	struct tw9900_state *me = &_state;
+	int index = -1;
+	struct v4l2_control ctrl;
 
-	if (frame->index >= ARRAY_SIZE(supported_resolutions))
+	vmsg("%s, index:%d\n", __func__, frame->index);
+	if (frame->index >= get_array_size(me, me->mode))
 		return -ENODEV;
 
-	frame->max_width = supported_resolutions[frame->index].width;
-	frame->max_height = supported_resolutions[frame->index].height;
+	index = get_array_data(me, me->mode, frame->index);
+	if (index < 0)
+		return -ENODEV;
+
+	frame->max_width = supported_resolutions[index].width;
+	frame->max_height = supported_resolutions[index].height;
 
 	return 0;
 }
@@ -551,13 +625,15 @@ static int tw9900_enum_frame_interval(struct v4l2_subdev *sd,
 				      struct v4l2_subdev_frame_interval_enum
 				      *frame)
 {
+	struct tw9900_state *me = &_state;
 	int i;
 
 	vmsg("%s, %s interval\n", __func__, (frame->index) ? "max" : "min");
 
 	for (i = 0; i < ARRAY_SIZE(supported_resolutions); i++) {
 		if ((frame->width == supported_resolutions[i].width) &&
-		    (frame->height == supported_resolutions[i].height)) {
+		    (frame->height == supported_resolutions[i].height) &&
+		    (me->mode == supported_resolutions[i].mode)) {
 			frame->interval.numerator = 1;
 			frame->interval.denominator =
 				supported_resolutions[i].interval[frame->index];
@@ -572,6 +648,8 @@ static int tw9900_enum_frame_interval(struct v4l2_subdev *sd,
 
 static const struct v4l2_subdev_core_ops tw9900_subdev_core_ops = {
 	.s_power = tw9900_s_power,
+	.g_ctrl = tw9900_get_ctrl,
+	.s_ctrl = tw9900_set_ctrl,
 };
 
 static const struct v4l2_subdev_pad_ops tw9900_subdev_pad_ops = {
@@ -624,6 +702,7 @@ static int tw9900_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, sd);
 	state->i2c_client = client;
 	state->first = true;
+	state->mode = TW9900_NTSC;
 
 	vmsg("%s exit\n", __func__);
 
