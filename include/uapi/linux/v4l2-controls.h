@@ -178,6 +178,14 @@ enum v4l2_colorfx {
  * We reserve 16 controls for this driver. */
 #define V4L2_CID_USER_TC358743_BASE		(V4L2_CID_USER_BASE + 0x1080)
 
+/* The base for Nexell driver controls.
+ * We reserve 16 controls for this driver. */
+#define V4L2_CID_USER_NX_BASE			(V4L2_CID_USER_BASE + 0x10B0)
+#define V4L2_CID_NX_MUX				(V4L2_CID_USER_NX_BASE | 0x1001)
+#define V4L2_CID_NX_STATUS			(V4L2_CID_USER_NX_BASE | 0x1002)
+#define V4L2_CID_NX_CUR_STD			(V4L2_CID_USER_NX_BASE | 0x1003)
+#define V4L2_CID_NX_POWER			(V4L2_CID_USER_NX_BASE | 0x1004)
+
 /* MPEG-class control IDs */
 /* The MPEG controls are applicable to all codec controls
  * and the 'MPEG' part of the define is historical */
