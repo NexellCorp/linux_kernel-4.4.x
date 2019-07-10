@@ -50,6 +50,7 @@
 #include <linux/soc/nexell/cpufreq.h>
 #endif
 
+#include <linux/v4l2-controls.h>
 #include "../nx-v4l2.h"
 #include "../nx-video.h"
 #include "nx-vip-primitive.h"
@@ -233,6 +234,7 @@ struct nx_clipper {
 };
 
 static int register_irq_handler(struct nx_clipper *me);
+static struct v4l2_subdev *get_remote_source_subdev(struct nx_clipper *me);
 
 #ifdef DEBUG_SYNC
 /* DEBUG_SYNC */
@@ -1557,12 +1559,30 @@ static int nx_clipper_s_parm(struct v4l2_subdev *sd,
 static int nx_clipper_g_ctrl(struct v4l2_subdev *sd,
 			     struct v4l2_control *ctrl)
 {
+	struct nx_clipper *me = v4l2_get_subdevdata(sd);
 	int ret = 0;
 
-	if (ctrl->id == V4L2_CID_MIN_BUFFERS_FOR_CAPTURE)
+	switch (ctrl->id) {
+	case V4L2_CID_MIN_BUFFERS_FOR_CAPTURE:
 		ctrl->value = 8;
-	else
+	break;
+	case V4L2_CID_NX_CUR_STD:
+	{
+		struct v4l2_subdev *remote = get_remote_source_subdev(me);
+
+		if (!remote) {
+			WARN_ON(1);
+			return -ENODEV;
+		}
+		if (!me->sensor_enabled)
+			enable_sensor_power(me, true);
+		ret = v4l2_subdev_call(remote, core, g_ctrl, ctrl);
+	}
+	break;
+	default:
 		ret = -EINVAL;
+	break;
+	}
 
 	return ret;
 }
@@ -1577,6 +1597,8 @@ static int nx_clipper_s_ctrl(struct v4l2_subdev *sd,
 		WARN_ON(1);
 		return -ENODEV;
 	}
+	if (ctrl->id == V4L2_CID_NX_POWER)
+		enable_sensor_power(me, ctrl->value);
 	return v4l2_subdev_call(remote, core, s_ctrl, ctrl);
 }
 
