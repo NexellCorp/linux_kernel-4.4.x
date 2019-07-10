@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2013-2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2013-2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 #include <linux/file.h>
 #include "mali_timeline.h"
@@ -66,6 +66,10 @@ static void put_sync_fences(struct work_struct *ignore)
 
 	hlist_for_each_entry_safe(o, pos, tmp, &list, list) {
 		sync_fence_put(o->fence);
+					
+		//temp test
+		/*printk("from put_sync_fences\n");*/
+
 		kfree(o);
 	}
 }
@@ -410,6 +414,9 @@ static mali_scheduler_mask mali_timeline_update_oldest_point(struct mali_timelin
 {
 	mali_scheduler_mask schedule_mask = MALI_SCHEDULER_MASK_EMPTY;
 
+	/* temp test */
+	/*printk(" --- called at %s(%d), timeline(%p), system(%p)\n", __FUNCTION__, __LINE__, timeline, timeline->system);*/
+
 	MALI_DEBUG_ASSERT_POINTER(timeline);
 
 	MALI_DEBUG_CODE({
@@ -433,6 +440,10 @@ static mali_scheduler_mask mali_timeline_update_oldest_point(struct mali_timelin
 	while (NULL != timeline->waiter_tail) {
 		u32 waiter_time_relative;
 		u32 time_head_relative;
+
+		/* temp test */
+		/*printk(" --- called at %s(%d), waiter_tail(%p)\n", __FUNCTION__, __LINE__, timeline->waiter_tail);*/
+
 		struct mali_timeline_waiter *waiter = timeline->waiter_tail;
 
 		time_head_relative = timeline->point_next - timeline->point_oldest;
@@ -454,7 +465,71 @@ static mali_scheduler_mask mali_timeline_update_oldest_point(struct mali_timelin
 
 		/* Release waiter.  This could activate a tracker, if this was
 		 * the last waiter for the tracker. */
-		schedule_mask |= mali_timeline_system_release_waiter(timeline->system, waiter);
+		 
+		schedule_mask |= mali_timeline_system_release_waiter(timeline->system, waiter);		
+	}
+
+	/* temp test */
+	/*printk(" --- called at %s(%d) done. ---\n", __FUNCTION__, __LINE__);*/
+
+	return schedule_mask;
+}
+
+static mali_scheduler_mask mali_timeline_release_with_depended_point(struct mali_timeline_tracker *tracker)
+{
+	struct mali_timeline *timeline;
+	struct mali_timeline_waiter *waiter;
+	mali_scheduler_mask schedule_mask = MALI_SCHEDULER_MASK_EMPTY;
+	
+	timeline = tracker->timeline;
+	MALI_DEBUG_ASSERT_POINTER(timeline);
+	MALI_DEBUG_ASSERT(MALI_TIMELINE_SOFT == timeline->id);
+	
+	MALI_DEBUG_CODE({
+		struct mali_timeline_system *system = timeline->system;
+		MALI_DEBUG_ASSERT_POINTER(system);
+
+		MALI_DEBUG_ASSERT(MALI_TIMELINE_SYSTEM_LOCKED(system));
+	});
+
+	/* Only release the waiter that wait for the tracker. */
+	waiter = timeline->waiter_tail;
+	while (NULL != waiter) {
+		if (waiter->point == tracker->point) {
+
+			struct mali_timeline_waiter *waiter_next;
+			struct mali_timeline_waiter *waiter_prev;
+			
+			waiter_next = waiter->timeline_next;
+			waiter_prev = waiter->timeline_prev;
+			waiter->timeline_next = NULL;
+			waiter->timeline_prev = NULL;
+
+			if (NULL != waiter_prev) {
+				waiter_prev->timeline_next = waiter_next;
+			}
+
+			if (NULL != waiter_next) {
+				waiter_next->timeline_prev = waiter_prev;
+			}
+
+			if (waiter ==  timeline->waiter_tail)
+				 timeline->waiter_tail = waiter_next;
+
+			if (waiter == timeline->waiter_head)
+				timeline->waiter_head = NULL;
+
+			
+			
+			/* temp test */
+			/*printk(" --- called at %s(%d)---\n", __FUNCTION__, __LINE__);*/
+			 
+			schedule_mask |= mali_timeline_system_release_waiter(timeline->system, waiter);
+			waiter = waiter_next;
+		}else {
+
+			waiter = waiter->timeline_next;
+		}
 	}
 
 	return schedule_mask;
@@ -494,6 +569,9 @@ mali_scheduler_mask mali_timeline_tracker_release(struct mali_timeline_tracker *
 	struct mali_timeline_tracker *tracker_next, *tracker_prev;
 	mali_scheduler_mask schedule_mask = MALI_SCHEDULER_MASK_EMPTY;
 	u32 tid = _mali_osk_get_tid();
+
+	/* temp test */
+	/*printk(" --- called at %s(%d), tid(%d)\n", __FUNCTION__, __LINE__, tid);*/
 
 	/* Upon entry a group lock will be held, but not a scheduler lock. */
 	MALI_DEBUG_ASSERT_POINTER(tracker);
@@ -548,6 +626,11 @@ mali_scheduler_mask mali_timeline_tracker_release(struct mali_timeline_tracker *
 		MALI_DEBUG_ASSERT(MALI_TIMELINE_SYSTEM_LOCKED(system));
 	} else {
 		tracker_prev->timeline_next = tracker_next;
+		if (MALI_TIMELINE_SOFT == tracker->timeline->id) {
+			/* Use the signaled soft tracker to release the depended soft waiter */
+			schedule_mask |= mali_timeline_release_with_depended_point(tracker);
+			MALI_DEBUG_ASSERT(MALI_TIMELINE_SYSTEM_LOCKED(system));
+		}
 	}
 
 	MALI_DEBUG_ASSERT(MALI_TIMELINE_SYSTEM_LOCKED(system));
@@ -1098,7 +1181,7 @@ static void mali_timeline_system_create_waiters_and_unlock(struct mali_timeline_
 		struct mali_timeline_waiter *waiter_tail,
 		struct mali_timeline_waiter *waiter_head)
 {
-	int i;
+	int i, sync_fd = -1;
 	u32 tid = _mali_osk_get_tid();
 	mali_scheduler_mask schedule_mask = MALI_SCHEDULER_MASK_EMPTY;
 #if defined(CONFIG_SYNC) || defined(CONFIG_SYNC_FILE)
@@ -1148,6 +1231,12 @@ static void mali_timeline_system_create_waiters_and_unlock(struct mali_timeline_
 			continue;
 		}
 
+		if ((MALI_TIMELINE_SOFT == timeline->id) && mali_timeline_is_tracker_released(timeline, point)) {
+			/* The tracker that the point related to has already been released, so no need to a waiter. */
+			continue;
+		}
+		
+
 		/* The point is on timeline. */
 		MALI_DEBUG_ASSERT(mali_timeline_is_point_on(timeline, point));
 
@@ -1185,6 +1274,7 @@ static void mali_timeline_system_create_waiters_and_unlock(struct mali_timeline_
 		struct mali_timeline_waiter *waiter;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 		sync_fence = sync_fence_fdget(tracker->fence.sync_fd);
+		sync_fd = tracker->fence.sync_fd;		
 #else
 		sync_fence = mali_internal_sync_fence_fdget(tracker->fence.sync_fd);
 #endif
@@ -1244,6 +1334,7 @@ static void mali_timeline_system_create_waiters_and_unlock(struct mali_timeline_
 		tracker->sync_fence = sync_fence;
 
 		sync_fence = NULL;
+		sync_fd = -1;
 	}
 #endif /* defined(CONFIG_SYNC) || defined(CONFIG_SYNC_FILE)*/
 #if defined(CONFIG_MALI_DMA_BUF_FENCE)
@@ -1279,6 +1370,9 @@ static void mali_timeline_system_create_waiters_and_unlock(struct mali_timeline_
 			}
 			tracker->waiter_head = waiter;
 
+			/* temp test */
+			printk("[mali] waiter_dma_fence = waiter(%p)\n", waiter);
+
 			/* Also store waiter in separate field for easy access by sync callback. */
 			tracker->waiter_dma_fence = waiter;
 		}
@@ -1307,6 +1401,9 @@ exit:
 	if (NULL != sync_fence) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 		sync_fence_put(sync_fence);
+		
+		//temp test
+		/*printk("fd(%d)\n", sync_fd);*/
 #else
 		fput(sync_fence->file);
 #endif
@@ -1390,6 +1487,22 @@ static mali_scheduler_mask mali_timeline_system_release_waiter(struct mali_timel
 	struct mali_timeline_tracker *tracker;
 	mali_scheduler_mask schedule_mask = MALI_SCHEDULER_MASK_EMPTY;
 
+	/* temp test */
+	#if 0
+	{
+		if ((u64)system < 0x10UL || (u64)waiter < 0x10UL){ 
+			printk("\n ====>s(%p), w(%p) error.\n\n", system, waiter); /* temp test */			
+			printk("====================================\n");
+			return 0;
+		}
+		
+		if ((u64)waiter->tracker < 0x10UL){ 
+			printk("\n ====> t(%p) error.\n\n", waiter->tracker); /* temp test */			
+			printk("====================================\n");
+			return 0;
+		}
+	}
+	#endif
 	MALI_DEBUG_ASSERT_POINTER(system);
 	MALI_DEBUG_ASSERT_POINTER(waiter);
 
@@ -1412,6 +1525,8 @@ static mali_scheduler_mask mali_timeline_system_release_waiter(struct mali_timel
 		tracker = NULL;
 	}
 
+	/*printk("done\n");*/ /* temp test */
+	
 	return schedule_mask;
 }
 
@@ -1467,7 +1582,7 @@ static void mali_timeline_do_sync_fence_callback(void *arg)
 				    struct mali_timeline_tracker, sync_fence_signal_list) {
 		mali_scheduler_mask schedule_mask = MALI_SCHEDULER_MASK_EMPTY;
 		mali_bool is_aborting = MALI_FALSE;
-		int fence_status = 0;
+		int fence_status = 0, sync_fd = -1;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 		struct sync_fence *sync_fence = NULL;
 #else
@@ -1479,6 +1594,7 @@ static void mali_timeline_do_sync_fence_callback(void *arg)
 		_mali_osk_list_delinit(&tracker->sync_fence_signal_list);
 
 		sync_fence = tracker->sync_fence;
+		sync_fd = tracker->fence.sync_fd;
 		MALI_DEBUG_ASSERT_POINTER(sync_fence);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
@@ -1506,6 +1622,11 @@ static void mali_timeline_do_sync_fence_callback(void *arg)
 
 		tracker->sync_fence = NULL;
 		tracker->fence.sync_fd = -1;
+
+
+		/* temp test */
+		/*printk(" --- called at %s(%d)---\n", __FUNCTION__, __LINE__);*/
+		 
 
 		schedule_mask |= mali_timeline_system_release_waiter(system, waiter);
 
@@ -1545,6 +1666,9 @@ static void mali_timeline_do_sync_fence_callback(void *arg)
 #else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 		sync_fence_put(sync_fence);
+		
+		//temp test
+		/*printk("fd(%d)\n", sync_fd);*/
 #else
 		fput(sync_fence->file);
 #endif
@@ -1867,22 +1991,43 @@ void mali_timeline_dma_fence_callback(void *pp_job_ptr)
 	u32 tid = _mali_osk_get_tid();
 	mali_bool is_aborting = MALI_FALSE;
 
+
 	MALI_DEBUG_ASSERT_POINTER(pp_job);
 
 	tracker = &pp_job->tracker;
 	MALI_DEBUG_ASSERT_POINTER(tracker);
 
+
 	system = tracker->system;
 	MALI_DEBUG_ASSERT_POINTER(system);
 	MALI_DEBUG_ASSERT_POINTER(system->session);
 
+	/* temp test */
+#if 0
+	if ((int)tracker->waiter_dma_fence < 0x10 || (int)system < 0x10)
+	{
+		printk("\n[mali] ERR. system(%p), waiter(%p). dma_fence_callback. sync_fd(%d), sync_fence(%p)\n", system, tracker->waiter_dma_fence, tracker->fence.sync_fd, (tracker->sync_fence));
+		/*mali_timeline_debug_print_tracker(tracker, NULL);*/
+		printk("====================================================================================\n");		
+		return;
+	}
+#endif
+
 	mali_spinlock_reentrant_wait(system->spinlock, tid);
+
+	/* temp test */
+	#if 0
+	if (-1 == tracker->fence.sync_fd || !(uintptr_t)(tracker->sync_fence))
+	{
+		MALI_PRINT(("mali_timeline_dma_fence_callback. sync_fd(%d), sync_fence(%p)\n", tracker->fence.sync_fd, (uintptr_t)(tracker->sync_fence)));
+		return;
+	}
+	#endif
 
 	waiter = tracker->waiter_dma_fence;
 	MALI_DEBUG_ASSERT_POINTER(waiter);
-
+	
 	schedule_mask |= mali_timeline_system_release_waiter(system, waiter);
-
 	is_aborting = system->session->is_aborting;
 
 	/* If aborting, wake up sleepers that are waiting for dma fence callbacks to complete. */
@@ -1894,6 +2039,6 @@ void mali_timeline_dma_fence_callback(void *pp_job_ptr)
 
 	if (!is_aborting) {
 		mali_executor_schedule_from_mask(schedule_mask, MALI_TRUE);
-	}
+	}	
 }
 #endif

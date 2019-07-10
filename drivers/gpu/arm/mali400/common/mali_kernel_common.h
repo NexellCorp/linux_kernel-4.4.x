@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2010, 2012-2014, 2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2007-2010, 2012-2014, 2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 
 #ifndef __MALI_KERNEL_COMMON_H__
@@ -107,9 +107,6 @@
  */
 #define MALI_IGNORE(x) x=x
 
-/* NEXELL_FEATURE_DEBUG_EN */
-#define NX_DBG_POINT() MALI_PRINTF((" --- called at %s(%d)\n", __FUNCTION__, __LINE__))
-
 #if defined(CONFIG_MALI_QUIET)
 #define MALI_PRINTF(args)
 #else
@@ -155,7 +152,7 @@ extern int mali_debug_level;
  * _mali_osk_abort(), on OSs that support it.
  */
 #define MALI_DEBUG_PRINT_ASSERT(condition, args) do  {if( !(condition)) { MALI_PRINT_ERROR(args); _mali_osk_break(); } } while(0)
-#define MALI_DEBUG_ASSERT_POINTER(pointer) do  {if( (pointer)== NULL) {MALI_PRINT_ERROR(("NULL pointer " #pointer)); _mali_osk_break();} } while(0)
+#define MALI_DEBUG_ASSERT_POINTER(pointer) do  {if( (pointer)== NULL || (u64)pointer < 0x10UL) {MALI_PRINT_ERROR(("NULL pointer " #pointer)); _mali_osk_break();} } while(0)
 #define MALI_DEBUG_ASSERT(condition) do  {if( !(condition)) {MALI_PRINT_ERROR(("ASSERT failed: " #condition )); _mali_osk_break();} } while(0)
 
 #else /* DEBUG */
