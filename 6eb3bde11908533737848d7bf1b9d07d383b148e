@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c17ceba5_18f4533b",
+        "filename": "arch/arm/boot/dts/s5p4418-navi_ref-common.dtsi",
+        "patchSetId": 1
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-07-10T01:33:45Z",
+      "side": 1,
+      "message": "Why is this differ with upper cpu_alert0/1?",
+      "range": {
+        "startLine": 314,
+        "startChar": 5,
+        "endLine": 314,
+        "endChar": 6
+      },
+      "revId": "6eb3bde11908533737848d7bf1b9d07d383b148e",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    }
+  ]
+}
