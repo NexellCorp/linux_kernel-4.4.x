@@ -84,8 +84,6 @@ struct nx_decimator {
 
 	struct platform_device *pdev;
 
-	struct tasklet_struct work;
-	struct list_head done_bufs;
 	struct nx_video_buffer_object vbuf_obj;
 	struct nx_v4l2_irq_entry *irq_entry;
 	u32 mem_fmt;
@@ -146,53 +144,6 @@ static void free_dma_buffer(struct nx_decimator *me)
 		me->buf.stride[0] = me->buf.stride[1] = 0;
 		me->buf.addr = NULL;
 	}
-}
-
-static int handle_buffer_done(struct nx_decimator *me)
-{
-	struct nx_video_buffer *buf = NULL;
-
-	while (!list_empty(&me->done_bufs)) {
-		buf = list_first_entry(&me->done_bufs,
-				struct nx_video_buffer, list);
-		if (buf) {
-			buf->consumer_index++;
-			buf->cb_buf_done(buf);
-			list_del_init(&buf->list);
-		}
-	}
-	return 0;
-}
-
-static void init_buffer_handler(struct nx_decimator *me)
-{
-	INIT_LIST_HEAD(&me->done_bufs);
-	tasklet_init(&me->work, (void*)handle_buffer_done,
-			(long unsigned int)me);
-}
-
-static void add_buffer_to_handler(struct nx_decimator *me,
-		struct nx_video_buffer *done_buf)
-{
-	list_add_tail(&done_buf->list, &me->done_bufs);
-	tasklet_schedule(&me->work);
-}
-
-static void deinit_buffer_handler(struct nx_decimator *me)
-{
-	struct nx_video_buffer *buf = NULL;
-
-	tasklet_kill(&me->work);
-	while (!list_empty(&me->done_bufs)) {
-		buf = list_entry(me->done_bufs.next,
-					struct nx_video_buffer, list);
-		if (buf) {
-			buf->cb_buf_done(buf);
-			list_del_init(&buf->list);
-		} else
-			break;
-	}
-	list_del_init(&me->done_bufs);
 }
 
 static int handle_buffer_underrun(struct nx_decimator *me)
@@ -262,8 +213,10 @@ static void process_buffer(struct nx_decimator *me, bool is_timer)
 				handle_buffer_underrun(me);
 				me->buffer_underrun = true;
 			}
-			if (done)
-				add_buffer_to_handler(me, done);
+			if (done) {
+				done->consumer_index++;
+				done->cb_buf_done(done);
+			}
 		} else {
 			int buf_count =
 				nx_video_get_buffer_count(&me->vbuf_obj);
@@ -447,17 +400,20 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 #endif
 			update_buffer(me);
 			alloc_dma_buffer(me);
-			init_buffer_handler(me);
 			nx_vip_run(me->module, VIP_DECIMATOR);
 			install_timer(me);
 			NX_ATOMIC_SET_MASK(STATE_RUNNING, &me->state);
 		}
 	} else {
 		if (NX_ATOMIC_READ(&me->state) & STATE_RUNNING) {
-			NX_ATOMIC_SET_MASK(STATE_STOPPING, &me->state);
 			nx_vip_stop(module, VIP_DECIMATOR);
-			wait_for_completion_timeout(&me->stop_done, HZ);
-			NX_ATOMIC_CLEAR_MASK(STATE_STOPPING, &me->state);
+
+			NX_ATOMIC_SET_MASK(STATE_MEM_STOPPING, &me->state);
+			if (!wait_for_completion_timeout(&me->stop_done, HZ)) {
+				pr_err("timeout for waiting clipper stop\n");
+				nx_vip_force_stop(module, VIP_DECIMATOR);
+			}
+			NX_ATOMIC_CLEAR_MASK(STATE_MEM_STOPPING, &me->state);
 #ifdef CONFIG_DECIMATOR_USE_DQTIMER
 			while (timer_pending(&me->dq_timer)) {
 				mdelay(DQ_TIMEOUT_MS);
@@ -469,7 +425,6 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 			me->buffer_underrun = false;
 			free_dma_buffer(me);
 			nx_video_clear_buffer(&me->vbuf_obj);
-			deinit_buffer_handler(me);
 			hostdata_back = v4l2_get_subdev_hostdata(remote);
 			v4l2_set_subdev_hostdata(remote, NX_DECIMATOR_DEV_NAME);
 			v4l2_subdev_call(remote, video, s_stream, 0);
