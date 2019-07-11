@@ -408,12 +408,12 @@ static int nx_decimator_s_stream(struct v4l2_subdev *sd, int enable)
 		if (NX_ATOMIC_READ(&me->state) & STATE_RUNNING) {
 			nx_vip_stop(module, VIP_DECIMATOR);
 
-			NX_ATOMIC_SET_MASK(STATE_MEM_STOPPING, &me->state);
+			NX_ATOMIC_SET_MASK(STATE_STOPPING, &me->state);
 			if (!wait_for_completion_timeout(&me->stop_done, HZ)) {
 				pr_err("timeout for waiting clipper stop\n");
 				nx_vip_force_stop(module, VIP_DECIMATOR);
 			}
-			NX_ATOMIC_CLEAR_MASK(STATE_MEM_STOPPING, &me->state);
+			NX_ATOMIC_CLEAR_MASK(STATE_STOPPING, &me->state);
 #ifdef CONFIG_DECIMATOR_USE_DQTIMER
 			while (timer_pending(&me->dq_timer)) {
 				mdelay(DQ_TIMEOUT_MS);
