@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2013-2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2013-2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 
 #ifndef __MALI_TIMELINE_H__
@@ -304,6 +304,31 @@ MALI_STATIC_INLINE mali_bool mali_timeline_is_point_released(struct mali_timelin
 
 	return point_normalized > (next_normalized + MALI_TIMELINE_MAX_POINT_SPAN);
 }
+
+/**
+ * Check if the tracker that the point relate to has been released.  A point is released if the tracker is not on the timeline.
+ * @param timeline Timeline.
+ * @param point Point on timeline.
+ * @return MALI_TRUE if the tracker has been release, MALI_FALSE if not.
+ */
+MALI_STATIC_INLINE mali_bool mali_timeline_is_tracker_released(struct mali_timeline *timeline, mali_timeline_point point)
+{
+	struct mali_timeline_tracker *tracker;
+	
+	MALI_DEBUG_ASSERT_POINTER(timeline);
+	MALI_DEBUG_ASSERT(MALI_TIMELINE_NO_POINT != point);
+
+	tracker = timeline->tracker_tail;
+
+	while (NULL != tracker) {
+		if (point == tracker->point)
+			return MALI_FALSE;
+		tracker = tracker->timeline_next;
+	}
+
+	return MALI_TRUE;
+}
+
 
 /**
  * Check if a point is valid.  A point is valid if is on the timeline or has been released.

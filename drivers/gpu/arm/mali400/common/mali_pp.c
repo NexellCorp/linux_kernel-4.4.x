@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2011-2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2011-2016, 2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 
 #include "mali_pp_job.h"
@@ -372,10 +372,6 @@ void mali_pp_job_start(struct mali_pp_core *core, struct mali_pp_job *job, u32 s
 
 	/* Adding barrier to make sure all rester writes are finished */
 	_mali_osk_write_mem_barrier();
-
-#ifdef NEXELL_FEATURE_IOCTL_PERFORMANCE
-	if (0 == sub_job){ TestIntTimeStartPP(); }
-#endif
 
 	/* This is the command that starts the core.
 	 *
