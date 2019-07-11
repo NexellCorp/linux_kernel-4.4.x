@@ -1,21 +1,11 @@
 /*
- * Copyright (C) 2010-2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
- * Class Path Exception
- * Linking this library statically or dynamically with other modules is making a combined work based on this library. 
- * Thus, the terms and conditions of the GNU General Public License cover the whole combination.
- * As a special exception, the copyright holders of this library give you permission to link this library with independent modules 
- * to produce an executable, regardless of the license terms of these independent modules, and to copy and distribute the resulting 
- * executable under terms of your choice, provided that you also meet, for each linked independent module, the terms and conditions 
- * of the license of that module. An independent module is a module which is not derived from or based on this library. If you modify 
- * this library, you may extend this exception to your version of the library, but you are not obligated to do so. 
- * If you do not wish to do so, delete this exception statement from your version.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2007-2015, 2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 
 #ifndef __MALI_UTGARD_IOCTL_H__
@@ -47,9 +37,6 @@ extern "C" {
 #define MALI_IOC_GP_BASE        (_MALI_UK_GP_SUBSYSTEM        + MALI_IOC_BASE)
 #define MALI_IOC_PROFILING_BASE (_MALI_UK_PROFILING_SUBSYSTEM + MALI_IOC_BASE)
 #define MALI_IOC_VSYNC_BASE     (_MALI_UK_VSYNC_SUBSYSTEM + MALI_IOC_BASE)
-#if 1 /* NEXELL_FEATURE_IOCTL_PERFORMANCE */
-#define MALI_IOC_DBG_BASE     (_MALI_UK_DBG_SUBSYSTEM + MALI_IOC_BASE)
-#endif
 
 #define MALI_IOC_WAIT_FOR_NOTIFICATION      _IOWR(MALI_IOC_CORE_BASE, _MALI_UK_WAIT_FOR_NOTIFICATION, _mali_uk_wait_for_notification_s)
 #define MALI_IOC_GET_API_VERSION            _IOWR(MALI_IOC_CORE_BASE, _MALI_UK_GET_API_VERSION, u32)
@@ -95,10 +82,6 @@ extern "C" {
 #define MALI_IOC_PROILING_CONTROL_SET   _IOR(MALI_IOC_PROFILING_BASE, _MALI_UK_PROFILING_CONTROL_SET, _mali_uk_profiling_control_set_s)
 
 #define MALI_IOC_VSYNC_EVENT_REPORT         _IOW (MALI_IOC_VSYNC_BASE, _MALI_UK_VSYNC_EVENT_REPORT, _mali_uk_vsync_event_report_s)
-
-#if 1 /* NEXELL_FEATURE_IOCTL_PERFORMANCE */
-#define MALI_IOC_DBG_GET_TIME             		_IOWR(MALI_IOC_DBG_BASE, _MALI_UK_DBG_GET_GPU_TIME, _mali_uk_test_job_get_time_s)
-#endif
 
 #ifdef __cplusplus
 }

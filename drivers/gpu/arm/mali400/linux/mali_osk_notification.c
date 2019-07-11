@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2010-2014, 2016 ARM Limited. All rights reserved.
- * 
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * This confidential and proprietary software may be used only as
+ * authorised by a licensing agreement from ARM Limited
+ * (C) COPYRIGHT 2008-2014, 2018 ARM Limited
+ * ALL RIGHTS RESERVED
+ * The entire notice above must be reproduced on all authorised
+ * copies and copies may only be made to the extent permitted
+ * by a licensing agreement from ARM Limited.
  */
 
 /**
@@ -56,8 +56,13 @@ _mali_osk_notification_t *_mali_osk_notification_create(u32 type, u32 size)
 	/* OPT Recycling of notification objects */
 	_mali_osk_notification_wrapper_t *notification;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+	notification = (_mali_osk_notification_wrapper_t *)kmalloc(sizeof(_mali_osk_notification_wrapper_t) + size,
+			GFP_KERNEL | __GFP_HIGH | __GFP_RETRY_MAYFAIL);
+#else
 	notification = (_mali_osk_notification_wrapper_t *)kmalloc(sizeof(_mali_osk_notification_wrapper_t) + size,
 			GFP_KERNEL | __GFP_HIGH | __GFP_REPEAT);
+#endif
 	if (NULL == notification) {
 		MALI_DEBUG_PRINT(1, ("Failed to create a notification object\n"));
 		return NULL;
