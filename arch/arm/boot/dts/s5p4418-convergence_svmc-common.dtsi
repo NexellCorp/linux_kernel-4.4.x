@@ -809,7 +809,7 @@
 	};
 
 	dp_control {
-		clk_src_lv0 = <3>;
+		clk_src_lv0 = <1>;
 		clk_div_lv0 = <9>;
 		clk_src_lv1 = <7>;
 		clk_div_lv1 = <1>;
