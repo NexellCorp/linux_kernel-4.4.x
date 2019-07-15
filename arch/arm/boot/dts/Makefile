@@ -814,7 +814,7 @@ dtb-$(CONFIG_ARCH_S5P4418) += \
 endif
 
 ifeq ($(CONFIG_ARCH_S5P4418),y)
-	DTC_FLAGS	?= -@ -H epapr
+	DTC_FLAGS	?= -@ -H epapr -a 2048
 endif
 
 dtstree		:= $(srctree)/$(src)
