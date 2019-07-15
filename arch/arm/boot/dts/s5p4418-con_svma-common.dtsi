@@ -617,10 +617,10 @@
 				compatible = "android,fstab";
 				vendor {
 					compatible = "android,vendor";
-					dev = "/dev/block/mmcblk0p3";
+					dev = "/dev/block/platform/c0000000.soc/c0062000.dwmmc/by-name/vendor";
 					type = "ext4";
 					mnt_flags = "rw,barrier=1,inode_readahead_blks=8";
-					fsmgr_flags = "wait";
+					fsmgr_flags = "wait,slotselect";
 				};
 			};
 		};
