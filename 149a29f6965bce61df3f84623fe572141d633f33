@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "f2ee3ac8_b34666a2",
+        "filename": "drivers/media/platform/nexell/capture/nx-clipper.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 1015521
+      },
+      "writtenOn": "2019-07-16T02:16:33Z",
+      "side": 1,
+      "message": "remove line.",
+      "parentUuid": "7d2645af_94d166b4",
+      "range": {
+        "startLine": 262,
+        "startChar": 2,
+        "endLine": 262,
+        "endChar": 3
+      },
+      "revId": "149a29f6965bce61df3f84623fe572141d633f33",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6d3e0b88_d3770abf",
         "filename": "drivers/media/platform/nexell/capture/nx-clipper.c",
         "patchSetId": 2
@@ -45,6 +69,30 @@
       "revId": "149a29f6965bce61df3f84623fe572141d633f33",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a12a0cf7_fce1fca9",
+        "filename": "drivers/media/platform/nexell/capture/nx-clipper.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2396,
+      "author": {
+        "id": 1015521
+      },
+      "writtenOn": "2019-07-16T02:16:33Z",
+      "side": 1,
+      "message": "add define",
+      "parentUuid": "6d3e0b88_d3770abf",
+      "range": {
+        "startLine": 2396,
+        "startChar": 25,
+        "endLine": 2396,
+        "endChar": 26
+      },
+      "revId": "149a29f6965bce61df3f84623fe572141d633f33",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
     }
   ]
 }
