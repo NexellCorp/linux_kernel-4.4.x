@@ -251,6 +251,29 @@ static void debug_sync(unsigned long priv)
 }
 #endif
 
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+enum {
+	CAM_TYPE_QUICKREAR	= 0x0,
+	CAM_TYPE_1CAMTOPVIEW	= 0x1,
+	CAM_TYPE_4CAMSVM	= 0x2
+};
+
+static unsigned int __initdata selected_rear_cam;
+
+static int __init nx_rearcam(char *str)
+{
+	int value;
+	if (get_option(&str, &value)) {
+		selected_rear_cam = value;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+__setup("nx_rearcam=", nx_rearcam);
+#endif
+
 /**
  * parse device tree
  */
@@ -2347,18 +2370,31 @@ static int nx_clipper_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 #else
-	if (me->module == 1) {
-		if (g_ClipperThread == NULL)
-			g_ClipperThread = kthread_run(init_clipper_th,
-				me, "KthreadForNxClipper");
-	}
+	if (selected_rear_cam == CAM_TYPE_4CAMSVM) {
+		if (me->module == 0) {
+			if (g_ClipperThread == NULL)
+				g_ClipperThread = kthread_run(init_clipper_th,
+					me, "KthreadForNxClipper");
+		} else {
+			me->w_queue = create_singlethread_workqueue("clipper_wqueue");
+			INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
 
-	if (me->module == 0) {
-		me->w_queue = create_singlethread_workqueue("clipper_wqueue");
-		INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
-
-		queue_delayed_work(me->w_queue, &me->w_delay,
+			queue_delayed_work(me->w_queue, &me->w_delay,
 							msecs_to_jiffies(2000));
+		}
+	} else if (selected_rear_cam == CAM_TYPE_QUICKREAR
+				|| selected_rear_cam == CAM_TYPE_1CAMTOPVIEW) {
+		if (me->module == 2) {
+			if (g_ClipperThread == NULL)
+				g_ClipperThread = kthread_run(init_clipper_th,
+					me, "KthreadForNxClipper");
+		} else {
+			me->w_queue = create_singlethread_workqueue("clipper_wqueue");
+			INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
+
+			queue_delayed_work(me->w_queue, &me->w_delay,
+							msecs_to_jiffies(2000));
+		}
 	}
 #endif
 
