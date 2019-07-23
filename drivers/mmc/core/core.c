@@ -1655,7 +1655,11 @@ int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage, u32 ocr)
 	}
 
 	/* Keep clock gated for at least 10 ms, though spec only says 5 ms */
+#ifdef CONFIG_MMC_INIT_LEVEL_UP
+	mmc_delay(7);
+#else
 	mmc_delay(10);
+#endif
 	host->ios.clock = clock;
 	mmc_set_ios(host);
 
@@ -1765,8 +1769,11 @@ void mmc_power_up(struct mmc_host *host, u32 ocr)
 	 * This delay should be sufficient to allow the power supply
 	 * to reach the minimum voltage.
 	 */
+#ifdef CONFIG_MMC_INIT_LEVEL_UP
+	mmc_delay(7);
+#else
 	mmc_delay(10);
-
+#endif
 	mmc_pwrseq_post_power_on(host);
 
 	host->ios.clock = host->f_init;
@@ -1778,7 +1785,11 @@ void mmc_power_up(struct mmc_host *host, u32 ocr)
 	 * This delay must be at least 74 clock sizes, or 1 ms, or the
 	 * time required to reach a stable voltage.
 	 */
+#ifdef CONFIG_MMC_INIT_LEVEL_UP
+	mmc_delay(7);
+#else
 	mmc_delay(10);
+#endif
 }
 
 void mmc_power_off(struct mmc_host *host)
