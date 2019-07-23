@@ -25,6 +25,7 @@
 #include <linux/async.h>
 #include <linux/pm_runtime.h>
 #include <linux/pinctrl/devinfo.h>
+#include <linux/of.h>
 
 #include "base.h"
 #include "power/power.h"
@@ -416,6 +417,17 @@ int driver_probe_device(struct device_driver *drv, struct device *dev)
 	pr_debug("bus: '%s': %s: matched device %s with driver %s\n",
 		 drv->bus->name, __func__, dev_name(dev), drv->name);
 
+#ifdef CONFIG_DEFERRED_DEVICE_PROBES
+	if (!driver_deferred_probe_enable &&
+		device_property_read_bool(dev, "deferred-probe")) {
+		driver_deferred_probe_add(dev);
+
+		pr_debug("[deferred dev]bus:'%s', dev name:%s, drv name:%s\n",
+		 drv->bus->name, dev_name(dev), drv->name);
+
+		return -ENODEV;
+	}
+#endif
 	if (dev->parent)
 		pm_runtime_get_sync(dev->parent);
 
