@@ -889,7 +889,21 @@ static struct platform_driver nx_decimator_driver = {
 	},
 };
 
+#ifdef CONFIG_V4L2_INIT_LEVEL_UP
+static int __init nx_decimator_init(void)
+{
+	return platform_driver_register(&nx_decimator_driver);
+}
+
+static void __exit nx_decimator_exit(void)
+{
+	platform_driver_unregister(&nx_decimator_driver);
+}
+subsys_initcall(nx_decimator_init);
+module_exit(nx_decimator_exit);
+#else
 module_platform_driver(nx_decimator_driver);
+#endif
 
 MODULE_AUTHOR("swpark <swpark@nexell.co.kr>");
 MODULE_DESCRIPTION("Nexell S5Pxx18 series SoC V4L2 capture decimator driver");
