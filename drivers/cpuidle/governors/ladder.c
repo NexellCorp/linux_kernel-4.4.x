@@ -187,4 +187,8 @@ static int __init init_ladder(void)
 	return cpuidle_register_governor(&ladder_governor);
 }
 
+#ifdef CONFIG_GOVERNOR_INIT_LEVEL_DOWN
+device_initcall(init_ladder);
+#else
 postcore_initcall(init_ladder);
+#endif
