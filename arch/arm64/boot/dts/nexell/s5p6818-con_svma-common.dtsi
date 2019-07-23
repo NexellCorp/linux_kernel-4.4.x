@@ -97,6 +97,7 @@
 		};
 
 		dw_mmc_0:dw_mmc@c0062000 {
+			deferred-probe;
 			num-slots = <1>;
 			bus-width = <4>;
 			cap-sd-highspeed;
@@ -114,6 +115,7 @@
 
 		amba {
 			pl08xdma0:pl08xdma@c0000000 {
+				deferred-probe;
 				use_isr;
 
 				ch12 {
@@ -134,6 +136,7 @@
 			};
 
 			pl08xdma1:pl08xdma@c0001000 {
+				deferred-probe;
 				use_isr;
 
 				ch0 {
@@ -162,10 +165,12 @@
 		};
 
 		nexell_usbphy: nexell-usbphy@c0012000 {
+			deferred-probe;
 			status = "okay";
 		};
 
 		ehci@c0030000 {
+			deferred-probe;
 			status = "okay";
 			port@0 {
 				status = "okay";
@@ -173,6 +178,7 @@
 		};
 
 		ohci@c0020000 {
+			deferred-probe;
 			status = "okay";
 			port@0 {
 				status = "okay";
@@ -180,6 +186,7 @@
 		};
 
 		dwc2otg@c0040000 {
+			deferred-probe;
 			gpios = <&alive_0 5 0>;
 			nouse_idcon = <1>;
 			status = "okay";
@@ -224,6 +231,7 @@
 		};
 
 		pwm:pwm@c0018000 {
+			deferred-probe;
 			clock-names = "timers", "pwm-tclk0", "pwm-tclk3";
 			clocks = <&pclk>, <&pwm0>, <&pwm3>;
 			pinctrl-names = "default";
@@ -253,7 +261,7 @@
 		};
 
 		tmuctrl_0: tmuctrl@c0096000 {
-			status = "okay";
+			status = "disabled";
 		};
 
 		thermal-zones {
@@ -397,6 +405,7 @@
 		#size-cells = <0>;
 
 		usb2514: usb2514@2c {
+			deferred-probe;
 			compatible = "smsc,usb2514";
 			reg = <0x2c>;
 			reset-gpios = <&gpio_b 22 1>;
@@ -507,6 +516,7 @@
 	};
 
 	sound-sub {
+		deferred-probe;
 		compatible = "nexell,simple-audio-card";
 		simple-audio-card,name = "s5p6818 Convergence Car Audio Sub";
 		simple-audio-card,mclk-fs = <256>;
@@ -543,6 +553,7 @@
 	};
 
 	gpio_key: gpio_keys {
+		deferred-probe;
 		compatible = "gpio-keys";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -580,6 +591,7 @@
 	};
 
 	backlight: pwm-backlight {
+		deferred-probe;
 		compatible = "pwm-backlight";
 		pwm-names = "pwm-backlight";
 		pwms = <&pwm 0 25000 0>;
@@ -615,6 +627,7 @@
 	};
 
 	bt_control {
+		deferred-probe;
 		compatible = "broadcom,bcm434545bt";
 		gpios = <&gpio_b 23 0>;   /* GPIOB23 = BT_EN, output */
 		pinctrl-names = "default";
@@ -623,6 +636,7 @@
 	};
 
 	wlan {
+		deferred-probe;
 		compatible = "nexell,brcm-wlan";
 		wlan_reg_on = <&gpio_c 30 0>;
 		wlan_host_wake = <&gpio_e 31 1>;
@@ -765,6 +779,7 @@
 };
 
 &spi_2 {
+	deferred-probe;
 	status = "okay";
 	cs-gpios = <&gpio_c 10 0>;
 	can0: can@0 {
@@ -789,6 +804,7 @@
 	status = "okay";
 
 	goodix@5d {
+		deferred-probe;
 		compatible = "goodix,gt9271";
 		reg = <0x5d>;
 		interrupt-parent = <&gpio_e>;
