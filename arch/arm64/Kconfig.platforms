@@ -166,6 +166,58 @@ config DWC_INIT_LEVEL_UP
 	depends on ARCH_S5P6818 && REDUCE_BOOT_TIME
 	select EXT4_FS_INIT_LEVEL_UP
 
+config DRM_INIT_LEVEL_UP
+	bool "drm init level up"
+	depends on ARCH_S5P6818 && REDUCE_BOOT_TIME
+	help
+	  This is an option the initialization level up
+	  of the drm to support quickboot of s5p6818 and
+	  requires ARCH_S5P6818 and REDUCE_BOOT_TIME feature.
+
+	  Say Y here to enable the drm initialization levle up.
+
+config V4L2_INIT_LEVEL_UP
+	bool "v4l2 init level up"
+	depends on ARCH_S5P6818 && REDUCE_BOOT_TIME
+	help
+	  This is an option to up the initialization level
+	  of the v4l2 to support quickboot of s5p6818 and
+	  requires ARCH_S5P6818 and REDUCE_BOOT_TIME feature.
+
+	  Say Y here to enable the v4l2 initialization levle up.
+
+config DEINTERLACER_INIT_LEVEL_UP
+	bool "Deinterlacer init level up"
+	depends on ARCH_S5P6818 && REDUCE_BOOT_TIME
+	help
+	  This is an option the initialization level up
+	  of the deinterlacer to support quickboot of s5p6818 and
+	  requires ARCH_S5P6818 and REDUCE_BOOT_TIME feature.
+
+	  Say Y here to enable the deinterlacer initialization levle up.
+
+config GOVERNOR_INIT_LEVEL_DOWN
+	bool "Governor init level down"
+	depends on ARCH_S5P6818 && REDUCE_BOOT_TIME
+	help
+	  This is an option to defer the initialization level
+	  of the governor to support quickboot of s5p6818 and
+	  requires ARCH_S5P6818 and REDUCE_BOOT_TIME feature.
+
+	  Say Y here to enable the governor initialization levle
+	  to be deferred.
+
+config BT_INIT_LEVEL_DOWN
+	bool "bluetooth init level down"
+	depends on ARCH_S5P6818 && REDUCE_BOOT_TIME
+	help
+	  This is an option to defer the initialization level
+	  of the bluetooth to support quickboot of s5p6818 and
+	  requires ARCH_S5P6818 and REDUCE_BOOT_TIME feature.
+
+	  Say Y here to enable the bluetooth initialization levle
+	  to be deferred.
+
 config ARCH_NXP5540
 	bool "NEXELL NXP5540"
 	select ARCH_REQUIRE_GPIOLIB
