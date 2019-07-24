@@ -140,8 +140,7 @@ static int nx_drm_fb_pre_boot_logo(struct drm_fb_helper *fb_helper)
 	struct drm_device *drm = fb_helper->dev;
 	struct fb_info *info = fb_helper->fbdev;
 	void *screen_base = info->screen_base;
-	int size = info->var.xres * info->var.yres *
-			(info->var.bits_per_pixel / 8);
+	int size = info->screen_size;
 	dma_addr_t screen_phys = drm->mode_config.fb_base;
 	dma_addr_t logo_phys = 0;
 	int reserved = 0;
