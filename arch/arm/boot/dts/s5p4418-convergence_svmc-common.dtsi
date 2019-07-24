@@ -858,7 +858,6 @@
 #ifdef CONFIG_DRM_NX_HDMI
 &dp_drm_hdmi {
 	ddc-i2c-bus = <&i2c_gpio9>;
-	skip-boot-connect;
 	status = "ok";
 };
 #endif

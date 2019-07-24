@@ -235,7 +235,7 @@
 				nexell,pin-pull = <2>;
 				nexell,pin-strength = <0>;
 			};
-			
+
 			bt_cfg_en:bt_cfg_en {
 				nexell,pins = "gpioc-7";
 				nexell,pin-function = <1>;
@@ -267,7 +267,7 @@
 		gpio = <&gpio_d 3 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 	};
-	
+
 	i2c_gpio3: i2c@3 {
 		compatible = "i2c-gpio";
 		gpios = <&gpio_b 16 0 /* sda */
@@ -444,7 +444,7 @@
 &clipper_0 {
 	interface_type = <NX_CAPTURE_INTERFACE_MIPI_CSI>;
 	gpios = <&gpio_b 9 0 &gpio_b 6 0>;
-	data_order = <NX_VIN_CBY0CRY1>;	
+	data_order = <NX_VIN_CBY0CRY1>;
 	interlace = <0>;
 	status = "okay";
 	external_sync = <1>;
@@ -583,7 +583,6 @@
 
 &dp_drm_hdmi {
 	ddc-i2c-bus = <&i2c_gpio6>;
-	skip-boot-connect;
 	status = "ok";
 };
 
@@ -592,7 +591,7 @@
 	#size-cells = <0>;
 	status = "okay";
 	rate = <400000>;
-	
+
 	semisens@3c {
 		compatible = "semisens,semisens_ts";
 		reg = <0x3c>;
