@@ -49,6 +49,7 @@
 			uart1:uart@c00a8000 { clock-frequency = <100000000>; };
 			uart3:uart@c00ab000 { clock-frequency = <147500000>; };
 			uart4:uart@c006e000 { clock-frequency = <147500000>; };
+			vip0:vip@c00c1000 { clock-frequency = <300000000>; };
 			vip2:vip@c009a000 { src-force = <4>; };
 			spi2:spi@c00a7000  { clock-frequency = <20000000>; };
 
@@ -658,6 +659,56 @@
 			};
 		};
 	};
+};
+
+&vip_0 {
+    status = "okay";
+};
+
+&mipi_csi {
+    data_lane = <4>;
+    pllval = <750>;
+    hssettle = <12>;
+    interrupts = <IRQ_MIPI>;
+    status = "okay";
+};
+
+&clipper_0 {
+    interface_type = <NX_CAPTURE_INTERFACE_MIPI_CSI>;
+    gpios = <&gpio_b 12 0 &gpio_c 13 0>;
+    data_order = <NX_VIN_CBY0CRY1>;
+    interlace = <0>;
+    status = "okay";
+    external_sync = <1>;
+    h_frontporch = <7>;
+    h_syncwidth = <0>;
+    h_backporch = <7>;
+    v_frontporch = <0>;
+    v_syncwidth = <0>;
+    v_backporch = <1>;
+
+    sensor {
+        type = <NX_CAPTURE_SENSOR_I2C>;
+        i2c_name = "max9286";
+        i2c_adapter = <2>;
+        addr = <0x48>;
+    };
+
+    power {
+        enable_seq = <
+        NX_ACTION_START NX_ACTION_TYPE_GPIO 0 1 20 NX_ACTION_END
+        NX_ACTION_START NX_ACTION_TYPE_GPIO 1 1 10 NX_ACTION_END
+        >;
+
+        disable_seq = <
+        NX_ACTION_START NX_ACTION_TYPE_GPIO 1 0 2 NX_ACTION_END
+        NX_ACTION_START NX_ACTION_TYPE_GPIO 0 0 15 NX_ACTION_END
+        >;
+    };
+};
+
+&decimator_0 {
+	status = "okay";
 };
 
 &vip_2 {
