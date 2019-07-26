@@ -334,4 +334,12 @@ config BT_BCM434545
       Adds BCM434545 RFKILL driver for Broadcom BCM434545 chipset.
       default is n.
 
+config BT_LPM_ENABLE
+    bool " Supports LPM"
+    depends on BT_BCM434545
+    default n
+    help
+      This driver supports LPM. (Low power mode)
+      default is n.
+
 endmenu
