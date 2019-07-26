@@ -55,12 +55,12 @@ EXTRA_LDFLAGS += --strip-debug
 endif
 
 #htdo add for platform device reg
-ifneq ($(CONFIG_ARCH_S5P4418),)
+#ifneq ($(CONFIG_ARCH_S5P4418),)
 DHDOFILES += dhd_custom_nexell.o wl_cfgvendor.o
 DHDCFLAGS += -DDHD_OF_SUPPORT
 DHDCFLAGS += -DOEM_ANDROID
 CONFIG_BCM43455=y
-endif
+#endif
 
 #########################
 # Chip dependent feature
