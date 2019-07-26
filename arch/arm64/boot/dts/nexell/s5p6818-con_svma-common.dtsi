@@ -20,6 +20,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include "s5p6818.dtsi"
+#include "../../../../../include/generated/autoconf.h"
 #include "s5p6818-audio-dfs-pll3.dtsi"
 
 / {
@@ -45,8 +46,8 @@
 	soc {
 		#include "s5p6818-pinctrl.dtsi"
 		clocks {
-			uart0:uart@c00a9000 { clock-frequency = <100000000>; };
-			uart1:uart@c00a8000 { clock-frequency = <100000000>; };
+			uart0:uart@c00a9000 { clock-frequency = <147500000>; };
+			uart1:uart@c00a8000 { clock-frequency = <147500000>; };
 			uart3:uart@c00ab000 { clock-frequency = <147500000>; };
 			uart4:uart@c006e000 { clock-frequency = <147500000>; };
 			vip0:vip@c00c1000 { clock-frequency = <300000000>; };
@@ -77,14 +78,12 @@
 		};
 
 		serial0:serial@c00a1000 {
-			/* dmas = <&pl08xdma0 2 0>, <&pl08xdma0 3 0>; */
-			/* dma-names = "tx", "rx"; */
 			status ="okay";
 		};
 
 		serial1:serial@c00a0000 {
-			dmas = <&pl08xdma0 0 0>, <&pl08xdma0 1 0>;
-			dma-names = "tx", "rx";
+			/* dmas = <&pl08xdma0 0 0>, <&pl08xdma0 1 0>; */
+			/* dma-names = "tx", "rx"; */
 			pinctrl-0 = <&serial1_pin>, <&serial1_flow>;
 			status ="okay";
 		};
@@ -95,6 +94,34 @@
 
 		serial4:serial@c006d000 {
 			status ="okay";
+		};
+
+		dw_mmc_1:dw_mmc@c0068000 {
+			num-slots = <1>;
+			bus-width = <4>;
+			cap-sd-highspeed;
+			clock-frequency = <100000000>;
+#if defined(CONFIG_BT_BCM434545) && defined(CONFIG_BCMDHD_SDIO)
+			cd-type-external;
+			broken-cd;
+			pm-ignore-notify;
+			keep-power-in-suspend;
+			powered-resumed-nonremovable-card;
+			cd-type = <2>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sdmmc1_cclk &sdmmc1_cmd &sdmmc1_bus4
+			    &cfg_wlanen &cfg_wlanhostwake>;
+#else
+			card-detect-delay = <200>;
+			disable-wp;
+			cd-gpios = <&gpio_e 31 0>;
+			cd-inverted;
+#endif
+			nexell,drive_dly = <0x0>;
+			nexell,drive_shift = <0x02>;
+			nexell,sample_dly = <0x00>;
+			nexell,sample_shift = <0x01>;
+			status = "okay";
 		};
 
 		dw_mmc_0:dw_mmc@c0062000 {
@@ -334,6 +361,20 @@
 			tp2825_reset:tp2825_reset {
 				nexell,pins = "gpioc-2";
 				nexell,pin-function = <1>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+
+			bt_cfg_hostwake:bt_cfg_hostwake {
+				nexell,pins = "gpiod-16";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+
+			bt_cfg_btwake:bt_cfg_btwake {
+				nexell,pins = "gpiod-20";
+				nexell,pin-function = <0>;
 				nexell,pin-pull = <2>;
 				nexell,pin-strength = <0>;
 			};
@@ -630,9 +671,12 @@
 	bt_control {
 		deferred-probe;
 		compatible = "broadcom,bcm434545bt";
-		gpios = <&gpio_b 23 0>;   /* GPIOB23 = BT_EN, output */
+		gpios = <&gpio_b 23 0 /* GPIOB23 = BT_EN, output */
+			&gpio_d 20 0 /* GPIOD20 = BT_WAKE, output */
+			&gpio_d 16 1 /* GPIOD16 = BT_HOST_WAKE, input */
+			>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&bt_cfg_en>;
+		pinctrl-0 = <&bt_cfg_hostwake &bt_cfg_btwake &bt_cfg_en>;
 		status = "okay";
 	};
 
