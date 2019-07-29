@@ -700,10 +700,6 @@
 	status = "disabled";
 };
 
-&decimator_6 {
-	status = "disabled";
-};
-
 & clipper_6 {
 	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
 	pinctrl-names = "default";
@@ -731,6 +727,8 @@
 
 &decimator_6 {
 	status = "disabled";
+};
+
 /*
 #include "tp2825_rearcam_regset.dtsi"
 &rearcam {
