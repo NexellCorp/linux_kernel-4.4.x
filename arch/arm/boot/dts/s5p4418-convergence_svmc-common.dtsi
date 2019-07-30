@@ -636,13 +636,7 @@
 	data_order = <NX_VIN_CBY0CRY1>;
 	interlace = <0>;
 	status = "okay";
-	external_sync = <1>;
-	h_frontporch = <7>;
-	h_syncwidth = <0>;
-	h_backporch = <7>;
-	v_frontporch = <0>;
-	v_syncwidth = <0>;
-	v_backporch = <1>;
+	external_sync = <0>;
 
 	sensor {
 		type = <NX_CAPTURE_SENSOR_I2C>;
