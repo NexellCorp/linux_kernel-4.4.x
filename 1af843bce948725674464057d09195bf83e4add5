@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aea7f2f3_1ee9687f",
+        "filename": "arch/arm/boot/dts/s5p4418-con_svma-common.dtsi",
+        "patchSetId": 2
+      },
+      "lineNbr": 724,
+      "author": {
+        "id": 1015389
+      },
+      "writtenOn": "2019-07-31T06:35:15Z",
+      "side": 1,
+      "message": "Why space is inserted between \u0026 and clipper_6?",
+      "range": {
+        "startLine": 724,
+        "startChar": 0,
+        "endLine": 724,
+        "endChar": 11
+      },
+      "revId": "1af843bce948725674464057d09195bf83e4add5",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    }
+  ]
+}
