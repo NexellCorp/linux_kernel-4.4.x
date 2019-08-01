@@ -738,6 +738,8 @@
 
 &decimator_6 {
 	status = "disabled";
+};
+
 /*
 #include "tp2825_rearcam_regset.dtsi"
 &rearcam {
