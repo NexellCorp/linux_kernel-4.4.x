@@ -870,6 +870,7 @@
 			compatible = "nexell,nx-clipper";
 			module = <1>;
 			logical = <1>;
+		};
 
 		decimator_0:decimator_0@c0063000 {
 			compatible = "nexell,nx-decimator";
