@@ -275,11 +275,6 @@ static int nvp6114a_s_stream(struct v4l2_subdev *sd, int enable)
 		width = state->width;
 		height = state->height;
 
-#if defined(CONFIG_ARCH_S5P4418)
-		width -= 32;
-		height -= 1;
-#endif
-
 		if(chip_id[0] == NVP6114A_R0_ID) {
 			if (width == 1920 && height == 1080)
 				nvp6114a_outport_1mux(nvp6124_mode%2,
