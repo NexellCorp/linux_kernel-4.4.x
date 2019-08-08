@@ -33,6 +33,20 @@ unsigned int nvp6124_cnt = 1;
 unsigned int nvp6124_slave_addr[4] = {0x64, 0x00, 0x00, 0x00};
 unsigned int vloss=0xFFFF;
 
+struct nx_resolution {
+	uint32_t width;
+	uint32_t height;
+	uint32_t interval[2];
+};
+
+static struct nx_resolution supported_resolutions[] = {
+	{
+		.width	= 1280,
+		.height = 720,
+		.interval[0] = 15,
+		.interval[1] = 30,
+	}
+};
 
 int nvp6114a_initialization(struct i2c_client *client);
 
@@ -228,62 +242,105 @@ EXPORT_SYMBOL(nvp6114a_initialization);
 
 static int nvp6114a_s_stream(struct v4l2_subdev *sd, int enable)
 {
-    struct dev_state *state = to_state(sd);
-    struct i2c_client *client = v4l2_get_subdevdata(sd);
-    int i=0;
-    int width, height;
+	struct dev_state *state = to_state(sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	int i=0;
+	int width, height;
 
-    nvp6124_cnt = 1;
-    /* chip_id[0]  = NVP6114A_R0_ID; */
-    nvp6124_mode = NTSC;
+	nvp6124_cnt = 1;
+	/* chip_id[0]  = NVP6114A_R0_ID; */
+	nvp6124_mode = NTSC;
 
-    if( enable )
-    {
-        if( !state->first )
-        {
-            if(!check_id(client))
-                return -EINVAL;
+	printk(KERN_ERR "## [%s():%s:%d\t] enable:%d \n", __FUNCTION__,
+			strrchr(__FILE__, '/')+1, __LINE__, enable);
 
-	    if(chip_id[0] == NVP6114A_R0_ID) 
-		    nvp6124_ntsc_common_init();
-	    
-	    else if(chip_id[0] == NVP6124B_R0_ID)
-		    nvp6124B_ntsc_common_init();
+	if( enable )
+	{
+		if( !state->first )
+		{
+			if(!check_id(client))
+			return -EINVAL;
 
-            for (i=0 ; i<nvp6124_cnt ; i++)
-                audio_init(nvp6124_slave_addr[i],16,0,0);
+			if(chip_id[0] == NVP6114A_R0_ID)
+				nvp6124_ntsc_common_init();
+			else if(chip_id[0] == NVP6124B_R0_ID)
+				nvp6124B_ntsc_common_init();
 
-            state->first = true;
-        }
+			for (i = 0; i < nvp6124_cnt; i++)
+				audio_init(nvp6124_slave_addr[i],16,0,0);
 
-	width = state->width;
-	height = state->height;
-
-#if defined(CONFIG_ARCH_S5P4418)
-	width -= 32;
-	height -= 1;
-#endif
-		if(chip_id[0] == NVP6114A_R0_ID) {
-	        if (width == 1920 && height == 1080)
-    	        nvp6114a_outport_1mux(nvp6124_mode%2,
-					0x10|NVP6124_VI_1080P_2530, 0x00|NVP6124_VI_1080P_2530);
-        	else if (width == 1280 && height == 720)
-            	nvp6114a_outport_1mux(nvp6124_mode%2,
-					0x10|NVP6124_VI_720P_2530, 0x00|NVP6124_VI_720P_2530);
-	    }
-		#if 1
-		else if(chip_id[0] == NVP6124B_R0_ID) {
-	        if (width == 1920 && height == 1080)
-    	        nvp6124B_outport_1mux(nvp6124_mode%2,
-					0x10|NVP6124_VI_1080P_2530, 0x00|NVP6124_VI_1080P_2530);
-        	else if (width == 1280 && height == 720)
-            	nvp6124B_outport_1mux(nvp6124_mode%2,
-					0x10|NVP6124_VI_720P_2530, 0x00|NVP6124_VI_720P_2530);
+			state->first = true;
 		}
-		#endif
-	}
+
+		width = state->width;
+		height = state->height;
+
+		printk(KERN_ERR "## [%s():%s:%d\t] width:%d, height:%d \n",
+				__FUNCTION__, strrchr(__FILE__, '/')+1,
+				__LINE__, width, height);
+
+		if(chip_id[0] == NVP6114A_R0_ID) {
+			if (width == 1920 && height == 1080)
+				nvp6114a_outport_1mux(nvp6124_mode%2,
+						0x10|NVP6124_VI_1080P_2530,
+						0x00|NVP6124_VI_1080P_2530);
+			else if (width == 1280 && height == 720)
+				nvp6114a_outport_1mux(nvp6124_mode%2,
+						0x10|NVP6124_VI_720P_2530,
+						0x00|NVP6124_VI_720P_2530);
+		} else if(chip_id[0] == NVP6124B_R0_ID) {
+			if (width == 1920 && height == 1080)
+				nvp6124B_outport_1mux(nvp6124_mode%2,
+						0x10|NVP6124_VI_1080P_2530,
+						0x00|NVP6124_VI_1080P_2530);
+			else if (width == 1280 && height == 720)
+				nvp6124B_outport_1mux(nvp6124_mode%2,
+						0x10|NVP6124_VI_720P_2530,
+						0x00|NVP6124_VI_720P_2530);
+		}
+	} else
+		state->first = false;
 
 	return 0;
+}
+
+static int nvp6114a_enum_frame_size(struct v4l2_subdev *sd,
+				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_frame_size_enum *frame)
+{
+	vmsg("%s, index:%d\n", __func__, frame->index);
+
+	if (frame->index >= ARRAY_SIZE(supported_resolutions))
+		return -ENODEV;
+
+	frame->max_width = supported_resolutions[frame->index].width;
+	frame->max_height = supported_resolutions[frame->index].height;
+
+	return 0;
+}
+
+static int nvp6114a_enum_frame_interval(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_pad_config *cfg,
+				      struct v4l2_subdev_frame_interval_enum *frame)
+{
+	int i;
+
+	vmsg("%s, %s interval\n", __func__, (frame->index) ? "max" : "min");
+
+	for (i = 0; i < ARRAY_SIZE(supported_resolutions); i++) {
+		if ((frame->width == supported_resolutions[i].width) &&
+		    (frame->height == supported_resolutions[i].height)) {
+			frame->interval.numerator = 1;
+			frame->interval.denominator =
+				supported_resolutions[i].interval[frame->index];
+			vmsg("[%s] width:%d, height:%d, interval:%d\n",
+			     __func__, frame->width, frame->height,
+			     frame->interval.denominator);
+			return false;
+		}
+	}
+
+	return -EINVAL;
 }
 
 static int nvp6114a_g_fmt(struct v4l2_subdev *sd,
@@ -331,6 +388,9 @@ static const struct v4l2_subdev_video_ops nvp6114a_video_ops = {
 static const struct v4l2_subdev_pad_ops nvp6114a_pad_ops = {
 	.set_fmt = nvp6114a_s_fmt,
 	.get_fmt = nvp6114a_g_fmt,
+
+	.enum_frame_size = nvp6114a_enum_frame_size,
+	.enum_frame_interval = nvp6114a_enum_frame_interval,
 };
 
 static const struct v4l2_subdev_ops nvp6114a_ops = {
@@ -344,6 +404,8 @@ static int nvp6214_probe(struct i2c_client *client, const struct i2c_device_id *
 	struct dev_state *state = &nvp6114a;
 	struct v4l2_subdev *sd;
 	int ret;
+
+	printk(KERN_ERR "## [%s():%s:%d\t]  \n", __FUNCTION__, strrchr(__FILE__, '/')+1, __LINE__);
 
 	sd = &state->sd;
 	strcpy(sd->name, id->name);
@@ -383,6 +445,7 @@ static const struct i2c_device_id nvp6114a_id[] = {
 	{ AHD_DEV_NAME, 0},
 	{}
 };
+
 MODULE_DEVICE_TABLE(i2c, nvp6114a_id);
 
 static struct i2c_driver nvp6114a_i2c_driver = {
