@@ -625,7 +625,7 @@ static int parse_power_dt(struct device_node *np, struct device *dev,
 static int parse_clock_dt(struct device_node *np, struct device *dev,
 			  struct nx_clipper *me)
 {
-	me->pwm = devm_of_pwm_get(dev, np, NULL);
+	me->pwm = devm_pwm_get(dev, NULL);
 	if (!IS_ERR(me->pwm)) {
 		unsigned int period = pwm_get_period(me->pwm);
 		unsigned int duty_cycle =
@@ -638,7 +638,6 @@ static int parse_clock_dt(struct device_node *np, struct device *dev,
 		pwm_enable(me->pwm);
 	} else
 		me->pwm = NULL;
-
 	return 0;
 }
 
@@ -827,14 +826,11 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 		return ret;
 
 	child_node = of_find_node_by_name(np, "power");
-	if (child_node)  {
+	if (child_node) {
 		ret = parse_power_dt(child_node, dev, me);
 		if (ret)
 			return ret;
-
-		ret = parse_clock_dt(child_node, dev, me);
-		if (ret)
-			return ret;
+		parse_clock_dt(child_node, dev, me);
 	}
 
 	return 0;
