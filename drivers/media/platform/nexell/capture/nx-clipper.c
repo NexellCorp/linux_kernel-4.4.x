@@ -1539,14 +1539,19 @@ static int nx_clipper_g_ctrl(struct v4l2_subdev *sd,
 	case V4L2_CID_NX_CUR_STD:
 	{
 		struct v4l2_subdev *remote = get_remote_source_subdev(me);
+		bool disable = false;
 
 		if (!remote) {
 			WARN_ON(1);
 			return -ENODEV;
 		}
-		if (!me->sensor_enabled)
+		if (!me->sensor_enabled) {
 			enable_sensor_power(me, true);
+			disable = true;
+		}
 		ret = v4l2_subdev_call(remote, core, g_ctrl, ctrl);
+		if (disable)
+			enable_sensor_power(me, false);
 	}
 	break;
 	default:
