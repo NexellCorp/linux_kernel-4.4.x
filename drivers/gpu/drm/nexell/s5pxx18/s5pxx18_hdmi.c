@@ -982,7 +982,7 @@ static int hdmi_ops_get_mode(struct nx_drm_display *display,
 	const struct hdmi_res_mode *pmode;
 	int refresh =  mode->vrefresh;
 	unsigned int flags = HDMI_CHECK_REFRESH;
-	struct videomode vm;
+	struct videomode vm = { 0, };
 	int err;
 
 	vm.hactive = mode->hdisplay;
