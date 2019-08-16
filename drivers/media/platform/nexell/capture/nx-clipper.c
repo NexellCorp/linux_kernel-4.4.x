@@ -795,7 +795,7 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 					   me->regulator_nr);
 	}
 
-	child_node = of_find_node_by_name(np, "sensor");
+	child_node = of_get_child_by_name(np, "sensor");
 	if (!child_node) {
 		dev_err(dev, "failed to get sensor node\n");
 		return -EINVAL;
@@ -804,7 +804,7 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 	if (ret)
 		return ret;
 
-	child_node = of_find_node_by_name(np, "power");
+	child_node = of_get_child_by_name(np, "power");
 	if (child_node) {
 		ret = parse_power_dt(child_node, dev, me);
 		if (ret)
