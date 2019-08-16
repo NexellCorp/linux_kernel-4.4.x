@@ -161,6 +161,7 @@ static struct reg_val _sensor_init_data_pal[] = {
 	END_MARKER
 };
 
+static bool reset;
 static struct tw9900_state _state;
 
 static int brightness_tbl[12]
@@ -505,11 +506,22 @@ static int tw9900_s_stream(struct v4l2_subdev *sd, int enable)
 				reg_val = _sensor_init_data_pal;
 			else
 				reg_val = _sensor_init_data_ntsc;
-
 			while (reg_val->reg != 0xff) {
 				_i2c_write_byte(me->i2c_client, reg_val->reg,
 					reg_val->val);
 				reg_val++;
+			}
+			if (!reset) {
+				if (me->mode == TW9900_PAL)
+					reg_val = _sensor_init_data_pal;
+				else
+					reg_val = _sensor_init_data_ntsc;
+				while (reg_val->reg != 0xff) {
+					_i2c_write_byte(me->i2c_client, reg_val->reg,
+							reg_val->val);
+					reg_val++;
+				}
+				reset = true;
 			}
 			_state.first = false;
 		}
