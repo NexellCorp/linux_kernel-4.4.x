@@ -86,7 +86,6 @@ static struct reg_val _sensor_init_data[] = {
 	{0x02, 0x40},
 	{0x1c, 0x00},
 	{0x03, 0xa6},
-	{0x06, 0x80},
 	{0x07, 0x02},
 	{0x08, 0x15},
 	{0x09, 0xf0},
@@ -102,6 +101,9 @@ static struct reg_val _sensor_init_data[] = {
 	{0xaf, 0x40},
 	{0xb1, 0x20},
 	{0xb4, 0x20},
+	{0x06, 0x80},
+	END_MARKER
+};
 
 	END_MARKER
 };
@@ -371,7 +373,6 @@ static int tw9900_s_stream(struct v4l2_subdev *sd, int enable)
 		if (_state.first) {
 			struct tw9900_state *me = &_state;
 			struct reg_val *reg_val = _sensor_init_data;
-
 			while (reg_val->reg != 0xff) {
 				_i2c_write_byte(me->i2c_client, reg_val->reg,
 					reg_val->val);
