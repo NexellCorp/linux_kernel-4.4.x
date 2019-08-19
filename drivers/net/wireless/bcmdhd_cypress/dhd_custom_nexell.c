@@ -117,8 +117,8 @@ extern void *mmc_host_dev;
 static int
 dhd_wlan_set_carddetect(int val)
 {
-	pr_err("%s: notify_func=%p, mmc_host_dev=%p, val=%d\n",
-		__FUNCTION__, notify_func_callback, mmc_host_dev, val);
+	pr_debug("%s: notify_func=%p, mmc_host_dev=%p, val=%d\n",
+		 __FUNCTION__, notify_func_callback, mmc_host_dev, val);
 
 	if (notify_func_callback) {
 		notify_func_callback(mmc_host_dev, val);
