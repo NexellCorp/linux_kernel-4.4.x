@@ -870,6 +870,8 @@
 			compatible = "nexell,nx-clipper";
 			module = <1>;
 			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
 		};
 
 		decimator_0:decimator_0@c0063000 {
