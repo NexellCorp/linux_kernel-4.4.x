@@ -752,7 +752,11 @@ static void __exit bnep_exit(void)
 	bnep_sock_cleanup();
 }
 
+#ifdef CONFIG_BT_INIT_LEVEL_DOWN
+late_initcall(bnep_init);
+#else
 module_init(bnep_init);
+#endif
 module_exit(bnep_exit);
 
 module_param(compress_src, bool, 0644);

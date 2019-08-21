@@ -2255,7 +2255,11 @@ static void __exit rfcomm_exit(void)
 	rfcomm_cleanup_sockets();
 }
 
+#ifdef CONFIG_BT_INIT_LEVEL_DOWN
+late_initcall(rfcomm_init);
+#else
 module_init(rfcomm_init);
+#endif
 module_exit(rfcomm_exit);
 
 module_param(disable_cfc, bool, 0644);
