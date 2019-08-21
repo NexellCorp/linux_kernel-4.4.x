@@ -815,7 +815,7 @@ static void __exit bt_exit(void)
 }
 
 #ifdef CONFIG_BT_INIT_LEVEL_DOWN
-module_init(bt_init);
+late_initcall(bt_init);
 #else
 subsys_initcall(bt_init);
 #endif
