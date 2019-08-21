@@ -329,7 +329,7 @@ endif
 
 config DEFERRED_DEVICE_PROBES
 	bool "Allow defering the probe of some devices"
-	default y
+	default n
 	help
 	  Devices can be matched to a driver and probed from the moment they
 	  are registered, but early during boot their probes are likely to be
