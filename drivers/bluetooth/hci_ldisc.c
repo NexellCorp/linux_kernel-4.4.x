@@ -848,7 +848,11 @@ static void __exit hci_uart_exit(void)
 		BT_ERR("Can't unregister HCI line discipline (%d)", err);
 }
 
+#ifdef CONFIG_BT_INIT_LEVEL_DOWN
+late_initcall(hci_uart_init);
+#else
 module_init(hci_uart_init);
+#endif
 module_exit(hci_uart_exit);
 
 MODULE_AUTHOR("Marcel Holtmann <marcel@holtmann.org>");
