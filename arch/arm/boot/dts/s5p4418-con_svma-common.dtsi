@@ -55,7 +55,10 @@
 			uart0:uart@c00a9000 { clock-frequency = <100000000>; };
 			uart1:uart@c00a8000 { clock-frequency = <100000000>; };
 			uart3:uart@c00ab000 { clock-frequency = <147500000>; };
-			uart4:uart@c006e000 { clock-frequency = <147500000>; };
+			uart4:uart@c006e000 {
+				clock-frequency = <147500000>;
+				status = "disabled";
+			};
 
 			vip0:vip@c00c1000 { clock-frequency = <300000000>; };
 			vip1:vip@c00c2000 { src-force = <5>; };
@@ -83,6 +86,10 @@
 			i2s2:i2s@c00b4000 {
 				clk-input = <I_EXTCLK1>;
 			};
+
+			usbhost:usbhost@c006b000 {
+				deferred-probe;
+			};
 		};
 
 		l2:l2-cache-controller@cf000000 {
@@ -94,12 +101,14 @@
 		};
 
 		serial0:serial@c00a1000 {
+			deferred-probe;
 			dmas = <&pl08xdma0 2 0>, <&pl08xdma0 3 0>;
 			dma-names = "tx", "rx";
 			status ="okay";
 		};
 
 		serial1:serial@c00a0000 {
+			deferred-probe;
 			dmas = <&pl08xdma0 0 0>, <&pl08xdma0 1 0>;
 			dma-names = "tx", "rx";
 			pinctrl-0 = <&serial1_pin>, <&serial1_flow_cts>,
@@ -117,6 +126,7 @@
 
 		amba {
 			pl08xdma0:pl08xdma@c0000000 {
+				deferred-probe;
 				use_isr;
 
 				ch12 {
@@ -137,6 +147,7 @@
 			};
 
 			pl08xdma1:pl08xdma@c0001000 {
+				deferred-probe;
 				use_isr;
 
 				ch0 {
@@ -150,6 +161,7 @@
 		};
 
 		spdif_tx: spdiftx@c0059000 {
+			deferred-probe;
 			#sound-dai-cells = <1>;
 			pcm-bit = <16>;
 			sample_rate = <48000>;
@@ -157,18 +169,22 @@
 		};
 
 		watchdog@c0019000 {
+			deferred-probe;
 			status = "okay";
 		};
 
 		rtc@c0010c00 {
+			deferred-probe;
 			status = "okay";
 		};
 
 		nexell_usbphy: nexell-usbphy@c0012000 {
+			deferred-probe;
 			status = "okay";
 		};
 
 		ehci@c0030000 {
+			deferred-probe;
 			status = "okay";
 			port@0 {
 				status = "okay";
@@ -176,6 +192,7 @@
 		};
 
 		ohci@c0020000 {
+			deferred-probe;
 			status = "okay";
 			port@0 {
 				status = "okay";
@@ -183,12 +200,14 @@
 		};
 
 		dwc2otg@c0040000 {
+			deferred-probe;
 			gpios = <&alive_0 5 0>;
 			nouse_idcon = <1>;
 			status = "okay";
 		};
 
 		i2s_0:i2s@c0055000 {
+			deferred-probe;
 			/*dfs;
 			dfs-pll = <3>;*/
 			#sound-dai-cells = <1>;
@@ -202,6 +221,7 @@
 		};
 
 		i2s_1:i2s@c0056000 {
+			deferred-probe;
 			dfs;
 			dfs-pll = <3>;
 			#sound-dai-cells = <1>;
@@ -215,6 +235,7 @@
 		};
 
 		i2s_2:i2s@c0057000 {
+			deferred-probe;
 			#sound-dai-cells = <1>;
 			master-mode = <0>;
 			mclk-in = <1>;
@@ -227,6 +248,7 @@
 		};
 
 		pwm:pwm@c0018000 {
+			deferred-probe;
 			clock-names = "timers", "pwm-tclk0", "pwm-tclk3";
 			clocks =  <&pclk>, <&pwm0>, <&pwm3>;
 			pinctrl-names = "default";
@@ -340,6 +362,7 @@
 		};
 
 		scaler@c0066000 {
+			deferred-probe;
 			status = "okay";
 		};
 	};	/*** soc ***/
@@ -353,6 +376,7 @@
 		#size-cells = <0>;
 
 		alc5621_1: alc5621_1@1a {
+			deferred-probe;
 			#sound-dai-cells = <0>;
 			compatible = "realtek,alc5623";
 			reg = <0x1a>;
@@ -372,6 +396,7 @@
 		#size-cells = <0>;
 
 		alc5621_2: alc5621_2@1a {
+			deferred-probe;
 			#sound-dai-cells = <0>;
 			compatible = "realtek,alc5623";
 			reg = <0x1a>;
@@ -392,6 +417,7 @@
 		#size-cells = <0>;
 
 		usb2514: usb2514@2c {
+			deferred-probe;
 			compatible = "smsc,usb2514";
 			reg = <0x2c>;
 			reset-gpios = <&gpio_b 22 1>;
@@ -458,6 +484,7 @@
 	};
 
 	sound {
+		deferred-probe;
 		compatible = "nexell,simple-audio-card";
 		simple-audio-card,name = "s5p4418 Convergence Car Audio Main";
 		simple-audio-card,mclk-fs = <256>;
@@ -505,6 +532,7 @@
 	};
 
 	sound-sub {
+		deferred-probe;
 		compatible = "nexell,simple-audio-card";
 		simple-audio-card,name = "s5p4418 Convergence Car Audio Sub";
 		simple-audio-card,mclk-fs = <256>;
@@ -533,11 +561,13 @@
 	};
 
 	spdif_out: spdif-out {
+		deferred-probe;
 		#sound-dai-cells = <0>;
 		compatible = "linux,spdif-dit";
 	};
 
 	gpio_key: gpio_keys {
+		deferred-probe;
 		compatible = "gpio-keys";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -559,6 +589,7 @@
 	};
 
 	nexell-ion@0 {
+		deferred-probe;
 		compatible = "nexell,ion";
 
 		heap_sys_user@0 {
@@ -575,6 +606,7 @@
 	};
 
 	backlight: pwm-backlight {
+		deferred-probe;
 		compatible = "pwm-backlight";
 		pwm-names = "pwm-backlight";
 		pwms = <&pwm 0 25000 0>;
@@ -610,6 +642,7 @@
 	};
 
 	bt_control {
+		deferred-probe;
 		compatible = "broadcom,bcm434545bt";
 		gpios = <&gpio_b 23 0 /* GPIOB23 = BT_EN, output */
 			&gpio_d 20 0 /* GPIOD20 = BT_WAKE, output */
@@ -621,6 +654,7 @@
 	};
 
 	wlan {
+		deferred-probe;
 		compatible = "nexell,brcm-wlan";
 		wlan_reg_on = <&gpio_c 30 0>;
 		wlan_host_wake = <&gpio_e 31 1>;
@@ -628,6 +662,7 @@
 	};
 
 	firmware {
+		deferred-probe;
 		android {
 			compatible = "android,firmware";
 			fstab {
@@ -654,7 +689,7 @@
 	pllval = <750>;
 	hssettle = <12>;
 	interrupts = <IRQ_MIPI>;
-	status = "okay";
+	status = "disabled";
 };
 
 &clipper_0 {
@@ -662,7 +697,7 @@
 	gpios = <&gpio_b 12 0 &gpio_c 13 0>;
 	data_order = <NX_VIN_CBY0CRY1>;
 	interlace = <0>;
-	status = "okay";
+	status = "disabled";
 	external_sync = <0>;
 
 	sensor {
@@ -683,6 +718,10 @@
 		NX_ACTION_START NX_ACTION_TYPE_GPIO 0 0 15 NX_ACTION_END
 		>;
 	};
+};
+
+&decimator_0 {
+	status = "disabled";
 };
 
 &vip_1 {
@@ -894,6 +933,7 @@
 #if defined(CONFIG_BT_BCM434545) && defined(CONFIG_BCMDHD_SDIO)
 /* for BT/WIFI */
 &dw_mmc_1 {
+	deferred-probe;
 	num-slots = <1>;
 	bus-width = <4>;
 	cap-sd-highspeed;
@@ -918,6 +958,7 @@
 #else
 /* for sdmmc */
 &dw_mmc_1 {
+	deferred-probe;
 	num-slots = <1>;
 	bus-width = <4>;
 	cap-sd-highspeed;
@@ -935,6 +976,7 @@
 #endif
 
 &spi_2 {
+	deferred-probe;
 	status = "okay";
 	cs-gpios = <&gpio_c 10 0>;
 	can0: can@0 {
@@ -958,6 +1000,7 @@
 	status = "okay";
 
 	goodix@5d {
+		deferred-probe;
 		compatible = "goodix,gt9271";
 		reg = <0x5d>;
 		interrupt-parent = <&gpio_e>;
@@ -969,6 +1012,7 @@
 
 &i2c_1 {
 	nxe2000@32 {
+		deferred-probe;
 		compatible = "nexell,nxe2000";
 		reg = <0x32>;
 		interrupt-parent = <&alive_0>;
