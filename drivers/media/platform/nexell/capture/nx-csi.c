@@ -34,10 +34,6 @@ static u32 enable_ints = 0;
 MODULE_PARM_DESC(enable_ints, "csi interrupts enable");
 module_param(enable_ints, uint, 0644);
 
-#ifdef CONFIG_V4L2_INIT_LEVEL_UP
-struct task_struct *g_CSIThread;
-#endif
-
 /*#define _ENABLE_IRQ_ALL_*/
 
 /**
@@ -1267,28 +1263,6 @@ static int nx_csi_parse_dt(struct platform_device *pdev, struct nx_csi *me)
 	return 0;
 }
 
-#ifdef CONFIG_V4L2_INIT_LEVEL_UP
-static int init_csi_th(void *args)
-{
-	int ret;
-	struct nx_csi *me = args;
-
-	init_me(me);
-
-	ret = init_v4l2_subdev(me);
-	if (ret)
-		return ret;
-
-	ret = nx_v4l2_register_subdev(&me->subdev);
-	if (ret)
-		BUG();
-
-	nx_mipi_set_base_address(me->module, me->base);
-
-	return ret;
-}
-#endif
-
 /**
  * platform driver specific
  */
@@ -1303,8 +1277,6 @@ static int nx_csi_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	me->module = 0;
-
-#ifndef CONFIG_V4L2_INIT_LEVEL_UP
 	init_me(me);
 
 	ret = nx_csi_parse_dt(pdev, me);
@@ -1320,14 +1292,6 @@ static int nx_csi_probe(struct platform_device *pdev)
 		BUG();
 
 	nx_mipi_set_base_address(me->module, me->base);
-#else
-	ret = nx_csi_parse_dt(pdev, me);
-	if (ret)
-		return ret;
-
-	if (g_CSIThread == NULL)
-		g_CSIThread = kthread_run(init_csi_th, me, "KthreadForNxCSI");
-#endif
 
 	me->dev = &pdev->dev;
 	platform_set_drvdata(pdev, me);

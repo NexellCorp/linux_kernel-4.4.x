@@ -76,10 +76,6 @@
 #define TO_PERIOD_NS(freq)	(NS_IN_HZ/(freq))
 #define TO_DUTY_NS(duty, freq)  (duty ? TO_PERIOD_NS(freq)/(100/duty) : 0)
 
-#ifdef CONFIG_V4L2_INIT_LEVEL_UP
-struct task_struct *g_ClipperThread;
-#endif
-
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
 static struct pm_qos_request nx_clipper_qos;
 
@@ -226,11 +222,6 @@ struct nx_clipper {
 
 	/* for suspend */
 	struct nx_video_buffer *last_buf;
-
-#ifdef CONFIG_V4L2_INIT_LEVEL_UP
-	struct workqueue_struct *w_queue;
-	struct delayed_work w_delay;
-#endif
 };
 
 static int register_irq_handler(struct nx_clipper *me);
@@ -249,29 +240,6 @@ static void debug_sync(unsigned long priv)
 	mod_timer(&me->timer,
 		jiffies + msecs_to_jiffies(DEBUG_SYNC_TIMEOUT_MS));
 }
-#endif
-
-#ifdef CONFIG_V4L2_INIT_LEVEL_UP
-enum {
-	CAM_TYPE_QUICKREAR	= 0x0,
-	CAM_TYPE_1CAMTOPVIEW	= 0x1,
-	CAM_TYPE_4CAMSVM	= 0x2
-};
-
-static unsigned int __initdata selected_rear_cam;
-
-static int __init nx_rearcam(char *str)
-{
-	int value;
-	if (get_option(&str, &value)) {
-		selected_rear_cam = value;
-		return 0;
-	}
-
-	return -EINVAL;
-}
-
-__setup("nx_rearcam=", nx_rearcam);
 #endif
 
 /**
@@ -2287,54 +2255,6 @@ static const struct dev_pm_ops nx_clipper_pm_ops = {
 };
 #endif
 
-#ifdef CONFIG_V4L2_INIT_LEVEL_UP
-static int init_clipper_th(void *args)
-{
-	int ret = 0;
-	struct nx_clipper *me = args;
-
-	if (!nx_vip_is_valid(me->module)) {
-		dev_err(&me->pdev->dev, "NX VIP %d is not valid\n", me->module);
-		return -ENODEV;
-	}
-
-	init_me(me);
-
-	ret = init_v4l2_subdev(me);
-	if (ret)
-		return ret;
-
-	ret = register_v4l2(me);
-	if (ret)
-		return ret;
-
-	return ret;
-}
-
-static void init_clipper_work(struct work_struct *work)
-{
-	struct nx_clipper *me = container_of(work,
-				struct nx_clipper, w_delay.work);
-	int ret = 0;
-
-	if (!nx_vip_is_valid(me->module)) {
-		dev_err(&me->pdev->dev, "NX VIP %d is not valid\n", me->module);
-		return;
-	}
-
-	init_me(me);
-
-	ret = init_v4l2_subdev(me);
-	if (ret)
-		return;
-
-	ret = register_v4l2(me);
-	if (ret)
-		return;
-
-}
-#endif
-
 /**
  * platform driver
  */
@@ -2355,7 +2275,7 @@ static int nx_clipper_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to parse dt\n");
 		return ret;
 	}
-#ifndef CONFIG_V4L2_INIT_LEVEL_UP
+
 	if (!nx_vip_is_valid(me->module)) {
 		dev_err(dev, "NX VIP %d is not valid\n", me->module);
 		return -ENODEV;
@@ -2370,34 +2290,6 @@ static int nx_clipper_probe(struct platform_device *pdev)
 	ret = register_v4l2(me);
 	if (ret)
 		return ret;
-#else
-	if (selected_rear_cam == CAM_TYPE_4CAMSVM) {
-		if (me->module == 0) {
-			if (g_ClipperThread == NULL)
-				g_ClipperThread = kthread_run(init_clipper_th,
-					me, "KthreadForNxClipper");
-		} else {
-			me->w_queue = create_singlethread_workqueue("clipper_wqueue");
-			INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
-
-			queue_delayed_work(me->w_queue, &me->w_delay,
-							msecs_to_jiffies(2000));
-		}
-	} else if (selected_rear_cam == CAM_TYPE_QUICKREAR
-				|| selected_rear_cam == CAM_TYPE_1CAMTOPVIEW) {
-		if (me->module == 2) {
-			if (g_ClipperThread == NULL)
-				g_ClipperThread = kthread_run(init_clipper_th,
-					me, "KthreadForNxClipper");
-		} else {
-			me->w_queue = create_singlethread_workqueue("clipper_wqueue");
-			INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
-
-			queue_delayed_work(me->w_queue, &me->w_delay,
-							msecs_to_jiffies(2000));
-		}
-	}
-#endif
 
 	me->buffer_underrun = false;
 	me->buf.addr = NULL;
@@ -2419,14 +2311,6 @@ static int nx_clipper_remove(struct platform_device *pdev)
 
 	if (unlikely(!me))
 		return 0;
-
-#ifdef CONFIG_V4L2_INIT_LEVEL_UP
-	if (me->module == 1) {
-		cancel_delayed_work(&me->w_delay);
-		flush_workqueue(me->w_queue);
-		destroy_workqueue(me->w_queue);
-	}
-#endif
 
 	unregister_v4l2(me);
 
