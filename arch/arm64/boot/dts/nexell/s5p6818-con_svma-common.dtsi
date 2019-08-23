@@ -93,10 +93,11 @@
 		};
 
 		serial4:serial@c006d000 {
-			status ="okay";
+			status ="disabled";
 		};
 
 		dw_mmc_1:dw_mmc@c0068000 {
+			deferred-probe;
 			num-slots = <1>;
 			bus-width = <4>;
 			cap-sd-highspeed;
@@ -178,6 +179,7 @@
 		};
 
 		spdif_tx: spdiftx@c0059000 {
+			deferred-probe;
 			#sound-dai-cells = <1>;
 			pcm-bit = <16>;
 			sample_rate = <48000>;
@@ -334,6 +336,7 @@
 			status = "okay";
 
 			nxe2000@32 {
+				deferred-probe;
 				compatible = "nexell,nxe2000";
 				reg = <0x32>;
 				interrupt-parent = <&alive_0>;
@@ -425,6 +428,7 @@
 		#size-cells = <0>;
 
 		rt5633_1: rt5633_1@1c {
+			deferred-probe;
 			#sound-dai-cells = <0>;
 			compatible = "realtek,rt5633";
 			reg = <0x1c>;
@@ -505,6 +509,7 @@
 	}; /* HDMI */
 
 	snd_null: snd_null@10 {
+		deferred-probe;
 		#sound-dai-cells = <0>;
 		compatible = "nexell,snd-null";
 		#address-cells = <1>;
@@ -513,6 +518,7 @@
 	};
 
 	sound {
+		deferred-probe;
 		compatible = "nexell,simple-audio-card";
 		simple-audio-card,name = "s5p6818 Convergence Car Audio Main";
 		simple-audio-card,mclk-fs = <256>;
@@ -599,6 +605,7 @@
 	};
 
 	spdif_out: spdif-out {
+		deferred-probe;
 		#sound-dai-cells = <0>;
 		compatible = "linux,spdif-dit";
 	};
@@ -723,7 +730,7 @@
     pllval = <750>;
     hssettle = <12>;
     interrupts = <IRQ_MIPI>;
-    status = "okay";
+    status = "disabled";
 };
 
 &clipper_0 {
@@ -731,7 +738,7 @@
     gpios = <&gpio_b 12 0 &gpio_c 13 0>;
     data_order = <NX_VIN_CBY0CRY1>;
     interlace = <0>;
-    status = "okay";
+    status = "disabled";
     external_sync = <0>;
 
     sensor {
@@ -755,7 +762,7 @@
 };
 
 &decimator_0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &vip_2 {
@@ -770,7 +777,7 @@
 	port = <0>;
 	external_sync = <0>;
 	interlace = <1>;
-	status = "okay";
+	status = "disabled";
 
 	sensor {
 		type = <NX_CAPTURE_SENSOR_I2C>;
@@ -781,7 +788,7 @@
 };
 
 &decimator_2 {
-	status = "okay";
+	status = "disabled";
 };
 
 &clipper_9 {
@@ -871,6 +878,7 @@
 };
 
 &dp_drm_hdmi {
+	deferred-probe;
 	ddc-i2c-bus = <&i2c_gpio9>;
 	skip-boot-connect;
 	status = "ok";
