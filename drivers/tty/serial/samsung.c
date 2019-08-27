@@ -248,7 +248,7 @@ static void enable_tx_dma(struct s3c24xx_uart_port *ourport)
 	ucon = rd_regl(port, S3C2410_UCON);
 	ucon &= ~(S3C64XX_UCON_TXBURST_MASK | S3C64XX_UCON_TXMODE_MASK);
 	ucon |= (dma_get_cache_alignment() >= 16) ?
-		S3C64XX_UCON_TXBURST_16 : S3C64XX_UCON_TXBURST_1;
+		S3C64XX_UCON_TXBURST_8 : S3C64XX_UCON_TXBURST_1;
 	ucon |= S3C64XX_UCON_TXMODE_DMA;
 	wr_regl(port,  S3C2410_UCON, ucon);
 
@@ -521,7 +521,7 @@ static void enable_rx_dma(struct s3c24xx_uart_port *ourport)
 			S3C64XX_UCON_DMASUS_EN |
 			S3C64XX_UCON_TIMEOUT_EN |
 			S3C64XX_UCON_RXMODE_MASK);
-	ucon |= S3C64XX_UCON_RXBURST_16 |
+	ucon |= S3C64XX_UCON_RXBURST_8 |
 			0xf << S3C64XX_UCON_TIMEOUT_SHIFT |
 			S3C64XX_UCON_EMPTYINT_EN |
 			S3C64XX_UCON_TIMEOUT_EN |
@@ -864,13 +864,13 @@ static int s3c24xx_serial_request_dma(struct s3c24xx_uart_port *p)
 	dma->rx_conf.direction		= DMA_DEV_TO_MEM;
 	dma->rx_conf.src_addr_width	= DMA_SLAVE_BUSWIDTH_1_BYTE;
 	dma->rx_conf.src_addr		= p->port.mapbase + S3C2410_URXH;
-	dma->rx_conf.src_maxburst	= 16;
+	dma->rx_conf.src_maxburst	= 8;
 
 	dma->tx_conf.direction		= DMA_MEM_TO_DEV;
 	dma->tx_conf.dst_addr_width	= DMA_SLAVE_BUSWIDTH_1_BYTE;
 	dma->tx_conf.dst_addr		= p->port.mapbase + S3C2410_UTXH;
 	if (dma_get_cache_alignment() >= 16)
-		dma->tx_conf.dst_maxburst = 16;
+		dma->tx_conf.dst_maxburst = 8;
 	else
 		dma->tx_conf.dst_maxburst = 1;
 
@@ -894,7 +894,7 @@ static int s3c24xx_serial_request_dma(struct s3c24xx_uart_port *p)
 	dmaengine_slave_config(dma->tx_chan, &dma->tx_conf);
 
 	/* RX buffer */
-	dma->rx_size = PAGE_SIZE;
+	dma->rx_size = PAGE_SIZE >> 1;
 
 	dma->rx_buf = kmalloc(dma->rx_size, GFP_KERNEL);
 
@@ -2431,7 +2431,7 @@ static struct s3c24xx_serial_drv_data nexell_serial_drv_data = {
 		.ufcon		= S5PV210_UFCON_DEFAULT,
 		.has_fracval	= 1,
 	},
-	.fifosize = { 256, 64, 16, 16, 16, 16 },
+	.fifosize = { 64, 64, 16, 16, 16, 16 },
 };
 #define NEXELL_SERIAL_DRV_DATA	   ((kernel_ulong_t)&nexell_serial_drv_data)
 #else
