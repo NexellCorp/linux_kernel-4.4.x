@@ -2985,6 +2985,13 @@ static int dwc2_queue_transaction(struct dwc2_hsotg *hsotg,
 {
 	int retval = 0;
 
+
+	if(!hsotg || !chan->qh)
+	{
+		dev_err(hsotg->dev,"%s %d NULL pointer error\n",__func__,__LINE__);
+		return -1;
+	}
+
 	if (chan->do_split)
 		/* Put ourselves on the list to keep order straight */
 		list_move_tail(&chan->split_order_list_entry,
