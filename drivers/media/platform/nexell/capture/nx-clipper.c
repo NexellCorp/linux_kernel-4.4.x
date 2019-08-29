@@ -955,6 +955,8 @@ static int enable_sensor_power(struct nx_clipper *me, bool enable)
 {
 	struct nx_capture_power_seq *seq = NULL;
 
+	pr_err("[%s] module:%d, logical:%d, enable:%d, sensor_enabled:%d\n", __func__,
+			me->module, me->logical, enable, me->sensor_enabled);
 	if (enable && !me->sensor_enabled)
 		seq = &me->enable_seq;
 	else if (!enable && me->sensor_enabled)
