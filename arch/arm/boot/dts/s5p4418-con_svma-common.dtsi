@@ -183,7 +183,6 @@
 		};
 
 		dwc2otg@c0040000 {
-			gpios = <&alive_0 5 0>;
 			nouse_idcon = <1>;
 			status = "okay";
 		};
@@ -316,6 +315,9 @@
 		i2c_1:i2c@c00a5000 {
 			#address-cells = <1>;
 			#size-cells = <0>;
+			rate = <400000>;
+			retry-delay = <500>;
+			retry-cnt = <10>;
 			status = "okay";
 		};
 
