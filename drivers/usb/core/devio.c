@@ -1265,6 +1265,12 @@ static int proc_setconfig(struct usb_dev_state *ps, void __user *arg)
 					actconfig->interface[i]
 						->dev.driver->name,
 					current->comm, u);
+
+				if (actconfig->desc.bConfigurationValue == u) {
+					dev_warn(&ps->dev->dev,
+						 "same config set(#%d), return 0\n", u);
+					return 0;
+				}
 				status = -EBUSY;
 				break;
 			}
