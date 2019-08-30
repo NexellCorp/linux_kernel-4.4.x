@@ -217,7 +217,6 @@
 
 		dwc2otg@c0040000 {
 			deferred-probe;
-			gpios = <&alive_0 5 0>;
 			nouse_idcon = <1>;
 			status = "okay";
 		};
@@ -333,6 +332,8 @@
 		i2c_1:i2c@c00a5000 {
 			#address-cells = <1>;
 			#size-cells = <0>;
+			samsung,i2c-max-bus-freq = <400000>;
+			samsung,i2c-sda-delay = <1>;
 			status = "okay";
 
 			nxe2000@32 {
