@@ -793,6 +793,7 @@ static int s3c24xx_i2c_xfer(struct i2c_adapter *adap,
 	struct s3c24xx_i2c *i2c = (struct s3c24xx_i2c *)adap->algo_data;
 	int retry;
 	int ret;
+	int delay = i2c->pdata->retry_delay;
 
 	pm_runtime_get_sync(&adap->dev);
 	ret = clk_enable(i2c->clk);
@@ -802,20 +803,27 @@ static int s3c24xx_i2c_xfer(struct i2c_adapter *adap,
 	for (retry = 0; retry < adap->retries; retry++) {
 
 		ret = s3c24xx_i2c_doxfer(i2c, msgs, num);
-
+/*
 		if (ret != -EAGAIN) {
 			clk_disable(i2c->clk);
 			pm_runtime_put(&adap->dev);
 			return ret;
 		}
-
+*/
+		if (ret == num)
+			break;
 		dev_dbg(i2c->dev, "Retrying transmission (%d)\n", retry);
+		udelay(delay);
+	}
 
-		udelay(100);
+	if (ret != -EAGAIN) {
+		clk_disable(i2c->clk);
+		pm_runtime_put_sync(&adap->dev);
+		return ret;
 	}
 
 	clk_disable(i2c->clk);
-	pm_runtime_put(&adap->dev);
+	pm_runtime_put_sync(&adap->dev);
 	return -EREMOTEIO;
 }
 
@@ -1220,6 +1228,9 @@ s3c24xx_i2c_parse_dt(struct device_node *np, struct s3c24xx_i2c *i2c)
 	of_property_read_u32(np, "samsung,i2c-slave-addr", &pdata->slave_addr);
 	of_property_read_u32(np, "samsung,i2c-max-bus-freq",
 				(u32 *)&pdata->frequency);
+	of_property_read_u32(np, "retry-delay", &pdata->retry_delay);
+	of_property_read_u32(np, "retry-cnt", &pdata->retry_cnt);
+
 	/*
 	 * Exynos5's legacy i2c controller and new high speed i2c
 	 * controller have muxed interrupt sources. By default the
@@ -1282,9 +1293,16 @@ static int s3c24xx_i2c_probe(struct platform_device *pdev)
 	strlcpy(i2c->adap.name, "s3c2410-i2c", sizeof(i2c->adap.name));
 	i2c->adap.owner = THIS_MODULE;
 	i2c->adap.algo = &s3c24xx_i2c_algorithm;
-	i2c->adap.retries = 2;
 	i2c->adap.class = I2C_CLASS_DEPRECATED;
 	i2c->tx_setup = 50;
+
+	if (!i2c->pdata->retry_delay)
+		i2c->pdata->retry_delay = 0;
+
+	if (i2c->pdata->retry_cnt)
+		i2c->adap.retries = i2c->pdata->retry_cnt;
+	else
+		i2c->adap.retries = 2;
 
 	init_waitqueue_head(&i2c->wait);
 
