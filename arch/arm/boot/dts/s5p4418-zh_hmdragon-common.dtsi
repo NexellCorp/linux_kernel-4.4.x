@@ -76,6 +76,8 @@
 				compatible = "fixed-clock";
 				clock-frequency = <0>;
 			};
+			i2c0:i2c@c00ae000 { clock-frequency = <200000000>;};
+			i2c2:i2c@c00b0000 { clock-frequency = <200000000>;};
 		};
 
 		pinctrl@C0010000 {
