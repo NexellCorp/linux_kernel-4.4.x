@@ -65,6 +65,7 @@
 				clk-input = <I_PLL0>;
 				clock-frequency = <80000000>;
 			};
+			i2c1:i2c@c00af000 { clock-frequency = <200000000>;};
 		};
 
 		pwm:pwm@c0018000 {
