@@ -240,12 +240,12 @@ int nx_soc_dp_cont_prepare(struct nx_control_dev *control)
 	nx_dpc_set_clock_source(module, 1, ctl->clk_src_lv1);
 	nx_dpc_set_clock_divisor(module, 1, ctl->clk_div_lv1);
 	nx_dpc_set_clock_out_delay(module, 1, ctl->clk_delay_lv1);
+	nx_dpc_set_mode(module, out_format, interlace, invert_field,
+			rgb_mode, swap_rb, yc_order, emb_sync, emb_sync,
+			vck_select, vclk_invert, 0);
 
 	/* LCD out */
 	if (lcd_rgb) {
-		nx_dpc_set_mode(module, out_format, interlace, invert_field,
-				rgb_mode, swap_rb, yc_order, emb_sync, emb_sync,
-				vck_select, vclk_invert, 0);
 		nx_dpc_set_hsync(module, sync->h_active_len,
 				 sync->h_sync_width, sync->h_front_porch,
 				 sync->h_back_porch, sync->h_sync_invert);
@@ -554,10 +554,6 @@ int nx_soc_dp_plane_rgb_set_format(struct nx_plane_layer *layer,
 	pr_debug("%s: %s, fmt:0x%x, pixel=%d\n",
 		 __func__, layer->name, format, pixelbyte);
 
-	if (layer->format == format &&
-		layer->pixelbyte == pixelbyte)
-		return 0;
-
 	layer->format = format;
 	layer->pixelbyte = pixelbyte;
 
@@ -602,12 +598,6 @@ int nx_soc_dp_plane_rgb_set_position(struct nx_plane_layer *layer,
 	int module = layer->module;
 	int num = layer->num;
 	int sx, sy, ex, ey;
-
-	if (layer->left == src_x && layer->top == src_y &&
-	layer->width == src_w && layer->height == src_h &&
-	layer->dst_left == dst_x && layer->dst_top == dst_y &&
-	layer->dst_width == dst_w && layer->dst_height == dst_h)
-		return 0;
 
 	/* source */
 	layer->left = src_x;

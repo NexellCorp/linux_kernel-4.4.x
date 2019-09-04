@@ -762,6 +762,17 @@ static int panel_lcd_suspend(struct device *dev)
 
 static int panel_lcd_resume(struct device *dev)
 {
+	struct lcd_context *ctx = dev_get_drvdata(dev);
+	struct nx_drm_display *display;
+
+	if (!ctx)
+		return 0;
+
+	display = ctx_to_display(ctx);
+
+	if (display->ops && display->ops->resume)
+		display->ops->resume(display);
+
 	return 0;
 }
 #endif
