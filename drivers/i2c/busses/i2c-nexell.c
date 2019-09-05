@@ -109,7 +109,6 @@ struct nx_i2c_param {
 	int irq_count;
 	int thd_count;
 	int sda_delay;
-	int retry_delay;
 	struct device *dev;
 
 #ifdef CONFIG_ARM_S5Pxx18_DEVFREQ
@@ -563,7 +562,6 @@ static int nx_i2c_algo_xfer(struct i2c_adapter *adapter, struct i2c_msg *msgs,
 	int j = num;
 	int ret = -EAGAIN;
 	int len = 0;
-	int delay = par->retry_delay;
 	int  (*transfer_i2c)(struct nx_i2c_param *, struct i2c_msg *, int);
 
 	transfer_i2c = nx_i2c_transfer;
@@ -586,7 +584,7 @@ static int nx_i2c_algo_xfer(struct i2c_adapter *adapter, struct i2c_msg *msgs,
 			ret = transfer_i2c(par, tmsg, num);
 			if (ret == len)
 				break;
-			udelay(delay);
+			udelay(100);
 			dev_dbg(par->dev, "i2c.%d addr 0x%02x (try:%d)\n",
 				par->hw.port, tmsg->addr<<1,
 				adapter->retries-i+1);
@@ -693,15 +691,7 @@ static int nx_i2c_set_param(struct nx_i2c_param *par,
 	if (!par->sda_delay)
 		par->sda_delay = 1;
 
-	of_property_read_u32(pdev->dev.of_node, "retry-delay",
-			     &par->retry_delay);
-	if (!par->retry_delay)
-		par->retry_delay = 0;
-
-	of_property_read_u32(pdev->dev.of_node, "retry-cnt",
-			     &par->adapter.retries);
-	if (!par->adapter.retries)
-		par->adapter.retries = 3;
+	par->adapter.retries = 2;
 
 	of_property_read_u32(pdev->dev.of_node, "rate", &par->rate);
 	if (!par->rate)
