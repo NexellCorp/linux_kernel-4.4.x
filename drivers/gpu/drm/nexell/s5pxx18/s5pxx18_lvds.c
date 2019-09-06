@@ -310,6 +310,7 @@ static int lvds_ops_set_mode(struct nx_drm_display *display,
 static int lvds_ops_resume(struct nx_drm_display *display)
 {
 	nx_display_resume_resource(display);
+	lvds_ops_prepare(display);
 	return 0;
 }
 
