@@ -318,8 +318,6 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			rate = <400000>;
-			retry-delay = <500>;
-			retry-cnt = <10>;
 			status = "okay";
 		};
 
