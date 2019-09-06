@@ -818,7 +818,8 @@ static int gpio_keys_suspend(struct device *dev)
 	return 0;
 }
 
-#if defined(CONFIG_ARCH_S5P6818) && defined(CONFIG_ANDROID)
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818)) \
+	&& defined(CONFIG_ANDROID)
 extern u32 nx_alive_get_wakeup_status(void);
 #define ALIVE_BASE	160
 #endif
@@ -829,22 +830,26 @@ static int gpio_keys_resume(struct device *dev)
 	struct input_dev *input = ddata->input;
 	int error = 0;
 	int i;
-#if defined(CONFIG_ARCH_S5P6818) && defined(CONFIG_ANDROID)
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818)) \
+	&& defined(CONFIG_ANDROID)
 	bool report_event = false;
 #endif
 
 	if (device_may_wakeup(dev)) {
-#if defined(CONFIG_ARCH_S5P6818) && defined(CONFIG_ANDROID)
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818)) \
+	&& defined(CONFIG_ANDROID)
 		u32 wakeup_status = nx_alive_get_wakeup_status();
 #endif
 
 		for (i = 0; i < ddata->pdata->nbuttons; i++) {
 			struct gpio_button_data *bdata = &ddata->data[i];
-#if defined(CONFIG_ARCH_S5P6818) && defined(CONFIG_ANDROID)
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818)) \
+	&& defined(CONFIG_ANDROID)
 			const struct gpio_keys_button *button = bdata->button;
 #endif
 			if (bdata->button->wakeup) {
-#if defined(CONFIG_ARCH_S5P6818) && defined(CONFIG_ANDROID)
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818)) \
+	&& defined(CONFIG_ANDROID)
 				int alive_num = button->gpio - ALIVE_BASE;
 
 				if (alive_num > 0)
@@ -868,7 +873,8 @@ static int gpio_keys_resume(struct device *dev)
 
 	gpio_keys_report_state(ddata);
 
-#if defined(CONFIG_ARCH_S5P6818) && defined(CONFIG_ANDROID)
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818)) \
+	&& defined(CONFIG_ANDROID)
 	if (report_event) {
 		input_event(input, EV_KEY, KEY_POWER, 1);
 		input_sync(input);
