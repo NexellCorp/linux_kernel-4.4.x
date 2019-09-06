@@ -778,7 +778,6 @@ dtb-$(CONFIG_ARCH_MEDIATEK) += \
 	mt8135-evbp1.dtb
 dtb-$(CONFIG_ARCH_ZX) += zx296702-ad1.dtb
 dtb-$(CONFIG_ARCH_S5P4418) += \
-	s5p4418-drone.dtb \
 	s5p4418-artik530-raptor-rev00.dtb \
 	s5p4418-artik530-raptor-rev03.dtb \
 	s5p4418-artik530-explorer.dtb \
@@ -790,27 +789,8 @@ dtb-$(CONFIG_ARCH_S5P4418) += \
 	s5p4418-avn_ref-rev00.dtb \
 	s5p4418-navi_ref-rev00.dtb \
 	s5p4418-navi_ref-rev01.dtb \
-	s5p4418-daudio_ref-rev00.dtb \
-	s5p4418-daudio_ref-rev01.dtb \
-	s5p4418-smart_voice-rev00.dtb \
-	s5p4418-smart_voice-rev01.dtb \
-	s5p4418-allo_display-rev00.dtb \
-	s5p4418-allo_display-rev01.dtb \
-	s5p4418-zh_dragon-rev00.dtb \
-	s5p4418-zh_blackdragon-rev00.dtb \
-	s5p4418-zh_hmdragon-rev00.dtb \
-	s5p4418-daudio_covi-rev00.dtb \
-	s5p4418-ff_voice.dtb \
-	s5p4418-clova-rev00.dtb \
-	s5p4418-svm_ref-rev00.dtb \
-	s5p4418-daudio_cona-rev00.dtb \
-	s5p4418-cluster_ref-rev00.dtb \
-	s5p4418-convergence_svmc-rev00.dtb \
-	s5p4418-convergence_svmc-rev01.dtb \
 	s5p4418-con_svma-rev00.dtb \
-	s5p4418-con_svma-rev01.dtb \
-	s5p4418-convergence_daudio-rev00.dtb \
-	s5p4418-convergence_daudio-rev01.dtb
+	s5p4418-con_svma-rev01.dtb
 endif
 
 ifeq ($(CONFIG_ARCH_S5P4418),y)
