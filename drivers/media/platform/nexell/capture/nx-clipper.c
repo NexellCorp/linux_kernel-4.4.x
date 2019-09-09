@@ -1006,6 +1006,9 @@ static int alloc_dma_buffer(struct nx_clipper *me)
 		if (me->buf.format == MEDIA_BUS_FMT_YVYU12_1X24) {
 			y_size = buf->dma_addr[2] - buf->dma_addr[0];
 			cbcr_size = buf->dma_addr[1] - buf->dma_addr[2];
+		} else if (me->buf.format == MEDIA_BUS_FMT_YUYV8_1X16) {
+			y_size = buf->stride[0] * ALIGN(me->height, 16);
+			cbcr_size = 0;
 		} else {
 			y_size = buf->dma_addr[1] - buf->dma_addr[0];
 			cbcr_size = buf->dma_addr[2] - buf->dma_addr[1];
