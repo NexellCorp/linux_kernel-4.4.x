@@ -535,61 +535,6 @@ static mali_scheduler_mask mali_timeline_release_with_depended_point(struct mali
 	return schedule_mask;
 }
 
-static mali_scheduler_mask mali_timeline_release_with_depended_point(struct mali_timeline_tracker *tracker)
-{
-	struct mali_timeline *timeline;
-	struct mali_timeline_waiter *waiter;
-	mali_scheduler_mask schedule_mask = MALI_SCHEDULER_MASK_EMPTY;
-	
-	timeline = tracker->timeline;
-	MALI_DEBUG_ASSERT_POINTER(timeline);
-	MALI_DEBUG_ASSERT(MALI_TIMELINE_SOFT == timeline->id);
-	
-	MALI_DEBUG_CODE({
-		struct mali_timeline_system *system = timeline->system;
-		MALI_DEBUG_ASSERT_POINTER(system);
-
-		MALI_DEBUG_ASSERT(MALI_TIMELINE_SYSTEM_LOCKED(system));
-	});
-
-	/* Only release the waiter that wait for the tracker. */
-	waiter = timeline->waiter_tail;
-	while (NULL != waiter) {
-		if (waiter->point == tracker->point) {
-
-			struct mali_timeline_waiter *waiter_next;
-			struct mali_timeline_waiter *waiter_prev;
-			
-			waiter_next = waiter->timeline_next;
-			waiter_prev = waiter->timeline_prev;
-			waiter->timeline_next = NULL;
-			waiter->timeline_prev = NULL;
-
-			if (NULL != waiter_prev) {
-				waiter_prev->timeline_next = waiter_next;
-			}
-
-			if (NULL != waiter_next) {
-				waiter_next->timeline_prev = waiter_prev;
-			}
-
-			if (waiter ==  timeline->waiter_tail)
-				 timeline->waiter_tail = waiter_next;
-
-			if (waiter == timeline->waiter_head)
-				timeline->waiter_head = NULL;
-			
-			schedule_mask |= mali_timeline_system_release_waiter(timeline->system, waiter);
-			waiter = waiter_next;
-		}else {
-
-			waiter = waiter->timeline_next;
-		}
-	}
-
-	return schedule_mask;
-}
-
 void mali_timeline_tracker_init(struct mali_timeline_tracker *tracker,
 				mali_timeline_tracker_type type,
 				struct mali_timeline_fence *fence,
