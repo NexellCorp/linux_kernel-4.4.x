@@ -73,8 +73,8 @@ static void nx_atomic_commit_complete(struct nx_drm_commit *commit)
 	 * current layout.
 	 */
 	drm_atomic_helper_commit_modeset_disables(drm, state);
-	drm_atomic_helper_commit_planes(drm, state, false);
 	drm_atomic_helper_commit_modeset_enables(drm, state);
+	drm_atomic_helper_commit_planes(drm, state, false);
 
 	/*
 	 * wait hw vblank
@@ -85,11 +85,10 @@ static void nx_atomic_commit_complete(struct nx_drm_commit *commit)
 	drm_atomic_helper_cleanup_planes(drm, state);
 	drm_atomic_state_free(state);
 
-	spin_lock(&private->lock);
+	spin_lock(&private->wait.lock);
 	private->pending &= ~commit->crtcs;
-	spin_unlock(&private->lock);
-
-	wake_up_all(&private->wait);
+	wake_up_all_locked(&private->wait);
+	spin_unlock(&private->wait.lock);
 
 	kfree(commit);
 }
@@ -100,19 +99,6 @@ static void nx_drm_atomic_work(struct work_struct *work)
 		container_of(work, struct nx_drm_commit, work);
 
 	nx_atomic_commit_complete(commit);
-}
-
-static int commit_is_pending(struct nx_drm_commit *commit)
-{
-	struct drm_device *drm = commit->drm;
-	struct nx_drm_private *private = drm->dev_private;
-	bool pending;
-
-	spin_lock(&private->lock);
-	pending = private->pending & commit->crtcs;
-	spin_unlock(&private->lock);
-
-	return pending;
 }
 
 static int nx_drm_atomic_commit(struct drm_device *drm,
@@ -142,15 +128,21 @@ static int nx_drm_atomic_commit(struct drm_device *drm,
 	 * mark them as pending.
 	 */
 	for (i = 0; i < drm->mode_config.num_crtc; ++i) {
-		if (state->crtcs[i])
-			commit->crtcs |= 1 << drm_crtc_index(state->crtcs[i]);
+		if (!state->crtcs[i])
+			continue;
+		commit->crtcs |= 1 << drm_crtc_index(state->crtcs[i]);
 	}
 
-	wait_event(private->wait, !commit_is_pending(commit));
-
-	spin_lock(&private->lock);
-	private->pending |= commit->crtcs;
-	spin_unlock(&private->lock);
+	spin_lock(&private->wait.lock);
+	ret = wait_event_interruptible_locked(private->wait,
+			!(private->pending & commit->crtcs));
+	if (ret == 0)
+		private->pending |= commit->crtcs;
+	spin_unlock(&private->wait.lock);
+	if (ret) {
+		kfree(commit);
+		goto error;
+	}
 
 	/* Swap the state, this is the point of no return. */
 	drm_atomic_helper_swap_state(drm, state);
@@ -161,6 +153,10 @@ static int nx_drm_atomic_commit(struct drm_device *drm,
 		nx_atomic_commit_complete(commit);
 
 	return 0;
+
+error:
+	drm_atomic_helper_cleanup_planes(drm, state);
+	return ret;
 }
 
 static struct drm_mode_config_funcs nx_mode_config_funcs = {
@@ -198,7 +194,6 @@ static struct nx_drm_private *nx_drm_private_init(struct drm_device *drm)
 		return NULL;
 
 	drm->dev_private = (void *)private;
-	spin_lock_init(&private->lock);
 	init_waitqueue_head(&private->wait);
 	dev_set_drvdata(drm->dev, drm);
 

@@ -1351,15 +1351,21 @@ int drm_atomic_check_simple(struct drm_atomic_state *state)
 int drm_atomic_commit(struct drm_atomic_state *state)
 {
 	struct drm_mode_config *config = &state->dev->mode_config;
+	bool nonblock = false;
 	int ret;
 
 	ret = drm_atomic_check_only(state);
 	if (ret)
 		return ret;
 
+	if (state->acquire_ctx)
+		nonblock =
+			state->acquire_ctx->flags & DRM_MODE_ATOMIC_NONBLOCK ?
+			true : false;
+
 	DRM_DEBUG_ATOMIC("commiting %p\n", state);
 
-	return config->funcs->atomic_commit(state->dev, state, false);
+	return config->funcs->atomic_commit(state->dev, state, nonblock);
 }
 EXPORT_SYMBOL(drm_atomic_commit);
 

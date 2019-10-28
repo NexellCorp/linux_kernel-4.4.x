@@ -947,6 +947,7 @@ drm_atomic_helper_wait_for_vblanks(struct drm_device *dev,
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *old_crtc_state;
 	int i, ret;
+	bool nonblock = false;
 
 	for_each_crtc_in_state(old_state, crtc, old_crtc_state, i) {
 		/* No one cares about the old state, so abuse it for tracking
@@ -977,10 +978,14 @@ drm_atomic_helper_wait_for_vblanks(struct drm_device *dev,
 		if (!old_crtc_state->enable)
 			continue;
 
-		ret = wait_event_timeout(dev->vblank[i].queue,
-				old_crtc_state->last_vblank_count !=
-					drm_crtc_vblank_count(crtc),
-				msecs_to_jiffies(50));
+		nonblock =
+			old_state->acquire_ctx->flags & DRM_MODE_ATOMIC_NONBLOCK ?
+			true : false;
+		if (!nonblock)
+			ret = wait_event_timeout(dev->vblank[i].queue,
+					old_crtc_state->last_vblank_count !=
+						drm_crtc_vblank_count(crtc),
+					msecs_to_jiffies(50));
 
 		drm_crtc_vblank_put(crtc);
 	}
