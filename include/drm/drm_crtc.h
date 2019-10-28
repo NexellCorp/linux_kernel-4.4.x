@@ -945,6 +945,7 @@ struct drm_atomic_state {
 	struct drm_connector_state **connector_states;
 
 	struct drm_modeset_acquire_ctx *acquire_ctx;
+	bool nonblock;
 };
 
 
