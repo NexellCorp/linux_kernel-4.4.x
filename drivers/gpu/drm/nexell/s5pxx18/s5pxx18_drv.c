@@ -1454,7 +1454,11 @@ static void display_irq_disable(struct nx_drm_display *display,
 static void display_irq_done(struct nx_drm_display *display,
 			unsigned int pipe)
 {
-	nx_soc_dp_cont_irq_done((int)pipe);
+	struct nx_drm_connector *nx_connector = display->connector;
+	struct drm_connector *connector = &nx_connector->connector;
+	struct drm_crtc *crtc = connector->state->crtc;
+
+	nx_soc_dp_cont_irq_done((int)pipe, to_nx_crtc(crtc)->num_planes);
 }
 
 struct nx_drm_display *nx_drm_display_get(struct device *dev,
