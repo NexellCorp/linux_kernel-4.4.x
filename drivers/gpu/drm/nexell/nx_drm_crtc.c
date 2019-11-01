@@ -90,6 +90,8 @@ static void nx_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 {
 	struct nx_drm_crtc *nx_crtc = to_nx_crtc(crtc);
 	struct nx_drm_crtc_ops *ops = nx_crtc->ops;
+	struct drm_device *drm;
+	struct drm_pending_vblank_event *e;
 
 	DRM_DEBUG_KMS("crtc.%d enable:%d, active:%d, %s, %s\n",
 		nx_crtc->pipe, crtc->state->enable, crtc->state->active,
@@ -99,7 +101,9 @@ static void nx_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	/* page flip event */
 	if (crtc->state->event) {
 		WARN_ON(drm_crtc_vblank_get(crtc) != 0);
-		nx_crtc->event = crtc->state->event;
+		drm = crtc->dev;
+		e = crtc->state->event;
+		list_add_tail(&e->base.link, &drm->vblank_event_list);
 	}
 
 	if (!crtc->state->enable ||

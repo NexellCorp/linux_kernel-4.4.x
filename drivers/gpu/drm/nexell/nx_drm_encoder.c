@@ -164,21 +164,6 @@ static irqreturn_t nx_drm_vblank_irq_handler(int irq, void *arg)
 	struct drm_crtc *crtc = connector->state->crtc;
 	struct nx_drm_crtc *nx_crtc = to_nx_crtc(crtc);
 	struct nx_drm_display *display = nx_connector->display;
-	struct drm_pending_vblank_event *event = NULL;
-
-	drm_crtc_handle_vblank(crtc);
-	spin_lock(&crtc->dev->event_lock);
-
-	event = nx_crtc->event;
-	if (event) {
-		drm_crtc_send_vblank_event(crtc, event);
-		drm_crtc_vblank_put(crtc);
-		nx_crtc->event = NULL;
-	}
-
-	spin_unlock(&crtc->dev->event_lock);
-
-	DUMP_FPS_TIME(nx_crtc->pipe);
 
 	if (WARN_ON(!display))
 		return IRQ_NONE;
@@ -186,6 +171,12 @@ static irqreturn_t nx_drm_vblank_irq_handler(int irq, void *arg)
 	/* done irq */
 	if (display->ops && display->ops->irq_done)
 		display->ops->irq_done(display, nx_crtc->pipe);
+
+	drm_crtc_vblank_get(crtc);
+	drm_crtc_handle_vblank(crtc);
+	drm_crtc_vblank_put(crtc);
+
+	DUMP_FPS_TIME(nx_crtc->pipe);
 
 	return IRQ_HANDLED;
 }
