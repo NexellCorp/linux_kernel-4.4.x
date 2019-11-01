@@ -30,13 +30,6 @@
 #include "nx_drm_fb.h"
 #include "nx_drm_gem.h"
 
-struct nx_drm_commit {
-	struct drm_device *drm;
-	struct drm_atomic_state *state;
-	struct work_struct work;
-	u32 crtcs;
-};
-
 static void nx_drm_output_poll_changed(struct drm_device *drm)
 {
 	struct nx_drm_private *private = drm->dev_private;
@@ -51,11 +44,20 @@ static void nx_drm_output_poll_changed(struct drm_device *drm)
 		nx_drm_framebuffer_init(drm);
 }
 
-static void nx_atomic_commit_complete(struct nx_drm_commit *commit)
+static int nx_drm_atomic_commit(struct drm_device *drm,
+			struct drm_atomic_state *state, bool async)
 {
-	struct drm_device *drm = commit->drm;
-	struct nx_drm_private *private = drm->dev_private;
-	struct drm_atomic_state *state = commit->state;
+	int ret;
+
+	ret = drm_atomic_helper_prepare_planes(drm, state);
+	if (ret)
+		return ret;
+
+	/*
+	 * Swap the current crtc state to old crtc state,
+	 * this is the point of no return.
+	 */
+	drm_atomic_helper_swap_state(drm, state);
 
 	/*
 	 * Everything below can be run asynchronously without the need to grab
@@ -81,86 +83,16 @@ static void nx_atomic_commit_complete(struct nx_drm_commit *commit)
 	 * skip 1st frame, vblank is not enabled at 1st,
 	 * and not changed framebuffer
 	 */
-	drm_atomic_helper_wait_for_vblanks(drm, state);
+	if (!async) {
+		drm_modeset_unlock_all(drm);
+		drm_atomic_helper_wait_for_vblanks(drm, state);
+		drm_modeset_lock_all(drm);
+	}
+
 	drm_atomic_helper_cleanup_planes(drm, state);
 	drm_atomic_state_free(state);
 
-	spin_lock(&private->lock);
-	private->pending &= ~commit->crtcs;
-	spin_unlock(&private->lock);
-
-	wake_up_all(&private->wait);
-
-	kfree(commit);
-}
-
-static void nx_drm_atomic_work(struct work_struct *work)
-{
-	struct nx_drm_commit *commit =
-		container_of(work, struct nx_drm_commit, work);
-
-	nx_atomic_commit_complete(commit);
-}
-
-static int commit_is_pending(struct nx_drm_commit *commit)
-{
-	struct drm_device *drm = commit->drm;
-	struct nx_drm_private *private = drm->dev_private;
-	bool pending;
-
-	spin_lock(&private->lock);
-	pending = private->pending & commit->crtcs;
-	spin_unlock(&private->lock);
-
-	return pending;
-}
-
-static int nx_drm_atomic_commit(struct drm_device *drm,
-			struct drm_atomic_state *state, bool async)
-{
-	struct nx_drm_private *private = drm->dev_private;
-	struct nx_drm_commit *commit;
-	int i, ret;
-
-	DRM_DEBUG_ATOMIC("enter : %s\n", async ? "async" : "sync");
-
-	commit = kzalloc(sizeof(*commit), GFP_KERNEL);
-	if (!commit)
-		return -ENOMEM;
-
-	ret = drm_atomic_helper_prepare_planes(drm, state);
-	if (ret) {
-		kfree(commit);
-		return ret;
-	}
-
-	INIT_WORK(&commit->work, nx_drm_atomic_work);
-	commit->drm = drm;
-	commit->state = state;
-
-	/* Wait until all affected CRTCs have completed previous commits and
-	 * mark them as pending.
-	 */
-	for (i = 0; i < drm->mode_config.num_crtc; ++i) {
-		if (state->crtcs[i])
-			commit->crtcs |= 1 << drm_crtc_index(state->crtcs[i]);
-	}
-
-	wait_event(private->wait, !commit_is_pending(commit));
-
-	spin_lock(&private->lock);
-	private->pending |= commit->crtcs;
-	spin_unlock(&private->lock);
-
-	/* Swap the state, this is the point of no return. */
-	drm_atomic_helper_swap_state(drm, state);
-
-	if (async)
-		schedule_work(&commit->work);
-	else
-		nx_atomic_commit_complete(commit);
-
-	return 0;
+	return ret;
 }
 
 static struct drm_mode_config_funcs nx_mode_config_funcs = {
@@ -198,8 +130,6 @@ static struct nx_drm_private *nx_drm_private_init(struct drm_device *drm)
 		return NULL;
 
 	drm->dev_private = (void *)private;
-	spin_lock_init(&private->lock);
-	init_waitqueue_head(&private->wait);
 	dev_set_drvdata(drm->dev, drm);
 
 	return private;
