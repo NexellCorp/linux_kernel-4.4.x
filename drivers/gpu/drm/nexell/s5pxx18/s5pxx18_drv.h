@@ -383,7 +383,7 @@ int  nx_soc_dp_cont_prepare(struct nx_control_dev *control);
 int  nx_soc_dp_cont_power_status(struct nx_control_dev *control);
 void nx_soc_dp_cont_power_on(struct nx_control_dev *control, bool on);
 void nx_soc_dp_cont_irq_on(int module, bool on);
-void nx_soc_dp_cont_irq_done(int module);
+void nx_soc_dp_cont_irq_done(int module, int layers);
 
 void nx_soc_dp_plane_top_prepare(struct nx_top_plane *top);
 void nx_soc_dp_plane_top_set_format(struct nx_top_plane *top,
