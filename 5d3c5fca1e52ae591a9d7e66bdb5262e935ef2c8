@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b91dc16e_e3f9cccd",
+        "filename": "arch/arm/boot/dts/s5p4418-svt_ref-common.dtsi",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1015514
+      },
+      "writtenOn": "2019-11-13T07:24:46Z",
+      "side": 1,
+      "message": "Please change the Author and year.",
+      "range": {
+        "startLine": 2,
+        "startChar": 0,
+        "endLine": 3,
+        "endChar": 47
+      },
+      "revId": "5d3c5fca1e52ae591a9d7e66bdb5262e935ef2c8",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d5db9320_5a45e80d",
+        "filename": "arch/arm/boot/dts/s5p4418-svt_ref-rev00.dts",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1015514
+      },
+      "writtenOn": "2019-11-13T07:24:46Z",
+      "side": 1,
+      "message": "Please change the Author and year.",
+      "range": {
+        "startLine": 2,
+        "startChar": 0,
+        "endLine": 3,
+        "endChar": 47
+      },
+      "revId": "5d3c5fca1e52ae591a9d7e66bdb5262e935ef2c8",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a2b6fa67_01da65c4",
+        "filename": "arch/arm/boot/dts/s5p4418-svt_ref-rev01.dts",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1015514
+      },
+      "writtenOn": "2019-11-13T07:24:46Z",
+      "side": 1,
+      "message": "Please change the Author and year.",
+      "range": {
+        "startLine": 2,
+        "startChar": 0,
+        "endLine": 3,
+        "endChar": 47
+      },
+      "revId": "5d3c5fca1e52ae591a9d7e66bdb5262e935ef2c8",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    }
+  ]
+}
