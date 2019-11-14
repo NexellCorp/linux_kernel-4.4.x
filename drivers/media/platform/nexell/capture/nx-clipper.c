@@ -1577,8 +1577,8 @@ static int nx_clipper_g_ctrl(struct v4l2_subdev *sd,
 		if (!me->sensor_enabled) {
 			enable_sensor_power(me, true);
 			disable = true;
+			ret = v4l2_subdev_call(remote, core, g_ctrl, ctrl);
 		}
-		ret = v4l2_subdev_call(remote, core, g_ctrl, ctrl);
 		if (disable)
 			enable_sensor_power(me, false);
 	}
