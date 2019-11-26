@@ -180,7 +180,8 @@ static void regulator_unlock_supply(struct regulator_dev *rdev)
  * returns the device node corresponding to the regulator if found, else
  * returns NULL.
  */
-static struct device_node *of_get_regulator(struct device *dev, const char *supply)
+static struct device_node *of_get_regulator
+	(struct device *dev, const char *supply)
 {
 	struct device_node *regnode = NULL;
 	char prop_name[32]; /* 32 is max size of property name */
@@ -323,7 +324,8 @@ static int regulator_mode_constrain(struct regulator_dev *rdev, int *mode)
 
 	/* The modes are bitmasks, the most power hungry modes having
 	 * the lowest values. If the requested mode isn't supported
-	 * try higher modes. */
+	 * try higher modes.
+	 */
 	while (*mode) {
 		if (rdev->constraints->valid_modes_mask & *mode)
 			return 0;
@@ -359,7 +361,31 @@ static ssize_t regulator_uV_show(struct device *dev,
 
 	return ret;
 }
-static DEVICE_ATTR(microvolts, 0444, regulator_uV_show, NULL);
+
+static ssize_t regulator_uV_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t size)
+{
+	struct regulator_dev *rdev = dev_get_drvdata(dev);
+	ssize_t ret;
+	int val;
+
+	ret = kstrtoint(buf, 10, &val);
+	if (ret < 0)
+		return ret;
+
+	ret = regulator_check_voltage(rdev, &val, &val);
+	if (ret < 0)
+		return ret;
+
+	ret = _regulator_do_set_voltage(rdev, val, val);
+	if (ret < 0)
+		return ret;
+
+	return size;
+}
+
+static DEVICE_ATTR(microvolts, 0664, regulator_uV_show, regulator_uV_store);
 
 static ssize_t regulator_uA_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -541,6 +567,7 @@ static ssize_t num_users_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
 	struct regulator_dev *rdev = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%d\n", rdev->use_count);
 }
 static DEVICE_ATTR_RO(num_users);
@@ -679,7 +706,8 @@ static DEVICE_ATTR(bypass, 0444,
 		   regulator_bypass_show, NULL);
 
 /* Calculate the new optimum regulator operating mode based on the new total
- * consumer load. All locks held by caller */
+ * consumer load. All locks held by caller
+ */
 static int drms_uA_update(struct regulator_dev *rdev)
 {
 	struct regulator *sibling;
@@ -908,6 +936,7 @@ static int machine_constraints_voltage(struct regulator_dev *rdev,
 	if (rdev->constraints->apply_uV &&
 	    rdev->constraints->min_uV == rdev->constraints->max_uV) {
 		int current_uV = _regulator_get_voltage(rdev);
+
 		if (current_uV < 0) {
 			rdev_err(rdev,
 				 "failed to get the current voltage(%d)\n",
@@ -940,7 +969,8 @@ static int machine_constraints_voltage(struct regulator_dev *rdev,
 		int	cmax = constraints->max_uV;
 
 		/* it's safe to autoconfigure fixed-voltage supplies
-		   and the constraints are used by list_voltage. */
+		 * and the constraints are used by list_voltage.
+		 */
 		if (count == 1 && !cmin) {
 			cmin = 1;
 			cmax = INT_MAX;
@@ -1426,15 +1456,15 @@ static struct regulator_dev *regulator_dev_lookup(struct device *dev,
 				return r;
 			*ret = -EPROBE_DEFER;
 			return NULL;
-		} else {
-			/*
-			 * If we couldn't even get the node then it's
-			 * not just that the device didn't register
-			 * yet, there's no node and we'll never
-			 * succeed.
-			 */
-			*ret = -ENODEV;
 		}
+
+		/*
+		 * If we couldn't even get the node then it's
+		 * not just that the device didn't register
+		 * yet, there's no node and we'll never
+		 * succeed.
+		 */
+		*ret = -ENODEV;
 	}
 
 	/* if not found, try doing it non-dt way */
@@ -1935,15 +1965,16 @@ static void regulator_ena_gpio_free(struct regulator_dev *rdev)
 				kfree(pin);
 				rdev->ena_pin = NULL;
 				return;
-			} else {
-				pin->request_count--;
 			}
+			pin->request_count--;
 		}
 	}
 }
 
 /**
- * regulator_ena_gpio_ctrl - balance enable_count of each GPIO and actual GPIO pin control
+ * regulator_ena_gpio_ctrl - balance enable_count of each GPIO
+ * and actual GPIO pin control
+ *
  * @rdev: regulator_dev structure
  * @enable: enable GPIO at initial use?
  *
@@ -2077,7 +2108,8 @@ static int _regulator_do_enable(struct regulator_dev *rdev)
 
 	/* Allow the regulator to ramp; it would be useful to extend
 	 * this for bulk operations so that the regulators can ramp
-	 * together.  */
+	 * together.
+	 */
 	trace_regulator_enable_delay(rdev_get_name(rdev));
 
 	_regulator_enable_delay(delay);
@@ -2576,8 +2608,10 @@ int regulator_get_hardware_vsel_register(struct regulator *regulator,
 }
 EXPORT_SYMBOL_GPL(regulator_get_hardware_vsel_register);
 
-/**
- * regulator_list_hardware_vsel - get the HW-specific register value for a selector
+/*
+ * regulator_list_hardware_vsel
+ * - get the HW-specific register value for a selector
+ *
  * @regulator: regulator source
  * @selector: identify voltage to list
  *
@@ -2760,8 +2794,8 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 
 		if (ret >= 0) {
 			if (rdev->desc->ops->list_voltage)
-				best_val = rdev->desc->ops->list_voltage(rdev,
-									 selector);
+				best_val = rdev->desc->ops->list_voltage
+					(rdev, selector);
 			else
 				best_val = _regulator_get_voltage(rdev);
 		}
@@ -2770,7 +2804,11 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 		ret = regulator_map_voltage(rdev, min_uV, max_uV);
 		if (ret >= 0) {
 			best_val = rdev->desc->ops->list_voltage(rdev, ret);
+#ifdef CONFIG_REGULATOR_MP8845C
+			if (min_uV <= best_val) {
+#else
 			if (min_uV <= best_val && max_uV >= best_val) {
+#endif
 				selector = ret;
 				if (old_selector == selector)
 					ret = 0;
@@ -2881,7 +2919,8 @@ static int regulator_set_voltage_unlocked(struct regulator *regulator,
 			goto out2;
 		}
 
-		best_supply_uV = _regulator_list_voltage(regulator, selector, 0);
+		best_supply_uV = _regulator_list_voltage
+			(regulator, selector, 0);
 		if (best_supply_uV < 0) {
 			ret = best_supply_uV;
 			goto out2;
@@ -3709,7 +3748,8 @@ static umode_t regulator_attr_is_visible(struct kobject *kobj,
 					 struct attribute *attr, int idx)
 {
 	struct device *dev = kobj_to_dev(kobj);
-	struct regulator_dev *rdev = container_of(dev, struct regulator_dev, dev);
+	struct regulator_dev *rdev = container_of(dev,
+		struct regulator_dev, dev);
 	const struct regulator_ops *ops = rdev->desc->ops;
 	umode_t mode = attr->mode;
 
@@ -4280,7 +4320,8 @@ static void regulator_summary_show_subtree(struct seq_file *s,
 		seq_printf(s, "%*s%-*s ",
 			   (level + 1) * 3 + 1, "",
 			   30 - (level + 1) * 3,
-			   consumer->dev ? dev_name(consumer->dev) : "deviceless");
+			   consumer->dev ? dev_name(consumer->dev)
+			   : "deviceless");
 
 		switch (rdev->desc->type) {
 		case REGULATOR_VOLTAGE:
@@ -4393,7 +4434,8 @@ static int __init regulator_late_cleanup(struct device *dev, void *data)
 
 	if (have_full_constraints()) {
 		/* We log since this may kill the system if it goes
-		 * wrong. */
+		 * wrong.
+		 */
 		rdev_info(rdev, "disabling\n");
 		ret = _regulator_do_disable(rdev);
 		if (ret != 0)
