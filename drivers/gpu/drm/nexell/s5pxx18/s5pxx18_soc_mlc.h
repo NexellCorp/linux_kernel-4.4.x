@@ -250,10 +250,14 @@ void nx_mlc_set_video_layer_scale(u32 module_index, u32 sw, u32 sh,
 					 int bvchromaenb);
 void nx_mlc_set_video_layer_luma_enhance(u32 module_index, u32 contrast,
 						int32_t brightness);
+void nx_mlc_set_video_layer_brightness(u32 module_index, int32_t brightness);
+void nx_mlc_set_video_layer_contrast(u32 module_index, int32_t contrast);
 void nx_mlc_set_video_layer_chroma_enhance(u32 module_index,
 						  u32 quadrant, int32_t cb_a,
 						  int32_t cb_b, int32_t cr_a,
 						  int32_t cr_b);
+void nx_mlc_set_video_layer_hue(u32 module_index,int32_t hue);
+void nx_mlc_set_video_layer_saturation(u32 module_index,int32_t saturation);
 void nx_mlc_set_video_layer_line_buffer_power_mode(u32 module_index,
 							  int benable);
 int nx_mlc_get_video_layer_line_buffer_power_mode(u32 module_index);

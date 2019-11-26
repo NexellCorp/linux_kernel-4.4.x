@@ -1113,6 +1113,35 @@ void nx_mlc_set_video_layer_luma_enhance(u32 module_index, u32 contrast,
 	       &pregister->mlcvideolayer.mlcluenh);
 }
 
+void nx_mlc_set_video_layer_brightness(u32 module_index, int32_t brightness)
+{
+	register struct nx_mlc_register_set *pregister;
+	int32_t regvalue;
+
+	pregister = __g_module_variables[module_index].pregister;
+
+	regvalue = readl(&pregister->mlcvideolayer.mlcluenh);
+	regvalue &= ~((0xfful) << 8);
+	regvalue |= (brightness & 0xfful) << 8;
+
+	writel(regvalue, &pregister->mlcvideolayer.mlcluenh);
+
+}
+
+void nx_mlc_set_video_layer_contrast(u32 module_index, int32_t contrast)
+{
+	register struct nx_mlc_register_set *pregister;
+	int32_t regvalue;
+
+	pregister = __g_module_variables[module_index].pregister;
+
+	regvalue = readl(&pregister->mlcvideolayer.mlcluenh);
+	regvalue &= ~((0x7ul) << 0);
+
+	writel((((u32) contrast & 0x7ul) ) | regvalue,
+		&pregister->mlcvideolayer.mlcluenh);
+}
+
 void nx_mlc_set_video_layer_chroma_enhance(u32 module_index, u32 quadrant,
 					   int32_t cb_a, int32_t cb_b,
 					   int32_t cr_a, int32_t cr_b)
@@ -1132,6 +1161,135 @@ void nx_mlc_set_video_layer_chroma_enhance(u32 module_index, u32 quadrant,
 		writel(temp, &pregister->mlcvideolayer.mlcchenh[3]);
 	}
 }
+
+
+void nx_mlc_set_video_layer_hue(u32 module_index,int32_t hue)
+{
+	register struct nx_mlc_register_set *pregister;
+	register u32 temp;
+	int32_t regvalue;
+	char gain;
+	char cb_a, cb_b, cr_b, cr_a;
+
+	pregister = __g_module_variables[module_index].pregister;
+	regvalue = readl(&pregister->mlcvideolayer.mlcchenh[0]);
+
+	cr_b = (((u32) regvalue >> 24) & 0xfful);
+	cr_a = (((u32) regvalue >> 16) & 0xfful);
+	cb_b = (((u32) regvalue >> 8)  & 0xfful);
+	cb_a = ((u32) regvalue & 0xfful);
+
+
+	if( cr_b !=0 ) {
+		gain = cr_b & 0x7F;
+	}
+	else {
+		gain = cr_a & 0x7F;
+	}
+
+	switch(hue) {
+		case 0:
+			cr_b = 1 * gain;
+			cr_a = 0;
+			cb_b = 0;
+			cb_a = 1 * gain;
+			break;
+		case 1:
+			cr_b = 0;
+			cr_a = -1 * gain;
+			cb_b = 1 * gain;
+			cb_a = 0;
+			break;
+		case 2:
+			cr_b = -1 * gain;
+			cr_a = 0;
+			cb_b = 0;
+			cb_a = -1 * gain;
+			break;
+		case 3:
+			cr_b = 0;
+			cr_a = 1 * gain;
+			cb_b = -1 * gain;
+			cb_a = 0;
+			break;
+		default:
+			break;
+	}
+
+    temp = (((u32) cr_b & 0xfful) << 24) | (((u32) cr_a & 0xfful) << 16) |
+        (((u32) cb_b & 0xfful) << 8) | (((u32) cb_a & 0xfful) << 0);
+
+	writel(temp, &pregister->mlcvideolayer.mlcchenh[0]);
+	writel(temp, &pregister->mlcvideolayer.mlcchenh[1]);
+	writel(temp, &pregister->mlcvideolayer.mlcchenh[2]);
+	writel(temp, &pregister->mlcvideolayer.mlcchenh[3]);
+
+}
+
+void nx_mlc_set_video_layer_saturation(u32 module_index,int32_t saturation)
+{
+	register struct nx_mlc_register_set *pregister;
+	register u32 temp;
+	int32_t regvalue;
+	char gain;
+	char cb_a, cb_b, cr_b, cr_a;
+	char const_cb_a, const_cb_b, const_cr_b, const_cr_a;
+
+	pregister = __g_module_variables[module_index].pregister;
+	regvalue = readl(&pregister->mlcvideolayer.mlcchenh[0]);
+
+	cr_b = (((u32) regvalue >> 24) & 0xfful);
+	cr_a = (((u32) regvalue >> 16) & 0xfful);
+	cb_b = (((u32) regvalue >> 8)  & 0xfful);
+	cb_a = ((u32) regvalue & 0xfful);
+
+	if(cr_b !=0)
+		if(cr_b & 0x80)
+			const_cr_b = (-1) * saturation;
+		else
+			const_cr_b = (1) * saturation;
+	else
+		const_cr_b = 0;
+
+	if(cr_a !=0)
+		if(cr_a & 0x80)
+			const_cr_a = (-1) * saturation;
+		else
+			const_cr_a = (1) * saturation;
+	else
+		const_cr_a = 0;
+
+
+	if(cb_b !=0)
+		if(cb_b & 0x80)
+			const_cb_b = (-1) * saturation;
+		else
+			const_cb_b = (1) * saturation;
+	else
+		const_cb_b = 0;
+
+	if(cb_a !=0)
+		if(cb_a & 0x80)
+			const_cb_a = (-1) * saturation;
+		else
+			const_cb_a = (1) * saturation;
+	else
+		const_cb_a = 0;
+
+
+    temp = (((u32) const_cr_b & 0xfful) << 24) |
+		(((u32) const_cr_a & 0xfful) << 16) |
+        (((u32) const_cb_b & 0xfful) << 8) |
+		(((u32) const_cb_a & 0xfful) << 0);
+
+	writel(temp, &pregister->mlcvideolayer.mlcchenh[0]);
+	writel(temp, &pregister->mlcvideolayer.mlcchenh[1]);
+	writel(temp, &pregister->mlcvideolayer.mlcchenh[2]);
+	writel(temp, &pregister->mlcvideolayer.mlcchenh[3]);
+
+}
+
+
 
 void nx_mlc_set_video_layer_line_buffer_power_mode(u32 module_index,
 						   int benable)
