@@ -184,10 +184,18 @@ int regulator_map_voltage_iterate(struct regulator_dev *rdev,
 		if (ret < 0)
 			continue;
 
+#ifdef CONFIG_REGULATOR_MP8845C
+		if (ret < best_val && ret >= min_uV) {
+			best_val = ret;
+			selector = i;
+			break;
+		}
+#else
 		if (ret < best_val && ret >= min_uV && ret <= max_uV) {
 			best_val = ret;
 			selector = i;
 		}
+#endif
 	}
 
 	if (best_val != INT_MAX)

@@ -359,7 +359,31 @@ static ssize_t regulator_uV_show(struct device *dev,
 
 	return ret;
 }
-static DEVICE_ATTR(microvolts, 0444, regulator_uV_show, NULL);
+
+static ssize_t regulator_uV_store(struct device *dev,
+                     struct device_attribute *attr,
+                     const char *buf, size_t size)
+{
+    struct regulator_dev *rdev = dev_get_drvdata(dev);
+    ssize_t ret;
+    int val;
+
+    ret = kstrtoint(buf, 10, &val);
+    if (ret < 0)
+        return ret;
+
+    ret = regulator_check_voltage(rdev, &val, &val);
+    if (ret < 0)
+        return ret;
+
+    ret = _regulator_do_set_voltage(rdev, val, val);
+    if (ret < 0)
+        return ret;
+
+    return size;
+}
+
+static DEVICE_ATTR(microvolts, 0664, regulator_uV_show, regulator_uV_store);
 
 static ssize_t regulator_uA_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -2770,7 +2794,11 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 		ret = regulator_map_voltage(rdev, min_uV, max_uV);
 		if (ret >= 0) {
 			best_val = rdev->desc->ops->list_voltage(rdev, ret);
+#ifdef CONFIG_REGULATOR_MP8845C
+			if (min_uV <= best_val) {
+#else
 			if (min_uV <= best_val && max_uV >= best_val) {
+#endif
 				selector = ret;
 				if (old_selector == selector)
 					ret = 0;
