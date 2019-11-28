@@ -930,63 +930,59 @@ static int plane_set_property(struct drm_plane *plane,
 			struct drm_property *property, uint64_t val)
 {
 	struct nx_plane_layer *layer = to_nx_plane(plane)->context;
-	struct plane_property *prop = &layer->property;
-	union color *color = &prop->color;
 
 	DRM_DEBUG_KMS("%s : %s 0x%llx\n", layer->name, property->name, val);
 
-
-	if (!strcmp(property->name,"colorkey")) {
+	if (!strcmp(property->name, "colorkey")) {
 		layer->color.colorkey = val;
 		plane_set_color(plane, NX_COLOR_COLORKEY,
 		layer->color.colorkey, layer->colorkey_on);
 	}
 
-    if (!strcmp(property->name,"transcolor")) {
-        if(layer->format & LAYER_VIDEO_FMT_MASK) {
-            layer->color.yuv_transcolor = val;
-            plane_set_color(plane, NX_COLOR_TRANS,
-			layer->color.yuv_transcolor, true);
-        }
-        else {
-            layer->color.transcolor = val;
-            plane_set_color(plane, NX_COLOR_TRANS,
-			layer->color.transcolor, layer->transcolor_on);
-        }
-    }
+	if (!strcmp(property->name, "transcolor")) {
+		if (layer->format & LAYER_VIDEO_FMT_MASK) {
+			layer->color.yuv_transcolor = val;
+			plane_set_color(plane, NX_COLOR_TRANS,
+				layer->color.yuv_transcolor, true);
+		} else {
+			layer->color.transcolor = val;
+			plane_set_color(plane, NX_COLOR_TRANS,
+				layer->color.transcolor, layer->transcolor_on);
+		}
+	}
 
-	if (!strcmp(property->name,"alphablend")) {
+	if (!strcmp(property->name, "alphablend")) {
 		layer->color.alphablend = val;
 		plane_set_color(plane, NX_COLOR_ALPHA,
 				layer->color.alphablend, layer->alphablend_on);
 	}
 
-	if (!strcmp(property->name,"video-priority")) {
+	if (!strcmp(property->name, "video-priority")) {
 		struct nx_top_plane *top = layer->top_plane;
 
 		top->video_priority = val;
 		plane_set_priority(plane, val);
 	}
 
-	if (!strcmp(property->name,"brightness")) {
+	if (!strcmp(property->name, "brightness")) {
 		layer->color.bright = val;
 		plane_set_color(plane, NX_COLOR_BRIGHT,
 			layer->color.bright, true);
 	}
 
-	if (!strcmp(property->name,"contrast")) {
+	if (!strcmp(property->name, "contrast")) {
 		layer->color.contrast = val;
 		plane_set_color(plane, NX_COLOR_CONTRAST,
 			layer->color.contrast, true);
 	}
 
-	if (!strcmp(property->name,"hue")) {
+	if (!strcmp(property->name, "hue")) {
 		layer->color.hue = val;
 		plane_set_color(plane, NX_COLOR_HUE,
 			layer->color.hue, true);
 	}
 
-	if (!strcmp(property->name,"saturation")) {
+	if (!strcmp(property->name, "saturation")) {
 		layer->color.saturation = val;
 		plane_set_color(plane, NX_COLOR_SATURATION,
 			layer->color.saturation, true);
@@ -1000,40 +996,35 @@ static int plane_get_property(struct drm_plane *plane,
 			struct drm_property *property, uint64_t *val)
 {
 	struct nx_plane_layer *layer = to_nx_plane(plane)->context;
-	struct plane_property *prop = &layer->property;
-	union color *color = &prop->color;
 
 	DRM_DEBUG_KMS("%s : %s\n", layer->name, property->name);
 
-	if (!strcmp(property->name,"colorkey")) {
+	if (!strcmp(property->name, "colorkey"))
 		*val = layer->color.colorkey;
+
+	if (!strcmp(property->name, "transcolor")) {
+		if (layer->format & LAYER_VIDEO_FMT_MASK)
+			*val = layer->color.yuv_transcolor;
+		else
+			*val = layer->color.transcolor;
 	}
 
-	if (!strcmp(property->name,"transcolor")) {
-		if(layer->format & LAYER_VIDEO_FMT_MASK) {
-			*val = layer->color.yuv_transcolor;
-		}
-		else {
-			*val = layer->color.transcolor;
-		}
-	}
-	if (!strcmp(property->name,"brightness"))
+	if (!strcmp(property->name, "brightness"))
 		*val = layer->color.bright;
 
-	if (!strcmp(property->name,"contrast"))
+	if (!strcmp(property->name, "contrast"))
 		*val = layer->color.contrast;
 
-	if (!strcmp(property->name,"hue"))
+	if (!strcmp(property->name, "hue"))
 		*val = layer->color.hue;
 
-	if (!strcmp(property->name,"saturation"))
+	if (!strcmp(property->name, "saturation"))
 		*val = layer->color.saturation;
 
-	if (!strcmp(property->name,"alphablend")) {
+	if (!strcmp(property->name, "alphablend"))
 		*val = layer->color.alphablend;
-	}
 
-	if (!strcmp(property->name,"video-priority")) {
+	if (!strcmp(property->name, "video-priority")) {
 		struct nx_top_plane *top = layer->top_plane;
 
 		*val = top->video_priority;
@@ -1042,8 +1033,7 @@ static int plane_get_property(struct drm_plane *plane,
 	return 0;
 }
 
-static struct drm_prop_enum_list hue_enum_list[] =
-{
+static struct drm_prop_enum_list hue_enum_list[] = {
 	{ 0, "0" },
 	{ 1, "90" },
 	{ 2, "180" },
@@ -1153,7 +1143,7 @@ static int plane_create(struct drm_device *drm,
 	layer->num = plane_num;
 	layer->is_bgr = bgr;
 	layer->type |= plane_num == PLANE_VIDEO_NUM ? NX_PLANE_TYPE_VIDEO : 0;
-	layer->color.alpha = layer->type & NX_PLANE_TYPE_VIDEO ? 15 : 0;
+	layer->color.alpha = MAX_ALPHA_VALUE;
 	layer->alphablend_on = top->alpla_blend_on;
 	layer->colorkey_on = top->color_key_on;
 	layer->transcolor_on = true;

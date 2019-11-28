@@ -61,6 +61,7 @@ struct nx_plane_rect {
 #define NX_PLANE_FORMAT_SCREEN_SIZE	(1<<0)
 #define NX_PLANE_FORMAT_VIDEO_PRIORITY	(1<<1)
 #define NX_PLANE_FORMAT_BACK_COLOR	(1<<2)
+#define	MAX_ALPHA_VALUE		15 /* 0: transparency, 15: opacity */
 
 struct plane_top_format {
 	int module;
