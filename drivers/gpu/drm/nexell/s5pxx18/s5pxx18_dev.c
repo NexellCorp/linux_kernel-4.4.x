@@ -33,6 +33,7 @@
 #define	LAYER_VIDEO		PLANE_VIDEO_NUM
 
 #define	LAYER_VIDEO_FMT_MASK	0xffffff
+#define LAYER_DIRTY_WAIT_COUNT	20000
 
 static struct plane_top_format top_format[2];
 
@@ -568,6 +569,11 @@ int nx_soc_dp_plane_rgb_set_format(struct nx_plane_layer *layer,
 	    format == nx_mlc_rgbfmt_a8b8g8r8)
 		en_alpha = 1;
 
+	/* set by property */
+	if (layer->color.alphablend < MAX_ALPHA_VALUE)
+		en_alpha = 1;
+
+	/* force disable alpha blend */
 	if (!layer->alphablend_on)
 		en_alpha = 0;
 
@@ -706,7 +712,7 @@ void nx_soc_dp_plane_rgb_set_color(struct nx_plane_layer *layer,
 		if (color <= 0)
 			color = 0;
 
-		if(color > 15)
+		if (color > MAX_ALPHA_VALUE)
 			on = false;
 
 		layer->color.alpha = (on ? color : 15);
