@@ -21,6 +21,7 @@
 #include <linux/usb/composite.h>
 #include <linux/usb/otg.h>
 #include <asm/unaligned.h>
+#include <linux/wakelock.h>
 
 #include "u_os_desc.h"
 
@@ -52,6 +53,11 @@ static struct usb_gadget_strings **get_containers_gs(
 {
 	return (struct usb_gadget_strings **)uc->stash;
 }
+
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818))
+static bool usb_config_wake_lock_held;
+static struct wake_lock usb_config_wake_lock;
+#endif
 
 /**
  * next_ep_desc() - advance to the next EP descriptor
@@ -1608,6 +1614,10 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 		spin_lock(&cdev->lock);
 		value = set_config(cdev, ctrl, w_value);
 		spin_unlock(&cdev->lock);
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818))
+		if (usb_config_wake_lock_held == true)
+			wake_lock(&usb_config_wake_lock);
+#endif
 		break;
 	case USB_REQ_GET_CONFIGURATION:
 		if (ctrl->bRequestType != USB_DIR_IN)
@@ -1906,6 +1916,10 @@ void composite_disconnect(struct usb_gadget *gadget)
 	/* REVISIT:  should we have config and device level
 	 * disconnect callbacks?
 	 */
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818))
+	if (usb_config_wake_lock_held == true)
+		wake_lock_timeout(&usb_config_wake_lock, 1*HZ);
+#endif
 	spin_lock_irqsave(&cdev->lock, flags);
 	if (cdev->config)
 		reset_config(cdev);
@@ -1936,6 +1950,14 @@ static void __composite_unbind(struct usb_gadget *gadget, bool unbind_driver)
 	 * state protected by cdev->lock.
 	 */
 	WARN_ON(cdev->config);
+
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818))
+	if (usb_config_wake_lock_held == true) {
+		wake_unlock(&usb_config_wake_lock);
+		wake_lock_destroy(&usb_config_wake_lock);
+		usb_config_wake_lock_held = false;
+	}
+#endif
 
 	while (!list_empty(&cdev->configs)) {
 		struct usb_configuration	*c;
@@ -2014,6 +2036,14 @@ int composite_dev_prepare(struct usb_composite_driver *composite,
 	ret = device_create_file(&gadget->dev, &dev_attr_suspended);
 	if (ret)
 		goto fail_dev;
+
+#if (defined(CONFIG_ARCH_S5P4418) || defined(CONFIG_ARCH_S5P6818))
+	if (usb_config_wake_lock_held == false) {
+		wake_lock_init(&usb_config_wake_lock, WAKE_LOCK_SUSPEND,
+			       "usb_config_wake_lock");
+		usb_config_wake_lock_held = true;
+	}
+#endif
 
 	cdev->req->complete = composite_setup_complete;
 	cdev->req->context = cdev;
