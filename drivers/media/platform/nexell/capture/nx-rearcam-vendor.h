@@ -27,5 +27,5 @@ void nx_rearcam_post_turn_off(void *);
 void nx_rearcam_free_vendor_context(void *);
 bool nx_rearcam_decide(void *);
 void nx_rearcam_draw_rgb_overlay(int, int, int, int, void *, void *);
-void nx_rearcam_draw_parking_guide_line(void *, void *, int, int , int, int);
+void nx_rearcam_draw_parking_guide_line(void *, void *, int, int, int, int);
 #endif

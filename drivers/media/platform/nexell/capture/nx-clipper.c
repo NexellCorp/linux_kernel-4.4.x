@@ -257,7 +257,7 @@ enum {
 	CAM_TYPE_4CAMSVM	= 0x2
 };
 
-static unsigned int __initdata selected_rear_cam;
+static unsigned int selected_rear_cam __initdata;
 
 static int __init nx_rearcam(char *str)
 {
@@ -300,7 +300,7 @@ static int parse_sensor_i2c_board_info_dt(struct device_node *np,
 	}
 
 	if (of_property_read_u32(np, "real_addr", &info->i2c_addr))
-				info->i2c_addr = 0;
+		info->i2c_addr = 0;
 
 	strlcpy(info->board_info.type, name, sizeof(info->board_info.type));
 	info->board_info.addr = addr;
@@ -783,10 +783,10 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 	if (me->regulator_nr > 0) {
 		int i;
 		const char *name;
-		me->regulator_names = devm_kcalloc(dev,
-						   me->regulator_nr,
-						   sizeof(char *),
-						   GFP_KERNEL);
+
+		me->regulator_names = devm_kcalloc(
+				dev, me->regulator_nr,
+				sizeof(char *), GFP_KERNEL);
 		if (!me->regulator_names) {
 			WARN_ON(1);
 			return -ENOMEM;
@@ -805,7 +805,9 @@ static int nx_clipper_parse_dt(struct device *dev, struct nx_clipper *me)
 		for (i = 0; i < me->regulator_nr; i++) {
 			if (of_property_read_string_index(np, "regulator_names",
 							  i, &name)) {
-				dev_err(&me->pdev->dev, "failed to read regulator %d name\n", i);
+				dev_err(&me->pdev->dev,
+					"failed to read regulator %d name\n",
+					i);
 				return -EINVAL;
 			}
 			me->regulator_names[i] = (char *)name;
@@ -920,11 +922,10 @@ static int do_pmic_action(struct nx_clipper *me,
 		}
 
 		ret = 0;
-		if (action->enable && !regulator_is_enabled(power)) {
+		if (action->enable && !regulator_is_enabled(power))
 			ret = regulator_enable(power);
-		} else if (!action->enable && regulator_is_enabled(power)) {
+		else if (!action->enable && regulator_is_enabled(power))
 			ret = regulator_disable(power);
-		}
 
 		devm_regulator_put(power);
 
@@ -1365,7 +1366,7 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 		if (!(NX_ATOMIC_READ(&me->state) &
 		      (STATE_MEM_RUNNING | STATE_CLIP_RUNNING))) {
 			if (is_host_video &&
-					nx_vip_is_running(me->module, VIP_CLIPPER)) {
+				nx_vip_is_running(me->module, VIP_CLIPPER)) {
 				pr_err("VIP%d Clipper is already running\n",
 						me->module);
 				nx_video_clear_buffer(&me->vbuf_obj);
@@ -1437,7 +1438,8 @@ static int nx_clipper_s_stream(struct v4l2_subdev *sd, int enable)
 			while (timer_pending(&me->dq_timer)) {
 				mdelay(DQ_TIMEOUT_MS);
 				dev_info(&me->pdev->dev,
-					 "[CLI %d] wait timer done\n", me->module);
+					 "[CLI %d] wait timer done\n",
+					 me->module);
 			}
 #endif
 
@@ -1645,8 +1647,7 @@ static int nx_clipper_get_fmt(struct v4l2_subdev *sd,
 		format->format.code = mbus_fmt;
 		format->format.width = me->width;
 		format->format.height = me->height;
-	}
-	else if (pad == 1) {
+	} else if (pad == 1) {
 		/* get mem format */
 		u32 mem_fmt;
 		int ret = nx_vip_find_mbus_mem_format(me->mem_fmt, &mem_fmt);
@@ -1658,8 +1659,7 @@ static int nx_clipper_get_fmt(struct v4l2_subdev *sd,
 		format->format.code = mem_fmt;
 		format->format.width = me->width;
 		format->format.height = me->height;
-	}
-	else {
+	} else {
 		dev_err(&me->pdev->dev, "%d is invalid pad value for get_fmt\n",
 			pad);
 		return -EINVAL;
@@ -1675,6 +1675,7 @@ static int nx_clipper_set_fmt(struct v4l2_subdev *sd,
 	struct nx_clipper *me = v4l2_get_subdevdata(sd);
 	u32 pad = format->pad;
 	struct v4l2_subdev *remote = get_remote_source_subdev(me);
+	int ret = 0;
 
 	if (!remote) {
 		WARN_ON(1);
@@ -1685,8 +1686,9 @@ static int nx_clipper_set_fmt(struct v4l2_subdev *sd,
 	if (pad == 0) {
 		/* set bus format */
 		u32 nx_bus_fmt;
-		int ret = nx_vip_find_nx_bus_format(format->format.code,
-						    &nx_bus_fmt);
+
+		ret = nx_vip_find_nx_bus_format(format->format.code,
+				&nx_bus_fmt);
 		if (ret) {
 			dev_err(&me->pdev->dev, "Unsupported bus format %d\n",
 			       format->format.code);
@@ -1695,13 +1697,13 @@ static int nx_clipper_set_fmt(struct v4l2_subdev *sd,
 		me->bus_fmt = nx_bus_fmt;
 		me->width = format->format.width;
 		me->height = format->format.height;
-	}
-	else if (pad == 1) {
+	} else if (pad == 1) {
 		struct v4l2_subdev_format fmt;
 		/* set memory format */
 		u32 nx_mem_fmt;
-		int ret = nx_vip_find_nx_mem_format(format->format.code,
-						    &nx_mem_fmt);
+
+		ret = nx_vip_find_nx_mem_format(format->format.code,
+				&nx_mem_fmt);
 		if (ret) {
 			dev_err(&me->pdev->dev, "Unsupported mem format %d\n",
 			       format->format.code);
@@ -1715,15 +1717,14 @@ static int nx_clipper_set_fmt(struct v4l2_subdev *sd,
 		fmt.format.height = me->height;
 		fmt.which = format->which;
 
-		return v4l2_subdev_call(remote, pad, set_fmt, NULL, &fmt);
-	}
-	else {
+		ret = v4l2_subdev_call(remote, pad, set_fmt, NULL, &fmt);
+	} else {
 		dev_err(&me->pdev->dev, "%d is invalid pad value for set_fmt\n",
 			pad);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int nx_clipper_enum_frame_size(struct v4l2_subdev *sd,
@@ -1884,7 +1885,8 @@ static ssize_t camera_sensor_show_common(struct device *dev,
 	if (!strlen(camera_sensor_info[module].name))
 		return scnprintf(*buf, PAGE_SIZE, "no exist");
 	else
-		return scnprintf(*buf, PAGE_SIZE, "is_mipi:%d,interlaced:%d,name:%s",
+		return scnprintf(*buf, PAGE_SIZE,
+				"is_mipi:%d,interlaced:%d,name:%s",
 				 camera_sensor_info[module].is_mipi,
 				 camera_sensor_info[module].interlaced,
 				 camera_sensor_info[module].name);
@@ -2266,15 +2268,16 @@ static int nx_clipper_resume(struct device *dev)
 							  me->mem_fmt);
 				if (!me->buffer_underrun) {
 					buf = me->last_buf;
-					nx_vip_set_clipper_addr(me->module,
-								me->mem_fmt,
-								me->crop.width,
-								me->crop.height,
-								buf->dma_addr[0],
-								buf->dma_addr[1],
-								buf->dma_addr[2],
-								buf->stride[0],
-								buf->stride[1]);
+					nx_vip_set_clipper_addr(
+							me->module,
+							me->mem_fmt,
+							me->crop.width,
+							me->crop.height,
+							buf->dma_addr[0],
+							buf->dma_addr[1],
+							buf->dma_addr[2],
+							buf->stride[0],
+							buf->stride[1]);
 					nx_vip_run(me->module, VIP_CLIPPER);
 				}
 			}
@@ -2374,7 +2377,7 @@ static int nx_clipper_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 #else
-	if(selected_rear_cam == CAM_TYPE_4CAMSVM) {
+	if (selected_rear_cam == CAM_TYPE_4CAMSVM) {
 		if (me->module == 0) {
 			if (g_ClipperThread == NULL)
 				g_ClipperThread = kthread_run(init_clipper_th,
@@ -2382,11 +2385,12 @@ static int nx_clipper_probe(struct platform_device *pdev)
 		}
 
 		if (me->module == 1) {
-			me->w_queue = create_singlethread_workqueue("clipper_wqueue");
+			me->w_queue =
+				create_singlethread_workqueue("clipper_wqueue");
 			INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
 
 			queue_delayed_work(me->w_queue, &me->w_delay,
-								msecs_to_jiffies(2000));
+						msecs_to_jiffies(2000));
 		}
 	} else {
 		if (me->module == 1) {
@@ -2396,11 +2400,12 @@ static int nx_clipper_probe(struct platform_device *pdev)
 		}
 
 		if (me->module == 0) {
-			me->w_queue = create_singlethread_workqueue("clipper_wqueue");
+			me->w_queue =
+				create_singlethread_workqueue("clipper_wqueue");
 			INIT_DELAYED_WORK(&me->w_delay, init_clipper_work);
 
 			queue_delayed_work(me->w_queue, &me->w_delay,
-								msecs_to_jiffies(2000));
+						msecs_to_jiffies(2000));
 		}
 	}
 #endif

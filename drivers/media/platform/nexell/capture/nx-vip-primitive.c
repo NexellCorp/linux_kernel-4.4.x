@@ -88,7 +88,7 @@ void nx_vip_set_interrupt_enable(u32 module_index, u32 int_num, int enable)
 	const u16 odintenb_bitpos = 8;
 
 	p_register = __g_p_register[module_index];
-	if (2 > int_num) {
+	if (int_num < 2) {
 		regvalue = p_register->vip_hvint & ~(1 << (int_num));
 		if (enable)
 			regvalue |= (1 << (int_num));
@@ -109,7 +109,7 @@ bool nx_vip_get_interrupt_enable(u32 module_index, u32 int_num)
 
 	const u16 odintenb_mask = 1 << odintenb_bitpos;
 
-	if (2 > int_num)
+	if (int_num < 2)
 		return (__g_p_register[module_index]->vip_hvint &
 			(1 << (int_num)))
 			? true
@@ -126,7 +126,7 @@ bool nx_vip_get_interrupt_pending(u32 module_index, u32 int_num)
 
 	const u16 odintpend_mask = 1 << odintpend_bitpos;
 
-	if (2 > int_num)
+	if (int_num < 2)
 		return (__g_p_register[module_index]->vip_hvint &
 			(1 << int_num))
 			? true
@@ -144,7 +144,7 @@ void nx_vip_clear_interrupt_pending(u32 module_index, u32 int_num)
 	const u32 vipintenb_mask = 0x03 << 8;
 
 	p_register = __g_p_register[module_index];
-	if (2 > int_num) {
+	if (int_num < 2) {
 		regvalue = p_register->vip_hvint & vipintenb_mask;
 		regvalue |= (0x01 << int_num);
 		writel(regvalue, &p_register->vip_hvint);
@@ -281,13 +281,13 @@ void nx_vip_get_vipenable(u32 module_index, int *p_vipenb, int *p_sep_enb,
 	const u16 decienb = 1u << 0;
 
 	p_register = __g_p_register[module_index];
-	if (NULL != p_vipenb)
+	if (p_vipenb != NULL)
 		*p_vipenb = (p_register->vip_config & vipenb) ? true : false;
-	if (NULL != p_sep_enb)
+	if (p_sep_enb != NULL)
 		*p_sep_enb = (p_register->vip_cdenb & sepenb) ? true : false;
-	if (NULL != p_clip_enb)
+	if (p_clip_enb != NULL)
 		*p_clip_enb = (p_register->vip_cdenb & clipenb) ? true : false;
-	if (NULL != p_deci_enb)
+	if (p_deci_enb != NULL)
 		*p_deci_enb = (p_register->vip_cdenb & decienb) ? true : false;
 }
 
@@ -323,7 +323,7 @@ void nx_vip_set_data_mode(u32 module_index, u32 data_order, u32 data_width)
 	temp = (u32)p_register->vip_config;
 	temp &= ~(dorder_mask | dwidth_mask);
 	temp |= ((u32)data_order << dorder_pos);
-	temp |= ((8 == data_width) ? dwidth_mask : 0);
+	temp |= ((data_width == 8) ? dwidth_mask : 0);
 	writel((u16)temp, &p_register->vip_config);
 }
 
@@ -341,9 +341,9 @@ void nx_vip_get_data_mode(u32 module_index, u32 *p_data_order,
 	register u32 temp;
 
 	temp = (u32)__g_p_register[module_index]->vip_config;
-	if (NULL != p_data_order)
+	if (p_data_order != NULL)
 		*p_data_order = ((temp & dorder_mask) >> dorder_pos);
-	if (NULL != p_data_width)
+	if (p_data_width != NULL)
 		*p_data_width = (temp & dwidth_mask) ? 8 : 16;
 }
 
@@ -395,26 +395,26 @@ void nx_vip_set_sync(u32 module_index, int b_ext_sync,
 
 	if (b_ext_sync) {
 #ifdef CONFIG_ARCH_S5P6818
-		if (0 != pcs) {
+		if (pcs != 0) {
 			temp = (u32)p_register->vip_padclk_sel;
 			temp &= ~(1 << 1);
 			temp |= (pcs << 1);
 			writel((u16)temp, &p_register->vip_padclk_sel);
 		}
 #endif
-		if (0 != hp) {
+		if (hp != 0) {
 			temp = (u32)p_register->vip_syncctrl;
 			temp &= ~(1 << 8);
 			temp |= (hp << 8);
 			writel((u16)temp, &p_register->vip_syncctrl);
 		}
-		if (0 != vp) {
+		if (vp != 0) {
 			temp = (u32)p_register->vip_syncctrl;
 			temp &= ~(1 << 9);
 			temp |= (vp << 9);
 			writel((u16)temp, &p_register->vip_syncctrl);
 		}
-		if (0 != vbp) {
+		if (vbp != 0) {
 			temp = (u32)p_register->vip_syncctrl;
 			temp &= ~(3 << 11);
 			writel((u16)temp, &p_register->vip_syncctrl);
@@ -427,7 +427,7 @@ void nx_vip_set_sync(u32 module_index, int b_ext_sync,
 			writel((u16)(vfp + 1), &p_register->vip_vbegin);
 			writel((u16)(vfp + vsw + 1), &p_register->vip_vend);
 		}
-		if (0 != hbp) {
+		if (hbp != 0) {
 			temp = (u32)p_register->vip_syncctrl;
 			temp &= ~(1 << 10);
 			writel((u16)temp, &p_register->vip_syncctrl);
@@ -504,20 +504,20 @@ void nx_vip_get_hvsync(u32 module_index, int *p_ext_sync, u32 *pavw, u32 *pavh,
 
 	p_register = __g_p_register[module_index];
 	b_ext_sync = (p_register->vip_config & extsyncenb) ? true : false;
-	if (NULL != p_ext_sync)
+	if (p_ext_sync != NULL)
 		*p_ext_sync = b_ext_sync;
-	if (NULL != pavw)
+	if (pavw != NULL)
 		*pavw = ((u32)(p_register->vip_imgwidth) << 1) -
 			((b_ext_sync) ? 0 : 4);
-	if (NULL != pavh)
+	if (pavh != NULL)
 		*pavh = (u32)p_register->vip_imgheight;
-	if (NULL != pvbegin)
+	if (pvbegin != NULL)
 		*pvbegin = (u32)p_register->vip_vbegin;
-	if (NULL != pvend)
+	if (pvend != NULL)
 		*pvend = (u32)p_register->vip_vend;
-	if (NULL != phbegin)
+	if (phbegin != NULL)
 		*phbegin = (u32)p_register->vip_hbegin;
-	if (NULL != phend)
+	if (phend != NULL)
 		*phend = (u32)p_register->vip_hend;
 }
 
@@ -552,9 +552,9 @@ void nx_vip_get_dvalid_mode(u32 module_index, int *p_ext_dvalid,
 	register u32 temp;
 
 	temp = (u32)__g_p_register[module_index]->vip_syncctrl;
-	if (NULL != p_ext_dvalid)
+	if (p_ext_dvalid != NULL)
 		*p_ext_dvalid = (temp & extdvenb) ? true : false;
-	if (NULL != p_dvalid_pol)
+	if (p_dvalid_pol != NULL)
 		*p_dvalid_pol = (temp & dvalidpol) ? true : false;
 }
 
@@ -597,16 +597,16 @@ void nx_vip_get_field_mode(u32 module_index, int *p_ext_field,
 	p_register = __g_p_register[module_index];
 	temp = (u32)p_register->vip_syncctrl;
 
-	if (NULL != p_ext_field)
+	if (p_ext_field != NULL)
 		*p_ext_field = (temp & extfieldenb) ? true : false;
-	if (NULL != p_field_sel)
+	if (p_field_sel != NULL)
 		*p_field_sel = temp & nx_vip_fieldsel_mask;
 
 	temp = (u32)p_register->vip_scanmode;
 
-	if (NULL != p_interlace)
+	if (p_interlace != NULL)
 		*p_interlace = (temp & interlaceenb) ? true : false;
-	if (NULL != p_inv_field)
+	if (p_inv_field != NULL)
 		*p_inv_field = (temp & fieldinv) ? true : false;
 }
 
@@ -702,13 +702,13 @@ void nx_vip_get_clip_region(u32 module_index, u32 *p_left, u32 *p_top,
 	register struct nx_vip_register_set *p_register;
 
 	p_register = __g_p_register[module_index];
-	if (NULL != p_left)
+	if (p_left != NULL)
 		*p_left = (u32)p_register->clip_left;
-	if (NULL != p_top)
+	if (p_top != NULL)
 		*p_top = (u32)p_register->clip_top;
-	if (NULL != p_right)
+	if (p_right != NULL)
 		*p_right = (u32)p_register->clip_right;
-	if (NULL != p_bottom)
+	if (p_bottom != NULL)
 		*p_bottom = (u32)p_register->clip_bottom;
 }
 
@@ -740,19 +740,19 @@ void nx_vip_get_decimation(u32 module_index, u32 *p_dst_width,
 	register struct nx_vip_register_set *p_register;
 
 	p_register = __g_p_register[module_index];
-	if (NULL != p_dst_width)
+	if (p_dst_width != NULL)
 		*p_dst_width = (u32)p_register->deci_targetw;
-	if (NULL != p_dst_height)
+	if (p_dst_height != NULL)
 		*p_dst_height = (u32)p_register->deci_targeth;
-	if (NULL != p_delta_width)
+	if (p_delta_width != NULL)
 		*p_delta_width = (u32)p_register->deci_deltaw;
-	if (NULL != p_delta_height)
+	if (p_delta_height != NULL)
 		*p_delta_height = (u32)p_register->deci_deltah;
-	if (NULL != p_clear_width)
+	if (p_clear_width != NULL)
 		*p_clear_width = (int32_t)((u32)p_register->deci_clearw |
 					   ((p_register->deci_clearw &
 					     (1 << 12)) ? 0xffffe000 : 0));
-	if (NULL != p_clear_height)
+	if (p_clear_height != NULL)
 		*p_clear_height = (int32_t)((u32)p_register->deci_clearh |
 					    ((p_register->deci_clearh &
 					      (1 << 11)) ? 0xfffff000 : 0));
@@ -782,7 +782,7 @@ void nx_vip_get_clipper_format(u32 module_index, u32 *p_format)
 	register struct nx_vip_register_set *p_register;
 
 	p_register = __g_p_register[module_index];
-	if (NULL != p_format)
+	if (p_format != NULL)
 		*p_format = p_register->clip_format;
 }
 
@@ -799,7 +799,7 @@ void nx_vip_get_decimator_format(u32 module_index, u32 *p_format)
 	register struct nx_vip_register_set *p_register;
 
 	p_register = __g_p_register[module_index];
-	if (NULL != p_format)
+	if (p_format != NULL)
 		*p_format = p_register->deci_format;
 }
 
@@ -945,14 +945,14 @@ int nx_vip_smoke_test(u32 module_index)
 	register struct nx_vip_register_set *p_register;
 
 	p_register = __g_p_register[module_index];
-	if (0x00000200 != p_register->vip_fifoctrl)
+	if (p_register->vip_fifoctrl != 0x00000200)
 		return false;
-	if (0x00000003 != p_register->vip_syncmon)
+	if (p_register->vip_syncmon != 0x00000003)
 		return false;
 
 	writel(0xc0debeef, &p_register->vip_imgwidth);
 
-	if (0x00003eef != p_register->vip_imgwidth)
+	if (p_register->vip_imgwidth != 0x00003eef)
 		return false;
 
 	return true;
