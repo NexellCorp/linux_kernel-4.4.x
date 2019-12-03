@@ -1106,10 +1106,10 @@ static int nx_video_enum_framesizes(struct file *file, void *fh,
 				    struct v4l2_frmsizeenum *p)
 {
 	struct nx_video *me = video_drvdata(file);
-        struct v4l2_subdev *sd;
-        struct v4l2_subdev_frame_size_enum frame_size;
+	struct v4l2_subdev *sd;
+	struct v4l2_subdev_frame_size_enum frame_size;
 	uint32_t pad;
-        int ret;
+	int ret;
 
 	if (!me) {
 		pr_err("private_data is not exist\n");
@@ -1137,10 +1137,10 @@ static int nx_video_enum_frameintervals(struct file *file, void *fh,
 					struct v4l2_frmivalenum *p)
 {
 	struct nx_video *me = video_drvdata(file);
-        struct v4l2_subdev *sd;
-        struct v4l2_subdev_frame_interval_enum frame;
+	struct v4l2_subdev *sd;
+	struct v4l2_subdev_frame_interval_enum frame;
 	uint32_t pad;
-        int ret;
+	int ret;
 
 	if (!me) {
 		pr_err("private_data is not exist\n");
@@ -1166,7 +1166,7 @@ static int nx_video_enum_frameintervals(struct file *file, void *fh,
 			p->discrete.denominator);
 	}
 
-        return ret;
+	return ret;
 }
 
 static struct v4l2_ioctl_ops nx_video_ioctl_ops = {
@@ -1570,6 +1570,7 @@ void nx_video_clear_buffer(struct nx_video_buffer_object *obj)
 					 struct nx_video_buffer, list);
 			if (buf) {
 				struct vb2_buffer *vb = buf->priv;
+
 				vb2_buffer_done(vb, VB2_BUF_STATE_ERROR);
 				list_del_init(&buf->list);
 			} else
