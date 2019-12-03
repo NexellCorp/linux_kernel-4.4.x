@@ -64,7 +64,7 @@ void nx_rearcam_draw_parking_guide_line(void *mem, void *ctx,
 		src_width = parkingline_resolution[line_index][0];
 		src_height = parkingline_resolution[line_index][1];
 
-		switch(line_index) {
+		switch (line_index) {
 		case 0:
 			data = parkingline_left_1024x600;
 			break;
@@ -126,7 +126,7 @@ void nx_rearcam_sensor_init_func(struct i2c_client *client)
 }
 
 void *nx_rearcam_alloc_vendor_context(void *priv,
-        struct device *dev)
+		struct device *dev)
 {
 	struct nx_vendor_context *ctx;
 
@@ -174,8 +174,7 @@ void nx_rearcam_free_vendor_context(void *ctx)
 	struct nx_vendor_context *_ctx = (struct nx_vendor_context *)ctx;
 
 	pr_debug("+++ %s ---\n", __func__);
-	if (_ctx)
-		kfree(_ctx);
+	kfree(_ctx);
 }
 
 bool nx_rearcam_decide(void *ctx)
