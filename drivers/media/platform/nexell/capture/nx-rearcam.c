@@ -99,11 +99,12 @@ static u32 vendor_parm = 0x1;
 MODULE_PARM_DESC(vendor_parm, "vendor parmeter");
 module_param(vendor_parm, uint, 0644);
 
-typedef enum {
+enum {
 	VENDOR_PARM_DISABLE = (1<<0),
 } vendor_parameter;
 
-static u32 sensor_init_parm = 0;
+static u32 sensor_init_parm;
+
 MODULE_PARM_DESC(sensor_init_parm, "sensor init parmeter");
 module_param(sensor_init_parm, uint, 0644);
 
@@ -542,10 +543,9 @@ struct nx_rearcam {
 #ifdef DEBUG_SYNC
 	struct timer_list timer;
 #endif
-
 	/* vendor context */
 	void *vendor_context;
-        void (*set_enable)(void *, bool);
+	void (*set_enable)(void *, bool);
 	void (*sensor_init_func)(struct i2c_client *client);
 	void *(*alloc_vendor_context)(void *cam, struct device *dev);
 	void (*free_vendor_context)(void *);
@@ -1803,9 +1803,12 @@ static int nx_rearcam_parse_dt(struct device *dev, struct nx_rearcam *me)
 	me->clipper_info.height = me->height;
 
 	if (!sensor_init_parm) {
-		child_sensor_reg_node = _of_get_node_by_property(dev, np, "sensor_reg");
+		child_sensor_reg_node = _of_get_node_by_property(dev,
+				np, "sensor_reg");
 		if (child_sensor_reg_node) {
-			ret = nx_sensor_reg_parse_dt(dev, child_sensor_reg_node, me);
+			ret = nx_sensor_reg_parse_dt(dev,
+					child_sensor_reg_node,
+					me);
 			if (ret) {
 				dev_err(dev, "failed to parse sensor register dt\n");
 				return ret;
@@ -2720,7 +2723,7 @@ static void _decide(struct nx_rearcam *me)
 	}
 }
 
-static void _work_handler_reargear(void * devdata)
+static void _work_handler_reargear(void *devdata)
 {
 	struct nx_rearcam *me = (struct nx_rearcam *)devdata;
 
@@ -2730,6 +2733,7 @@ static void _work_handler_reargear(void * devdata)
 static irqreturn_t _irq_handler(int irq, void *devdata)
 {
 	struct nx_rearcam *me = devdata;
+
 	nx_soc_gpio_clr_int_pend(me->event_gpio);
 	tasklet_schedule(&me->work);
 	return IRQ_HANDLED;
@@ -2737,7 +2741,7 @@ static irqreturn_t _irq_handler(int irq, void *devdata)
 
 #ifdef DEBUG_FPS_TIME
 #define	DUMP_FPS_TIME() {	\
-	static long ts = 0;	\
+	static long ts;		\
 	long new = ktime_to_ms(ktime_get());	\
 		pr_err("interrupt time %ld ms\n", new - ts);	\
 	ts = new;	\
@@ -2759,7 +2763,7 @@ static irqreturn_t _dpc_irq_handler(int irq, void *devdata)
 #endif
 	spin_lock_irqsave(&me->display_lock, flags);
 
-	if ( !me->release_on )
+	if (!me->release_on)
 		_display_worker(me);
 	spin_unlock_irqrestore(&me->display_lock, flags);
 
@@ -3467,12 +3471,10 @@ static int _init_camera_sensor(struct nx_rearcam *me)
 			reg_val = me->init_data;
 
 			while (reg_val->reg != 0xFF && reg_val->val != 0xFF) {
-				ret = i2c_smbus_write_byte_data(me->client, reg_val->reg,
-					reg_val->val);
+				ret = i2c_smbus_write_byte_data(me->client,
+						reg_val->reg, reg_val->val);
 				if (ret)
 					dev_err(dev, "Failed to write data by i2c\n");
-				pr_debug("%s - index : %d, addr : 0x%02x, val: 0x%02x\n",
-					__func__, i++, reg_val->reg, reg_val->val);
 				reg_val++;
 			}
 		}
@@ -3502,7 +3504,7 @@ static void _display_worker(struct nx_rearcam *me)
 		q_display_done	= &me->q_vip_done;
 	}
 
-	if ( me->release_on ) {
+	if (me->release_on) {
 		pr_debug("%s - display_worker release on.....!\n", __func__);
 		return;
 	}
@@ -3512,15 +3514,13 @@ static void _display_worker(struct nx_rearcam *me)
 	me->measure.dp_frame_cnt++;
 #endif
 
-	if (q_display_done->size(q_display_done) < 1) {
+	if (q_display_done->size(q_display_done) < 1)
 		return;
-	}
 
 	q_size = q_display_done->size(q_display_done);
 	entry = q_display_done->peek(q_display_done, q_size-1);
-	if (!entry) {
+	if (!entry)
 		return;
-	}
 
 	buf = (struct nx_video_buf *)(entry->data);
 	pr_debug("%s - lu_addr : 0x%x\n", __func__, buf->lu_addr);
@@ -3777,7 +3777,8 @@ static void _init_context(struct nx_rearcam *me)
 	if (me->rotation)
 		mutex_init(&me->rot_lock);
 
-	tasklet_init(&me->work, (void*)_work_handler_reargear, (unsigned long)me);
+	tasklet_init(&me->work, (void *)_work_handler_reargear,
+			(unsigned long)me);
 
 	if (me->rotation) {
 		me->wq_lu_rot = NULL;
