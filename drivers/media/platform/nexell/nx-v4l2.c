@@ -124,20 +124,18 @@ EXPORT_SYMBOL_GPL(nx_v4l2_register_subdev);
 
 struct v4l2_subdev *nx_v4l2_get_subdev(char *name)
 {
-        struct v4l2_subdev *sd;
-        struct v4l2_device *me = nx_v4l2_get_v4l2_device();
+	struct v4l2_device *me = nx_v4l2_get_v4l2_device();
+	struct v4l2_subdev *sd = NULL;
 
-         if (!me) {
-                 WARN_ON(1);
-                 return NULL;
-         }
-
-         list_for_each_entry(sd, &me->subdevs, list) {
-                 if (!strncmp(sd->name, name, strlen(name)))
-                     return sd;
-         }
-
-         return NULL;
+	if (!me) {
+		WARN_ON(1);
+		return NULL;
+	}
+	list_for_each_entry(sd, &me->subdevs, list) {
+		if (!strncmp(sd->name, name, strlen(name)))
+			return sd;
+	}
+	return NULL;
 }
 EXPORT_SYMBOL_GPL(nx_v4l2_get_subdev);
 
