@@ -111,8 +111,10 @@ struct nx_video {
 	 */
 	struct media_pad pads[NX_VIDEO_MAX_PADS];
 
-	/* frame[0] : sink, capture
-	   frame[1] : source, out */
+	/**
+	 * frame[0] : sink, capture
+	 * frame[1] : source, out
+	 */
 	struct nx_video_frame frame[2];
 
 	/* buffer consumer */
