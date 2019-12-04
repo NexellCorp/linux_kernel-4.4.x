@@ -60,8 +60,10 @@ bool nx_vip_is_valid(u32 module);
 int nx_vip_reset(u32 module);
 int nx_vip_clock_config(u32 module, u32 source, u32 frequency);
 int nx_vip_clock_enable(u32 module, bool enable);
-int nx_vip_register_irq_entry(u32 module, u32 child, struct nx_v4l2_irq_entry *e);
-int nx_vip_unregister_irq_entry(u32 module, u32 child, struct nx_v4l2_irq_entry *e);
+int nx_vip_register_irq_entry(u32 module, u32 child,
+		struct nx_v4l2_irq_entry *e);
+int nx_vip_unregister_irq_entry(u32 module, u32 child,
+		struct nx_v4l2_irq_entry *e);
 int nx_vip_is_running(u32 module, u32 child);
 int nx_vip_run(u32 module, u32 child);
 int nx_vip_stop(u32 module, u32 child);

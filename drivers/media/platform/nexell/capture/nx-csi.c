@@ -30,7 +30,8 @@
 
 #define NX_CSI_DEV_NAME		"nx-csi"
 
-static u32 enable_ints = 0;
+static u32 enable_ints;
+
 MODULE_PARM_DESC(enable_ints, "csi interrupts enable");
 module_param(enable_ints, uint, 0644);
 
@@ -350,7 +351,8 @@ static struct nx_mipi_register_set *__g_pregister[1];
 #else
 #define write_reg_wrapper(val, reg)	writel(val, reg)
 
-#define read_reg_wrapper(pval, reg)	do { \
+#define read_reg_wrapper(pval, reg)	\
+	do {	\
 	*pval = readl(reg); \
 	} while (0)
 
@@ -909,12 +911,14 @@ static void nx_csi_run(struct nx_csi *me)
 			pms = PMS_FOR_1000MHz;
 			bandctl = BANDCTL_FOR_1000MHz;
 		} else {
-			dev_err(me->dev, "unknown pllval %d --> set default\n",
+			dev_err(me->dev,
+				"unknown pllval %d --> set default\n",
 				me->pllval);
 			pms = PMS_FOR_750MHz;
 			bandctl = BANDCTL_FOR_750MHz;
 		}
-		nx_mipi_setpll(module, 1, PLL_STABLE_TIME_VAL, pms, bandctl, 0, 0);
+		nx_mipi_setpll(module, 1, PLL_STABLE_TIME_VAL, pms, bandctl,
+				0, 0);
 	}
 }
 
@@ -1019,9 +1023,8 @@ static int nx_csi_enable_interrupts_all(struct nx_csi *me, int enable)
 	u32 val = 0;
 
 	pregister = __g_pregister[me->module];
-	if (enable) {
+	if (enable)
 		val = CSIS_INTMSK_EN_ALL;
-	}
 	write_reg_wrapper(val, &pregister->csis_intmsk);
 	return 0;
 }
@@ -1056,16 +1059,20 @@ static int nx_csi_s_stream(struct v4l2_subdev *sd, int enable)
 	if (enable) {
 		if (!(NX_ATOMIC_READ(&me->state) & STATE_RUNNING)) {
 #ifdef CONFIG_VIDEO_MAX9286
-			nx_csi_run(me); 	
-			ret = v4l2_subdev_call(remote_source, video, s_stream, 1);
+			nx_csi_run(me);
+			ret = v4l2_subdev_call(remote_source, video,
+					s_stream, 1);
 			if (ret) {
-				dev_err(me->dev, "failed to s_stream %d\n", enable);
+				dev_err(me->dev, "failed to s_stream %d\n",
+						enable);
 				goto UP_AND_OUT;
 			}
 #else
-			ret = v4l2_subdev_call(remote_source, video, s_stream, 1);
+			ret = v4l2_subdev_call(remote_source, video,
+					s_stream, 1);
 			if (ret) {
-				dev_err(me->dev, "failed to s_stream %d\n", enable);
+				dev_err(me->dev, "failed to s_stream %d\n",
+						enable);
 				goto UP_AND_OUT;
 			}
 			nx_csi_run(me);
@@ -1277,6 +1284,7 @@ static int nx_csi_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	me->module = 0;
+
 	init_me(me);
 
 	ret = nx_csi_parse_dt(pdev, me);
