@@ -1231,7 +1231,6 @@ void nx_mlc_set_video_layer_saturation(u32 module_index,int32_t saturation)
 	register struct nx_mlc_register_set *pregister;
 	register u32 temp;
 	int32_t regvalue;
-	char gain;
 	char cb_a, cb_b, cr_b, cr_a;
 	char const_cb_a, const_cb_b, const_cr_b, const_cr_a;
 
@@ -1288,8 +1287,6 @@ void nx_mlc_set_video_layer_saturation(u32 module_index,int32_t saturation)
 	writel(temp, &pregister->mlcvideolayer.mlcchenh[3]);
 
 }
-
-
 
 void nx_mlc_set_video_layer_line_buffer_power_mode(u32 module_index,
 						   int benable)

@@ -137,7 +137,6 @@ static void mipi_fifo_tm_work(struct work_struct *work)
 	struct drm_encoder *encoder;
 	struct drm_crtc *crtc;
 	struct drm_plane *primary;
-	struct drm_pending_vblank_event *event;
 
 	encoder = &connector->encoder->encoder;
 	if (!encoder || !encoder->crtc)
@@ -168,17 +167,6 @@ static void mipi_fifo_tm_work(struct work_struct *work)
 	 * update crtc event
 	 */
 	drm_crtc_handle_vblank(crtc);
-
-	spin_lock(&crtc->dev->event_lock);
-
-	event = to_nx_crtc(crtc)->event;
-
-	if (event) {
-		drm_crtc_send_vblank_event(crtc, event);
-		drm_crtc_vblank_put(crtc);
-		to_nx_crtc(crtc)->event = NULL;
-	}
-	spin_unlock(&crtc->dev->event_lock);
 }
 
 static ssize_t mipi_fifo_update(struct device *dev,
