@@ -336,6 +336,13 @@ config REGULATOR_NXE2000
 	  It delivers digitally programmable output,
 	  the voltage is programmed via I2C interface.
 
+config REGULATOR_MP8845C
+	tristate "MPS MP8845C Power regulator"
+	select MFD_MP8845C
+	help
+	  This driver supports regulator driver for the MPS MP8845C
+	  Power Management device.
+
 config REGULATOR_MAX14577
 	tristate "Maxim 14577/77836 regulator"
 	depends on MFD_MAX14577
