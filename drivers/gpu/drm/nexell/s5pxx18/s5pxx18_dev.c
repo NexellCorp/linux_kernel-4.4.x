@@ -713,9 +713,9 @@ void nx_soc_dp_plane_rgb_set_color(struct nx_plane_layer *layer,
 	int module = layer->module;
 	int num = layer->num;
 
-	pr_debug("%s: %s, type:%d color:0x%x, pixel %d, %s (%d)\n",
+	pr_debug("%s: %s, type:%d color:0x%x, pixel %d, %s [%s]\n",
 		__func__, layer->name, type, color, layer->pixelbyte,
-		on ? "on" : "off", num);
+		on ? "on" : "off", adjust ? "sync" : "async");
 
 	switch (type) {
 	case NX_COLOR_ALPHA:
