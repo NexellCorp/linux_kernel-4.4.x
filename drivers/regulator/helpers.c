@@ -43,11 +43,11 @@ int regulator_is_enabled_regmap(struct regulator_dev *rdev)
 		if (rdev->desc->enable_val)
 			return val != rdev->desc->enable_val;
 		return val == 0;
-	} else {
-		if (rdev->desc->enable_val)
-			return val == rdev->desc->enable_val;
-		return val != 0;
 	}
+
+	if (rdev->desc->enable_val)
+		return val == rdev->desc->enable_val;
+	return val != 0;
 }
 EXPORT_SYMBOL_GPL(regulator_is_enabled_regmap);
 
@@ -184,10 +184,18 @@ int regulator_map_voltage_iterate(struct regulator_dev *rdev,
 		if (ret < 0)
 			continue;
 
+#ifdef CONFIG_REGULATOR_MP8845C
+		if (ret < best_val && ret >= min_uV) {
+			best_val = ret;
+			selector = i;
+			break;
+		}
+#else
 		if (ret < best_val && ret >= min_uV && ret <= max_uV) {
 			best_val = ret;
 			selector = i;
 		}
+#endif
 	}
 
 	if (best_val != INT_MAX)
@@ -245,7 +253,8 @@ int regulator_map_voltage_linear(struct regulator_dev *rdev,
 
 	/* Allow uV_step to be 0 for fixed voltage */
 	if (rdev->desc->n_voltages == 1 && rdev->desc->uV_step == 0) {
-		if (min_uV <= rdev->desc->min_uV && rdev->desc->min_uV <= max_uV)
+		if (min_uV <= rdev->desc->min_uV &&
+			rdev->desc->min_uV <= max_uV)
 			return 0;
 		else
 			return -EINVAL;
