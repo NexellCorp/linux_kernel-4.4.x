@@ -772,19 +772,19 @@ void nx_soc_dp_plane_rgb_set_color(struct nx_plane_layer *layer,
 		break;
 	case NX_COLOR_BRIGHT:
 		nx_mlc_set_video_layer_brightness(module, color);
-		dp_plane_adjust(module, num, adjust);
+		dp_plane_set_dirty_flag(module, num, adjust);
 		break;
 	case NX_COLOR_CONTRAST:
 		nx_mlc_set_video_layer_contrast(module, color);
-		dp_plane_adjust(module, num, adjust);
+		dp_plane_set_dirty_flag(module, num, adjust);
 		break;
 	case NX_COLOR_HUE:
 		nx_mlc_set_video_layer_hue(module, color);
-		dp_plane_adjust(module, num, adjust);
+		dp_plane_set_dirty_flag(module, num, adjust);
 		break;
 	case NX_COLOR_SATURATION:
 		nx_mlc_set_video_layer_saturation(module, color);
-		dp_plane_adjust(module, num, adjust);
+		dp_plane_set_dirty_flag(module, num, adjust);
 		break;
 	default:
 		break;
