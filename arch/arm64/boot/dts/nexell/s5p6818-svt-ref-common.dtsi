@@ -250,6 +250,24 @@
 			heap-type = "ion_dma";
 		};
 	};
+
+	backlight: pwm-backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 0 20000 1>;
+		pwm-names = "pwm-backlight";
+		enable-gpios = <&gpio_e 12 0>;
+
+		brightness-levels = <30 31 32 33 34 35 36 37 38 39
+				     40 41 42 43 44 45 46 47 48 49
+				     50 51 52 53 54 55 56 57 58 59
+				     60 61 62 63 64 65 66 67 68 69
+				     70 71 72 73 74 75 76 77 78 79
+				     80 81 82 83 84 85 86 87 88 89
+				     90>;
+		default-brightness-level = <45>;
+		status = "okay";
+	};
+
 };
 
 &dp_drm {
@@ -272,9 +290,12 @@
 
 &dp_drm_lvds {
 	status = "ok";
+	format = <0x1>; /* JEIDA */
+	width-mm = <155>;
+	height-mm = <90>;
 
 	display-timing {
-		clock-frequency = <50000000>;
+		clock-frequency = <55555000>;
 		hactive = <1024>;
 		vactive = <600>;
 		hfront-porch = <160>;
@@ -286,11 +307,12 @@
 	};
 
 	dp_control {
-		clk_src_lv0 = <0>;
-		clk_div_lv0 = <16>;
+		clk_src_lv0 = <2>;
+		clk_div_lv0 = <12>;
 		clk_src_lv1 = <7>;
 		clk_div_lv1 = <1>;
 		out_format = <2>;
+		invert_field = <1>;
 	};
 };
 
