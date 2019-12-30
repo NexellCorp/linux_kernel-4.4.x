@@ -1483,12 +1483,15 @@ static void irq_gpio_ack(struct irq_data *irqd)
 	struct nexell_pin_bank *bank = irq_data_get_irq_chip_data(irqd);
 	int bit = (int)(irqd->hwirq);
 	void __iomem *base = bank->virt_base;
+	unsigned int grp = PAD_GET_GROUP(bank->grange.pin_base + bit);
 
-	pr_debug("%s: gpio irq=%d, %s.%d\n", __func__, bank->irq, bank->name,
-		 bit);
+	pr_debug("%s: gpio irq=%d, grp=%d, %s.%d\n", __func__, bank->irq, grp,
+		 bank->name, bit);
 
+	IO_LOCK(grp);
 	writel((1 << bit), base + GPIO_INT_STATUS); /* irq pend clear */
 	ARM_DMB();
+	IO_UNLOCK(grp);
 }
 
 static void irq_gpio_mask(struct irq_data *irqd)
@@ -1496,13 +1499,16 @@ static void irq_gpio_mask(struct irq_data *irqd)
 	struct nexell_pin_bank *bank = irq_data_get_irq_chip_data(irqd);
 	int bit = (int)(irqd->hwirq);
 	void __iomem *base = bank->virt_base;
+	unsigned int grp = PAD_GET_GROUP(bank->grange.pin_base + bit);
 
-	pr_debug("%s: gpio irq=%d, %s.%d\n", __func__, bank->irq, bank->name,
-		 bit);
+	pr_debug("%s: gpio irq=%d, grp=%d, %s.%d\n", __func__, bank->irq, grp,
+		 bank->name, bit);
 
 	/* mask:irq disable */
+	IO_LOCK(grp);
 	writel(readl(base + GPIO_INT_ENB) & ~(1 << bit), base + GPIO_INT_ENB);
 	writel(readl(base + GPIO_INT_DET) & ~(1 << bit), base + GPIO_INT_DET);
+	IO_UNLOCK(grp);
 }
 
 static void irq_gpio_unmask(struct irq_data *irqd)
@@ -1510,14 +1516,17 @@ static void irq_gpio_unmask(struct irq_data *irqd)
 	struct nexell_pin_bank *bank = irq_data_get_irq_chip_data(irqd);
 	int bit = (int)(irqd->hwirq);
 	void __iomem *base = bank->virt_base;
+	unsigned int grp = PAD_GET_GROUP(bank->grange.pin_base + bit);
 
-	pr_debug("%s: gpio irq=%d, %s.%d\n", __func__, bank->irq, bank->name,
-		 bit);
+	pr_debug("%s: gpio irq=%d, grp=%d, %s.%d\n", __func__, bank->irq, grp,
+		 bank->name, bit);
 
 	/* unmask:irq enable */
+	IO_LOCK(grp);
 	writel(readl(base + GPIO_INT_ENB) | (1 << bit), base + GPIO_INT_ENB);
 	writel(readl(base + GPIO_INT_DET) | (1 << bit), base + GPIO_INT_DET);
 	ARM_DMB();
+	IO_UNLOCK(grp);
 }
 
 static int irq_gpio_set_type(struct irq_data *irqd, unsigned int type)
@@ -1527,6 +1536,7 @@ static int irq_gpio_set_type(struct irq_data *irqd, unsigned int type)
 	void __iomem *base = bank->virt_base;
 	u32 val, alt;
 	ulong reg;
+	unsigned int grp = PAD_GET_GROUP(bank->grange.pin_base + bit);
 
 	int mode = 0;
 
@@ -1562,7 +1572,9 @@ static int irq_gpio_set_type(struct irq_data *irqd, unsigned int type)
 	 */
 
 	/* gpio out : output disable */
+	IO_LOCK(grp);
 	writel(readl(base + GPIO_INT_OUT) & ~(1 << bit), base + GPIO_INT_OUT);
+	IO_UNLOCK(grp);
 
 	/* gpio mode : interrupt mode */
 	reg = (ulong)(base + GPIO_INT_MODE0 + (bit / 16) * 4);
@@ -1591,13 +1603,16 @@ static void irq_gpio_enable(struct irq_data *irqd)
 	struct nexell_pin_bank *bank = irq_data_get_irq_chip_data(irqd);
 	int bit = (int)(irqd->hwirq);
 	void __iomem *base = bank->virt_base;
+	unsigned int grp = PAD_GET_GROUP(bank->grange.pin_base + bit);
 
-	pr_debug("%s: gpio irq=%d, %s.%d\n", __func__, bank->irq, bank->name,
-		 bit);
+	pr_debug("%s: gpio irq=%d, grp=%d, %s.%d\n", __func__, bank->irq, grp,
+		 bank->name, bit);
 
 	/* unmask:irq enable */
+	IO_LOCK(grp);
 	writel(readl(base + GPIO_INT_ENB) | (1 << bit), base + GPIO_INT_ENB);
 	writel(readl(base + GPIO_INT_DET) | (1 << bit), base + GPIO_INT_DET);
+	IO_UNLOCK(grp);
 }
 
 static void irq_gpio_disable(struct irq_data *irqd)
@@ -1605,13 +1620,16 @@ static void irq_gpio_disable(struct irq_data *irqd)
 	struct nexell_pin_bank *bank = irq_data_get_irq_chip_data(irqd);
 	int bit = (int)(irqd->hwirq);
 	void __iomem *base = bank->virt_base;
+	unsigned int grp = PAD_GET_GROUP(bank->grange.pin_base + bit);
 
-	pr_debug("%s: gpio irq=%d, %s.%d\n", __func__, bank->irq, bank->name,
-		 bit);
+	pr_debug("%s: gpio irq=%d, grp=%d, %s.%d\n", __func__, bank->irq, grp,
+		 bank->name, bit);
 
 	/* mask:irq disable */
+	IO_LOCK(grp);
 	writel(readl(base + GPIO_INT_ENB) & ~(1 << bit), base + GPIO_INT_ENB);
 	writel(readl(base + GPIO_INT_DET) & ~(1 << bit), base + GPIO_INT_DET);
+	IO_UNLOCK(grp);
 }
 
 /*
