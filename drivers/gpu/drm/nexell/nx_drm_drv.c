@@ -87,7 +87,6 @@ static int nx_drm_atomic_commit(struct drm_device *drm,
 		struct drm_mode_config *config = &drm->mode_config;
 		struct drm_modeset_acquire_ctx *ctx = config->acquire_ctx;
 		struct drm_crtc *crtc;
-		struct drm_plane *plane;
 		bool locked = false;
 
 		/*
@@ -97,10 +96,6 @@ static int nx_drm_atomic_commit(struct drm_device *drm,
 		if (ctx) {
 			drm_for_each_crtc(crtc, drm)
 				drm_modeset_unlock(&crtc->mutex);
-
-		        drm_for_each_plane(plane, drm)
-				drm_modeset_unlock(&plane->mutex);
-
 			locked = true;
 		}
 
@@ -109,9 +104,6 @@ static int nx_drm_atomic_commit(struct drm_device *drm,
 		if (locked) {
 			drm_for_each_crtc(crtc, drm)
 				drm_modeset_lock(&crtc->mutex, ctx);
-
-		        drm_for_each_plane(plane, drm)
-				drm_modeset_lock(&plane->mutex, ctx);
 		}
 	}
 
