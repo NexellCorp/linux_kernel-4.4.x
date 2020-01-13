@@ -525,7 +525,7 @@ static int mp8845c_regulator_preinit(struct mp8845c_regulator *ri,
 			ri->vout_en = 0;
 	}
 
-	if (mp8845c_pdata->init_uV > -1) {
+	if ((mp8845c_pdata->init_uV > -1) && mp8845c_pdata->set_init_uV) {
 		ret = __mp8845c_set_voltage(ri, mp8845c_pdata->init_uV,
 			mp8845c_pdata->init_uV, NULL);
 		if (ret < 0) {
@@ -616,6 +616,12 @@ static int mp8845c_regulator_dt_parse_pdata(struct platform_device *pdev,
 			rdata->init_uV = (int)val;
 		else
 			dev_err(&pdev->dev, "%s() \e[31mError\e[0m : init_uV\n",
+				__func__);
+
+		if (!of_property_read_u32(reg_np, "nx,set_init_uV", &val))
+			rdata->set_init_uV = (int)val;
+		else
+			dev_err(&pdev->dev, "%s() Error : set_init_uV\n",
 				__func__);
 
 		rdata++;
