@@ -59,6 +59,15 @@ config DEVTMPFS_MOUNT
 	  rescue mode with init=/bin/sh, even when the /dev directory
 	  on the rootfs is completely empty.
 
+config DEVTMPFS_MOUNT_NAME
+	string "Automount devtmpfs at /xxx"
+	depends on DEVTMPFS
+	depends on DEVTMPFS_MOUNT
+	default "dev"
+	help
+	  This will instruct the kernel to automatically mount the
+	  devtmpfs filesystem at /xxx.
+
 config STANDALONE
 	bool "Select only drivers that don't need compile-time external firmware"
 	default y

@@ -438,7 +438,7 @@ retry:
 out:
 	put_page(page);
 }
- 
+
 #ifdef CONFIG_ROOT_NFS
 
 #define NFSROOT_TIMEOUT_MIN	5
@@ -549,6 +549,9 @@ void __init mount_root(void)
 void __init prepare_namespace(void)
 {
 	int is_floppy;
+#ifdef CONFIG_DEVTMPFS_MOUNT_NAME
+	const char *devtmpfs_name = NULL;
+#endif
 
 	if (root_delay) {
 		printk(KERN_INFO "Waiting %d sec before mounting root device...\n",
@@ -604,7 +607,12 @@ void __init prepare_namespace(void)
 
 	mount_root();
 out:
+#ifndef CONFIG_DEVTMPFS_MOUNT_NAME
 	devtmpfs_mount("dev");
+#else
+	devtmpfs_name = CONFIG_DEVTMPFS_MOUNT_NAME;
+	devtmpfs_mount(devtmpfs_name);
+#endif
 	sys_mount(".", "/", NULL, MS_MOVE, NULL);
 	sys_chroot(".");
 }
