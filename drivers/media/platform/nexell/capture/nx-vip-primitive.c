@@ -905,6 +905,8 @@ void nx_vip_set_decimator_addr(u32 module_index, u32 format,
 	left = lu_addr & 0x00007fff;
 	top = (lu_addr & 0x3fff8000) >> 15;
 
+	writel((u16)stride_y, &p_register->deci_targetw);
+
 	writel(segment, &p_register->deci_luseg);
 	writel(left, &p_register->deci_luleft);
 	writel(left + width, &p_register->deci_luright);
