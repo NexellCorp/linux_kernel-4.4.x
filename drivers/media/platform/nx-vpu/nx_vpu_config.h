@@ -70,7 +70,7 @@
 #define VPU_GBU_SIZE			1024	/* No modification required */
 #define JPU_GBU_SIZE			512	/* No modification required */
 
-#define	MAX_REG_FRAME			31
+#define	MAX_REG_FRAME			32
 
 /*----------------------------------------------------------------------------
  *	Encoder Configurations
