@@ -3194,15 +3194,6 @@ static struct dw_mci_board *dw_mci_parse_dt(struct dw_mci *host)
 	if (of_find_property(np, "overclock", NULL))
 		pdata->overclock = true;
 
-#ifdef CONFIG_ARCH_S5P4418
-#ifdef CONFIG_REDUCE_BOOT_TIME
-	if (pdata->overclock == false) {
-		pdata->bus_hz *= 2;
-		pdata->overclock = true;
-	}
-#endif
-#endif
-
 	return pdata;
 }
 
