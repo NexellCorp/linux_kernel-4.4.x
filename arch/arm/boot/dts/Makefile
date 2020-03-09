@@ -790,6 +790,7 @@ dtb-$(CONFIG_ARCH_S5P4418) += \
 	s5p4418-avn_ref-rev00.dtb \
 	s5p4418-navi_ref-rev00.dtb \
 	s5p4418-navi_ref-rev01.dtb \
+	s5p4418-vtk_ref-rev00.dtb \
 	s5p4418-daudio_ref-rev00.dtb \
 	s5p4418-daudio_ref-rev01.dtb \
 	s5p4418-smart_voice-rev00.dtb \
