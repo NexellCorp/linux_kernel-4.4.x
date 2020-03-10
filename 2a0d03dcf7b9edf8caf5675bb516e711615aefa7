@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9d0021c7_15ea0671",
+        "filename": "arch/arm/boot/dts/s5p4418-vtk_ref-common.dtsi",
+        "patchSetId": 1
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 1015514
+      },
+      "writtenOn": "2020-03-10T06:38:38Z",
+      "side": 1,
+      "message": "Please remove the space.",
+      "range": {
+        "startLine": 545,
+        "startChar": 30,
+        "endLine": 545,
+        "endChar": 31
+      },
+      "revId": "2a0d03dcf7b9edf8caf5675bb516e711615aefa7",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    }
+  ]
+}
