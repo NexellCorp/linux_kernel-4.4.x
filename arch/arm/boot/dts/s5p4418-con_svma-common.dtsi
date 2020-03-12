@@ -20,7 +20,6 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include "nxp4330.dtsi"
-#include "../../../../include/generated/autoconf.h"
 #include "s5p4418-audio-dfs-pll3.dtsi"
 
 / {
@@ -101,6 +100,55 @@
 			prefetch-instr = <1>;
 			arm,tag-latency = <3 4 3>;
 			arm,data-latency = <3 4 3>;
+		};
+		/* for BT/WIFI */
+		dw_mmc_1_btwifi:dwmmc_btwifi@c0068000 {
+			compatible = "nexell,s5p6818-dw-mshc";
+			interrupts = <IRQ_SDMMC1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <PHYS_BASE_SDMMC1 0x1000>;
+			resets  = <&nexell_reset RESET_ID_SDMMC1>;
+			reset-names = "dw_mmc-reset";
+			clock-names = "biu", "ciu";
+			clocks = <&sdhc1>, <&sdhc1>;
+			fifo-detph = <0x20>;
+			deferred-probe;
+			num-slots = <1>;
+			bus-width = <4>;
+			cap-sd-highspeed;
+			cd-type-external;
+			broken-cd;
+			pm-ignore-notify;
+			keep-power-in-suspend;
+			powered-resumed-nonremovable-card;
+			cd-type = <2>;
+			clock-frequency = <100000000>;
+			nexell,drive_dly = <0x0>;
+			nexell,drive_shift = <0x02>;
+			nexell,sample_dly = <0x00>;
+			nexell,sample_shift = <0x01>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sdmmc1_cclk &sdmmc1_cmd &sdmmc1_bus4
+				&cfg_wlanen &cfg_wlanhostwake>;
+			status = "disabled";
+		};
+		/* for sdmmc */
+		dw_mmc_1:dwmmc@c0068000 {
+			deferred-probe;
+			num-slots = <1>;
+			bus-width = <4>;
+			cap-sd-highspeed;
+			clock-frequency = <100000000>;
+			card-detect-delay = <200>;
+			disable-wp;
+			cd-gpios = <&gpio_e 31 0>;
+			cd-inverted;
+			nexell,drive_dly = <0x0>;
+			nexell,drive_shift = <0x02>;
+			nexell,sample_dly = <0x00>;
+			nexell,sample_shift = <0x01>;
+			status = "disabled";
 		};
 
 		serial0:serial@c00a1000 {
@@ -644,7 +692,7 @@
 		status = "okay";
 	};
 
-	bt_control {
+	bt_control:nx_bt {
 		deferred-probe;
 		compatible = "broadcom,bcm434545bt";
 		gpios = <&gpio_b 23 0 /* GPIOB23 = BT_EN, output */
@@ -653,15 +701,15 @@
 			>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&bt_cfg_hostwake &bt_cfg_btwake &bt_cfg_en>;
-		status = "okay";
+		status = "disabled";
 	};
 
-	wlan {
+	wlan:nx_wlan {
 		deferred-probe;
 		compatible = "nexell,brcm-wlan";
 		wlan_reg_on = <&gpio_c 30 0>;
 		wlan_host_wake = <&gpio_e 31 1>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	firmware {
@@ -916,7 +964,6 @@
 };
 */
 
-
 &dw_mmc_0 {
 	num-slots = <1>;
 	bus-width = <4>;
@@ -932,51 +979,6 @@
 	nexell,sample_shift = <0x01>;
 	status = "okay";
 };
-
-#if defined(CONFIG_BT_BCM434545) && defined(CONFIG_BCMDHD_SDIO)
-/* for BT/WIFI */
-&dw_mmc_1 {
-	deferred-probe;
-	num-slots = <1>;
-	bus-width = <4>;
-	cap-sd-highspeed;
-	cd-type-external;
-	broken-cd;
-	pm-ignore-notify;
-	keep-power-in-suspend;
-	powered-resumed-nonremovable-card;
-	cd-type = <2>;
-	clock-frequency = <100000000>;
-	nexell,drive_dly = <0x0>;
-	nexell,drive_shift = <0x02>;
-	nexell,sample_dly = <0x00>;
-	nexell,sample_shift = <0x01>;
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&sdmmc1_cclk &sdmmc1_cmd &sdmmc1_bus4
-		&cfg_wlanen &cfg_wlanhostwake>;
-
-	status = "okay";
-};
-#else
-/* for sdmmc */
-&dw_mmc_1 {
-	deferred-probe;
-	num-slots = <1>;
-	bus-width = <4>;
-	cap-sd-highspeed;
-	clock-frequency = <100000000>;
-	card-detect-delay = <200>;
-	disable-wp;
-	cd-gpios = <&gpio_e 31 0>;
-	cd-inverted;
-	nexell,drive_dly = <0x0>;
-	nexell,drive_shift = <0x02>;
-	nexell,sample_dly = <0x00>;
-	nexell,sample_shift = <0x01>;
-	status = "okay";
-};
-#endif
 
 &spi_2 {
 	deferred-probe;
