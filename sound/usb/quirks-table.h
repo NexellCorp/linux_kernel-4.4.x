@@ -57,7 +57,27 @@
 			},
 			{
 				.ifnum = 1,
-				.type = QUIRK_AUDIO_STANDARD_INTERFACE
+				.type = QUIRK_AUDIO_FIXED_ENDPOINT,
+				.data = & (const struct audioformat) {
+					.formats = SNDRV_PCM_FMTBIT_S16_LE,
+					.channels = 2,
+					.iface = 1,
+					.altsetting = 1,
+					.altset_idx = 1,
+					.attributes = UAC_EP_CS_ATTR_FILL_MAX,
+					.endpoint = 0x81,
+					.ep_attr = 0x01,
+					.rates = SNDRV_PCM_RATE_CONTINUOUS,
+					.rate_min = 8000,
+					.rate_max = 48000,
+					.nr_rates = 9,
+					.rate_table = (unsigned int[]) {
+						8000, 11025, 12000, 16000,
+						22050, 24000, 32000, 44100,
+						48000
+					},
+					.clock = 0x80,
+				},
 			},
 			{
 				.ifnum = -1
