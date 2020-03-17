@@ -453,12 +453,12 @@
 		simple-audio-card,name = "s5p4418 Convergence Car Audio Main";
 		simple-audio-card,mclk-fs = <256>;
 		simple-audio-card,widgets =
-			"Headphone", "Out Jack",
-			"Microphone", "In Jack";
+			"Speaker", "Speaker Out",
+			"Microphone", "Mic Jack";
 		simple-audio-card,routing =
-			"Out Jack", "SPKOUT",
-			"Out Jack", "SPKOUTN",
-			"MIC1", "In Jack";
+			"Speaker Out", "SPKOUT",
+			"Speaker Out", "SPKOUTN",
+			"MIC1", "Mic Jack";
 		status = "okay";
 
 		simple-audio-card,dai-link@0 {
