@@ -790,7 +790,9 @@ dtb-$(CONFIG_ARCH_S5P4418) += \
 	s5p4418-navi_ref-rev00.dtb \
 	s5p4418-navi_ref-rev01.dtb \
 	s5p4418-con_svma-rev00.dtb \
-	s5p4418-con_svma-rev01.dtb
+	s5p4418-con_svma-rev01.dtb \
+	s5p4418-con_svma_auto-rev00.dtb \
+	s5p4418-con_svma_auto-rev01.dtb
 endif
 
 ifeq ($(CONFIG_ARCH_S5P4418),y)

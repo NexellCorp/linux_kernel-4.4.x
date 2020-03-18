@@ -79,7 +79,7 @@
 			};
 
 			i2s1:i2s@c00b3000 {
-				clk-input = <I_PLL3>;
+				clk-input = <I_PLL2>;
 			};
 
 			i2s2:i2s@c00b4000 {
@@ -273,7 +273,7 @@
 		i2s_1:i2s@c0056000 {
 			deferred-probe;
 			dfs;
-			dfs-pll = <3>;
+			dfs-pll = <2>;
 			#sound-dai-cells = <1>;
 			master-mode = <1>;
 			mclk-in = <0>;
@@ -912,7 +912,7 @@
 	};
 
 	dp_control {
-		clk_src_lv0 = <1>;
+		clk_src_lv0 = <0>;
 		clk_div_lv0 = <9>;
 		clk_src_lv1 = <7>;
 		clk_div_lv1 = <1>;
