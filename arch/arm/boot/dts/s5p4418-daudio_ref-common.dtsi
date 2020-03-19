@@ -434,17 +434,16 @@
 	};
 
 	sound {
-		compatible = "simple-audio-card";
+		compatible = "nexell,simple-audio-card";
 		simple-audio-card,name = "s5p4418 daudio_ref Audio";
 		simple-audio-card,mclk-fs = <256>;
 		simple-audio-card,widgets =
-		    "Headphone", "Out Jack",
-		    "Microphone", "In Jack";
+		    "Headphone", "Headphones",
+		    "Microphone", "Mic Jack";
 		simple-audio-card,routing =
-		    "Out Jack", "HPOL",
-		    "Out Jack", "HPOR",
-		    "IN2P", "In Jack",
-		    "IN2P", "In Jack";
+		    "Headphones", "HPOL",
+		    "Headphones", "HPOR",
+		    "IN1P", "Mic Jack";
 		status = "okay";
 
 		simple-audio-card,dai-link@0 {
