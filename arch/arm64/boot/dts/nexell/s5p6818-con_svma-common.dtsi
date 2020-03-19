@@ -63,7 +63,7 @@
 			};
 
 			i2s0:i2s@c00b2000 { clk-input = <I_PLL2>; };
-			i2s1:i2s@c00b3000 { clk-input = <I_PLL3>; };
+			i2s1:i2s@c00b3000 { clk-input = <I_PLL2>; };
 			i2s2:i2s@c00b4000 { clk-input = <I_EXTCLK1>; };
 
 			i2c0:i2c@c00ae000 { clock-frequency = <200000000>; };
@@ -255,7 +255,7 @@
 
 		i2s_1:i2s@c0056000 {
 			dfs;
-			dfs-pll = <3>;
+			dfs-pll = <2>;
 			#sound-dai-cells = <1>;
 			master-mode = <1>;
 			mclk-in = <0>;
