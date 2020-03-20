@@ -74,7 +74,7 @@ static void vchan_complete(unsigned long arg)
 	}
 	spin_unlock_irq(&vc->lock);
 
-	if (cb && vc->cb_en)
+	if (cb)
 		cb(cb_data);
 
 	while (!list_empty(&head)) {
@@ -86,7 +86,7 @@ static void vchan_complete(unsigned long arg)
 
 		vc->desc_free(vd);
 
-		if (cb && vc->cb_en)
+		if (cb)
 			cb(cb_data);
 	}
 }
