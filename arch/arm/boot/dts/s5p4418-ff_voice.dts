@@ -75,28 +75,10 @@
 		amba {
 			pl08xdma0:pl08xdma@c0000000 {
 				use_isr;
-				ch12 {	/* I2S0 TX */
-					slave_wait_flush_dma;
-				};
-				ch13 {	/* I2S0 RX */
-					slave_wait_flush_dma;
-				};
-				ch14 {	/* I2S1 TX */
-					slave_wait_flush_dma;
-				};
-				ch15 {	/* I2S1 RX */
-					slave_wait_flush_dma;
-				};
 			};
 
 			pl08xdma1:pl08xdma@c0001000 {
 				use_isr;
-				ch0 {	/* I2S2 TX */
-					slave_wait_flush_dma;
-				};
-				ch1 {	/* I2S2 RX */
-					slave_wait_flush_dma;
-				};
 			};
 		};
 
