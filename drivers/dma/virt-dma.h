@@ -34,7 +34,6 @@ struct virt_dma_chan {
 	struct list_head desc_completed;
 
 	struct virt_dma_desc *cyclic;
-	bool cb_en;
 };
 
 static inline struct virt_dma_chan *to_virt_chan(struct dma_chan *chan)
