@@ -200,7 +200,6 @@ struct pl08x_sg {
  * @done: this marks completed descriptors, which should not have their
  *   mux released.
  * @cyclic: indicate cyclic transfers
- * @lli_num : number of LLIs
  */
 struct pl08x_txd {
 	struct virt_dma_desc vd;
@@ -216,9 +215,9 @@ struct pl08x_txd {
 	u32 ccfg;
 	bool done;
 	bool cyclic;
-	/* add wait_to flush dma buffer */
-	int  lli_num;
-	int dsg_len;
+	/* fix callback for cyclic dma */
+	int div_val;
+	int div_cur;
 };
 
 /**
@@ -1093,14 +1092,13 @@ static int pl08x_fill_llis_for_desc(struct pl08x_driver_data *pl08x,
 			max_bytes_per_lli = bd.srcbus.buswidth *
 						pl08x->vd->max_transfer_size;
 
-			if (dsg->len > max_bytes_per_lli)
-				txd->dsg_len = dsg->len;
-			else
-				txd->dsg_len = 0;
+			/* fix callback for cyclic dma */
+			if (txd->cyclic)
+				txd->div_val = 0;
 
 			dev_vdbg(&pl08x->adev->dev,
-				"%s max bytes per lli = %zu dsg_len = %d\n",
-				__func__, max_bytes_per_lli, txd->dsg_len);
+				"%s max bytes per lli = %zu\n",
+				__func__, max_bytes_per_lli);
 
 			/*
 			 * Make largest possible LLIs until less than one bus
@@ -1135,6 +1133,9 @@ static int pl08x_fill_llis_for_desc(struct pl08x_driver_data *pl08x,
 				pl08x_fill_lli_for_desc(pl08x, &bd, num_llis++,
 						lli_len, cctl, tsize);
 				total_bytes += lli_len;
+				/* fix callback for cyclic dma */
+				if (txd->cyclic)
+					txd->div_val++;
 			}
 
 			/*
@@ -1170,7 +1171,8 @@ static int pl08x_fill_llis_for_desc(struct pl08x_driver_data *pl08x,
 	if (txd->cyclic) {
 		/* Link back to the first LLI. */
 		last_lli[PL080_LLI_LLI] = txd->llis_bus | bd.lli_bus;
-		txd->lli_num = num_llis;
+		/* fix callback for cyclic dma */
+		txd->div_cur = txd->div_val;
 	} else {
 		/* The final LLI terminates the LLI. */
 		last_lli[PL080_LLI_LLI] = 0;
@@ -1733,10 +1735,6 @@ static int pl08x_terminate_all(struct dma_chan *chan)
 	struct pl08x_dma_chan *plchan = to_pl08x_chan(chan);
 	struct pl08x_driver_data *pl08x = plchan->host;
 	unsigned long flags;
-	/* add wait_to flush dma buffer */
-	int lli_cnt, timeout;
-	struct pl08x_txd *txd;
-	u32 *llis_va;
 
 	spin_lock_irqsave(&plchan->vc.lock, flags);
 	if (!plchan->phychan && !plchan->at) {
@@ -1747,28 +1745,6 @@ static int pl08x_terminate_all(struct dma_chan *chan)
 	plchan->state = PL08X_CHAN_IDLE;
 
 	if (plchan->phychan) {
-		/* add wait_to flush dma buffer */
-		if (plchan->cd->wait_flush_dma) {
-			txd = plchan->at;
-			llis_va = txd->llis_va;
-			for (lli_cnt = 0; lli_cnt < txd->lli_num; lli_cnt++) {
-				llis_va[PL080_LLI_LLI] = 0;
-				llis_va += pl08x->lli_words;
-			}
-			/* Wait for channel inactive */
-			for (timeout = 1000; timeout; timeout--) {
-				if (!pl08x_phy_channel_busy(plchan->phychan)) {
-					dev_vdbg(&pl08x->adev->dev, "%d\n",
-						 timeout);
-					mdelay(1);
-					break;
-				}
-				mdelay(1);
-			}
-			if (pl08x_phy_channel_busy(plchan->phychan))
-				pr_err("pl08x: channel%u timeout waiting\n",
-				       plchan->phychan->id);
-		}
 		/*
 		 * Mark physical channel as free and free any slave
 		 * signal
@@ -1889,7 +1865,7 @@ static void vchan_useisr(unsigned long arg)
 	}
 	spin_unlock(&vc->lock);
 
-	if (cb && vc->cb_en)
+	if (cb)
 		cb(cb_data);
 
 	while (!list_empty(&head)) {
@@ -1901,7 +1877,7 @@ static void vchan_useisr(unsigned long arg)
 
 		vc->desc_free(vd);
 
-		if (cb && vc->cb_en)
+		if (cb)
 			cb(cb_data);
 	}
 }
@@ -1910,8 +1886,6 @@ static irqreturn_t pl08x_irq(int irq, void *dev)
 {
 	struct pl08x_driver_data *pl08x = dev;
 	u32 mask = 0, err, tc, i;
-	/* add to use isr instead of tasklet. */
-	struct virt_dma_chan *vc = NULL;
 
 	/* check & clear - ERR & TC interrupts */
 	err = readl(pl08x->base + PL080_ERR_STATUS);
@@ -1933,7 +1907,6 @@ static irqreturn_t pl08x_irq(int irq, void *dev)
 			struct pl08x_phy_chan *phychan = &pl08x->phy_chans[i];
 			struct pl08x_dma_chan *plchan = phychan->serving;
 			struct pl08x_txd *tx;
-			size_t bytes = 0;
 
 			if (!plchan) {
 				dev_err(&pl08x->adev->dev,
@@ -1944,31 +1917,25 @@ static irqreturn_t pl08x_irq(int irq, void *dev)
 
 			spin_lock(&plchan->vc.lock);
 			tx = plchan->at;
-
-			if (tx) {
-				vc = to_virt_chan(tx->vd.tx.chan);
-				if (tx->dsg_len) {
-					bytes = pl08x_getbytes_chan(plchan);
-
-					if (bytes%tx->dsg_len > 0)
-						vc->cb_en = false;
-					else
-						vc->cb_en = true;
-				} else
-					vc->cb_en = true;
-			}
-
 			if (tx && tx->cyclic) {
-				/* add to use isr instead of tasklet. */
-				if (!pl08x->pd->use_isr) {
-					vchan_cyclic_callback(&tx->vd);
-				} else {
-					vc->cyclic = &tx->vd;
+				struct virt_dma_chan *vc = NULL;
 
-					spin_unlock(&plchan->vc.lock);
-					vchan_useisr((unsigned long)vc);
-					spin_lock(&plchan->vc.lock);
-				}
+				/* fix callback for cyclic dma */
+				if (tx->div_cur == 1) {
+					/* add to use isr instead of tasklet. */
+					if (!pl08x->pd->use_isr) {
+						vchan_cyclic_callback(&tx->vd);
+					} else {
+						vc = to_virt_chan(tx->vd.tx.chan);
+						vc->cyclic = &tx->vd;
+						spin_unlock(&plchan->vc.lock);
+						vchan_useisr((unsigned long)vc);
+						spin_lock(&plchan->vc.lock);
+					}
+					if (tx->div_val > 1)
+						tx->div_cur = tx->div_val;
+				} else
+					--tx->div_cur;
 			} else if (tx) {
 				plchan->at = NULL;
 				/*
@@ -1977,21 +1944,7 @@ static irqreturn_t pl08x_irq(int irq, void *dev)
 				 */
 				pl08x_release_mux(plchan);
 				tx->done = true;
-				/* add to use isr instead of tasklet. */
-				if (!pl08x->pd->use_isr) {
-					vchan_cookie_complete(&tx->vd);
-				} else {
-					dma_cookie_complete(&tx->vd.tx);
-					dev_vdbg(vc->chan.device->dev,
-						"txd %p[%x]: marked complete\n",
-						&tx->vd, tx->vd.tx.cookie);
-					list_add_tail(&tx->vd.node,
-						      &vc->desc_completed);
-
-					spin_unlock(&plchan->vc.lock);
-					vchan_useisr((unsigned long)vc);
-					spin_lock(&plchan->vc.lock);
-				}
+				vchan_cookie_complete(&tx->vd);
 
 				/*
 				 * And start the next descriptor (if any),
@@ -2364,9 +2317,6 @@ static int pl08x_of_probe(struct amba_device *adev,
 
 		if (!of_property_read_u32(child_np, "slave_periph_buses", &val))
 			slave[ch].periph_buses = (u8)val;
-
-		slave[ch].wait_flush_dma =
-			of_property_read_bool(child_np, "slave_wait_flush_dma");
 
 		dev_dbg(&adev->dev, "DT slave.%d bus_id=%s, buses=0x%x\n",
 			ch, slave[ch].bus_id, slave[ch].periph_buses);
