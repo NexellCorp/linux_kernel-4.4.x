@@ -401,12 +401,14 @@ struct pl022 {
 	enum ssp_tx_level_trig		tx_lev_trig;
 	/* DMA settings */
 #ifdef CONFIG_DMA_ENGINE
+	struct completion		xfer_completion;  //add for prevent uninterruptible wait as DMA mode - jt.kim 2020.03.24
 	struct dma_chan			*dma_rx_channel;
 	struct dma_chan			*dma_tx_channel;
 	struct sg_table			sgt_rx;
 	struct sg_table			sgt_tx;
 	char				*dummypage;
 	bool				dma_running;
+	int					msec_xfer_timeout;
 #endif
 	int cur_cs;
 	int *chipselects;
@@ -556,6 +558,7 @@ static int flush(struct pl022 *pl022)
 	unsigned long limit = loops_per_jiffy << 1;
 
 	dev_dbg(&pl022->adev->dev, "flush\n");
+
 	do {
 		while (readw(SSP_SR(pl022->virtbase)) & SSP_SR_MASK_RNE)
 			readw(SSP_DR(pl022->virtbase));
@@ -825,6 +828,12 @@ static void dma_callback(void *data)
 
 	BUG_ON(!pl022->sgt_rx.sgl);
 
+	/*
+	 * DMA Transfer sequence done
+	 */	
+	dev_dbg(&pl022->adev->dev, "DMA Xfer Done!!");
+	complete(&pl022->xfer_completion);
+
 #ifdef VERBOSE_DEBUG
 	/*
 	 * Optionally dump out buffers to inspect contents, this is
@@ -1041,6 +1050,9 @@ static int configure_dma(struct pl022 *pl022)
 		tx_conf.dst_addr_width = rx_conf.src_addr_width;
 	BUG_ON(rx_conf.src_addr_width != tx_conf.dst_addr_width);
 
+	dev_dbg(&pl022->adev->dev, "DMA xfer_completion re-init");
+	reinit_completion(&pl022->xfer_completion);
+
 	dmaengine_slave_config(rxchan, &rx_conf);
 	dmaengine_slave_config(txchan, &tx_conf);
 
@@ -1099,6 +1111,7 @@ static int configure_dma(struct pl022 *pl022)
 	dmaengine_submit(txdesc);
 	dma_async_issue_pending(rxchan);
 	dma_async_issue_pending(txchan);
+
 	pl022->dma_running = true;
 
 	return 0;
@@ -1251,6 +1264,34 @@ static inline void pl022_dma_remove(struct pl022 *pl022)
 {
 }
 #endif
+
+/**
+ * wait_for_xfer - add timeout to avoid stuck transfer as DMA mode 
+ * 
+ * When a Channel of DMA fallin wait uninterruptible 
+ * then all of next message be in pending 
+ * to avoid freeze-transfer need timeout for return to initial state
+ * 
+ * add by jt.kim - Mar.24 2020
+ */
+static void wait_for_xfer(struct pl022 *pl022)
+{
+	unsigned long ms;
+	
+	ms = msecs_to_jiffies(pl022->msec_xfer_timeout) + 10;
+	ms = wait_for_completion_timeout(&pl022->xfer_completion, ms);
+	if(!ms)
+	{
+		dev_dbg(&pl022->adev->dev, "DMA Xfer Timeout");
+
+		terminate_dma(pl022);
+		if (pl022->cur_transfer->cs_change)
+			pl022->cur_chip->cs_control(SSP_CHIP_DESELECT);
+
+		giveback(pl022);
+		/* Move to next transfer */
+	}
+}
 
 /**
  * pl022_interrupt_handler - Interrupt handler for SSP controller
@@ -1455,7 +1496,7 @@ err_config_dma:
 	writew(ENABLE_ALL_INTERRUPTS & ~SSP_IMSC_MASK_RXIM, SSP_IMSC(pl022->virtbase));
 }
 
-static void do_interrupt_dma_transfer(struct pl022 *pl022)
+static void do_interrupt_dma_transfer(struct pl022 *pl022, bool bundle)
 {
 	/*
 	 * Default is to enable all interrupts except RX -
@@ -1467,29 +1508,39 @@ static void do_interrupt_dma_transfer(struct pl022 *pl022)
 	if (!pl022->next_msg_cs_active)
 		pl022_cs_control(pl022, SSP_CHIP_SELECT);
 
-	if (set_up_next_transfer(pl022, pl022->cur_transfer)) {
+	if (set_up_next_transfer(pl022, pl022->cur_transfer))
+	{
 		/* Error path */
 		pl022->cur_msg->state = STATE_ERROR;
 		pl022->cur_msg->status = -EIO;
 		giveback(pl022);
 		return;
 	}
+
 	/* If we're using DMA, set up DMA here */
-	if (pl022->cur_chip->enable_dma) {
+    if (pl022->cur_chip->enable_dma && bundle)
+    {
 		/* Configure DMA transfer */
-		if (configure_dma(pl022)) {
+		if (configure_dma(pl022))
+		{
 			dev_dbg(&pl022->adev->dev,
 				"configuration of DMA failed, fall back to interrupt mode\n");
 			goto err_config_dma;
 		}
+		
 		/* Disable interrupts in DMA mode, IRQ from DMA controller */
 		irqflags = DISABLE_ALL_INTERRUPTS;
 	}
+
 err_config_dma:
 	/* Enable SSP, turn on interrupts */
 	writew((readw(SSP_CR1(pl022->virtbase)) | SSP_CR1_MASK_SSE),
 	       SSP_CR1(pl022->virtbase));
 	writew(irqflags, SSP_IMSC(pl022->virtbase));
+
+	if(!irqflags)
+		wait_for_xfer(pl022);
+	
 }
 
 static void do_polling_transfer(struct pl022 *pl022)
@@ -1573,6 +1624,7 @@ static int pl022_transfer_one_message(struct spi_master *master,
 				      struct spi_message *msg)
 {
 	struct pl022 *pl022 = spi_master_get_devdata(master);
+	bool BundleMsg = false;
 
 	/* Initial message state */
 	pl022->cur_msg = msg;
@@ -1585,13 +1637,20 @@ static int pl022_transfer_one_message(struct spi_master *master,
 	pl022->cur_chip = spi_get_ctldata(msg->spi);
 	pl022->cur_cs = pl022->chipselects[msg->spi->chip_select];
 
+
+    /* In DMA mode Msg must be alined by 4byte
+        else a reminder will transfer by IRQ mode - add by jt.kim (Mar.24 2020) */
+	if((pl022->cur_transfer->len < 4096) 
+            && !(pl022->cur_transfer->len % 4))
+		BundleMsg = true;
+
 	restore_state(pl022);
 	flush(pl022);
 
 	if (pl022->cur_chip->xfer_type == POLLING_TRANSFER)
 		do_polling_transfer(pl022);
 	else
-		do_interrupt_dma_transfer(pl022);
+		do_interrupt_dma_transfer(pl022, BundleMsg);
 
 	return 0;
 }
@@ -2288,6 +2347,9 @@ static int pl022_probe(struct amba_device *adev, const struct amba_id *id)
 			platform_info->enable_dma = 0;
 	}
 
+	init_completion(&pl022->xfer_completion);
+	pl022->msec_xfer_timeout = 10;
+
 	/* Register with the SPI framework */
 	amba_set_drvdata(adev, pl022);
 	status = devm_spi_register_master(&adev->dev, master);
@@ -2296,6 +2358,7 @@ static int pl022_probe(struct amba_device *adev, const struct amba_id *id)
 			"probe - problem registering spi master\n");
 		goto err_spi_register;
 	}
+
 	dev_dbg(dev, "probe succeeded\n");
 
 	/* let runtime pm put suspend */
