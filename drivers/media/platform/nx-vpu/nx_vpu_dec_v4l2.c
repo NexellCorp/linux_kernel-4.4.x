@@ -1320,11 +1320,10 @@ int alloc_decoder_memory(struct nx_vpu_ctx *ctx)
 	width = ALIGN(ctx->width, 16);
 	height = ALIGN(ctx->height, 16);
 
-	mvSize = ALIGN(ctx->width, 32) * ALIGN(ctx->height, 31);
+	mvSize = ALIGN(ctx->width, 32) * ALIGN(ctx->height, 32);
 	mvSize = (mvSize * 3) / 2;
 	mvSize = (mvSize + 4) / 5;
 	mvSize = ((mvSize + 7) / 8) * 8;
-	mvSize = ALIGN(mvSize, 4096);
 
 	if (width == 0 || height == 0 || mvSize == 0) {
 		NX_ErrMsg("Invalid memory parameters!!!\n");
@@ -1336,8 +1335,8 @@ int alloc_decoder_memory(struct nx_vpu_ctx *ctx)
 	dec_ctx->col_mv_buf = nx_alloc_memory(drv, mvSize *
 		dec_ctx->frame_buffer_cnt, 4096);
 	if (0 == dec_ctx->col_mv_buf) {
-		NX_ErrMsg("col_mv_buf allocation failed.(size=%d,align=%d)\n",
-			mvSize * dec_ctx->frame_buffer_cnt, 4096);
+		NX_ErrMsg("col_mv_buf allocation failed.(size=%d,align=%d,buffer_cnt=%d,(%dx%d))\n",
+			mvSize * dec_ctx->frame_buffer_cnt, 4096,dec_ctx->frame_buffer_cnt,ctx->width,ctx->height);
 		goto Error_Exit;
 	}
 
