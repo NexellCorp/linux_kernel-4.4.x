@@ -594,6 +594,16 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_VC1_ANNEX_L v4l2_fourcc('V', 'C', '1', 'L') /* SMPTE 421M Annex L compliant stream */
 #define V4L2_PIX_FMT_VP8      v4l2_fourcc('V', 'P', '8', '0') /* VP8 */
 #define V4L2_PIX_FMT_DIV3     v4l2_fourcc('D', 'I', 'V', '3') /* DIV3 */
+#define V4L2_PIX_FMT_DIV4     v4l2_fourcc('D', 'I', 'V', '4') /* DIV4 */
+#define V4L2_PIX_FMT_DIV5     v4l2_fourcc('D', 'I', 'V', '5') /* DIV5 */
+#define V4L2_PIX_FMT_DIV6     v4l2_fourcc('D', 'I', 'V', '6') /* DIV6 */
+#define V4L2_PIX_FMT_DIVX     v4l2_fourcc('D', 'I', 'V', 'X') /* DIVX */
+#define V4L2_PIX_FMT_FLV1     v4l2_fourcc('F', 'L', 'V', '1') /* FLV1 */
+#define V4L2_PIX_FMT_WMV3     v4l2_fourcc('W', 'M', 'V', '3') /* WMV3 */
+#define V4L2_PIX_FMT_WVC1     v4l2_fourcc('W', 'V', 'C', '1') /* WVC1 */
+#define V4L2_PIX_FMT_RV30     v4l2_fourcc('R', 'V', '3', '0') /* RV30 */
+#define V4L2_PIX_FMT_RV40     v4l2_fourcc('R', 'V', '4', '0') /* RV40 */
+#define V4L2_PIX_FMT_THEO     v4l2_fourcc('T', 'H', 'E', 'O') /* THEO */
 
 /*  Vendor-specific formats   */
 #define V4L2_PIX_FMT_CPIA1    v4l2_fourcc('C', 'P', 'I', 'A') /* cpia1 YUV */
