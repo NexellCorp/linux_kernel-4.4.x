@@ -1273,6 +1273,16 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 		case V4L2_PIX_FMT_SE401:	descr = "GSPCA SE401"; break;
 		case V4L2_PIX_FMT_S5C_UYVY_JPG:	descr = "S5C73MX interleaved UYVY/JPEG"; break;
 		case V4L2_PIX_FMT_DIV3:		descr = "DIV3"; break;
+		case V4L2_PIX_FMT_DIV4:		descr = "DIV4"; break;
+		case V4L2_PIX_FMT_DIV5:		descr = "DIV5"; break;
+		case V4L2_PIX_FMT_DIV6:		descr = "DIV6"; break;
+		case V4L2_PIX_FMT_DIVX:		descr = "DIVX"; break;
+		case V4L2_PIX_FMT_FLV1:		descr = "FLV1"; break;
+		case V4L2_PIX_FMT_WMV3:		descr = "WMV3"; break;
+		case V4L2_PIX_FMT_WVC1:		descr = "WVC1"; break;
+		case V4L2_PIX_FMT_RV30:		descr = "RV30"; break;
+		case V4L2_PIX_FMT_RV40:		descr = "RV40"; break;
+		case V4L2_PIX_FMT_THEO:		descr = "THEO"; break;
 		default:
 			WARN(1, "Unknown pixelformat 0x%08x\n", fmt->pixelformat);
 			if (fmt->description[0])
