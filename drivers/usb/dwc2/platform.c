@@ -97,8 +97,25 @@ static ssize_t store_device_test_mode(struct device *dev,
 		__func__, __LINE__, value);
 
 	spin_lock_irqsave(&g_hsotg->lock, flags);
-	dwc2_writel((dwc2_readl(g_hsotg->regs + DCTL) & 0xffffff8f |
-		(value << DCTL_TSTCTL_SHIFT)), g_hsotg->regs + DCTL);
+	dctl = dwc2_readl(g_hsotg->regs + DCTL);
+
+	dctl &= ~DCTL_TSTCTL_MASK;
+
+	switch (value) {
+	case TEST_J:
+	case TEST_K:
+	case TEST_SE0_NAK:
+	case TEST_PACKET:
+	case TEST_FORCE_EN:
+		dctl |= value << DCTL_TSTCTL_SHIFT;
+		break;
+	default:
+		spin_unlock_irqrestore(&g_hsotg->lock, flags);
+		printk(KERN_ERR "%s():%d not support.\n",
+			__func__, __LINE__);
+		return -EINVAL;
+	}
+	dwc2_writel(dctl, g_hsotg->regs + DCTL);
 	spin_unlock_irqrestore(&g_hsotg->lock, flags);
 
 	return count;
@@ -123,7 +140,6 @@ static ssize_t store_host_test_mode(struct device *dev,
 				    struct device_attribute *attr,
 				    const char *buf, size_t count)
 {
-	unsigned long flags;
 	int value;
 
 	if (kstrtoint(buf, 0, &value))
@@ -132,16 +148,12 @@ static ssize_t store_host_test_mode(struct device *dev,
 	if ((value < 0) || (value > 5))
 		return -EINVAL;
 
-	pr_info("%s():%d otg host testmode value:0x%x\n",
-		__func__, __LINE__, value);
-
-	spin_lock_irqsave(&g_hsotg->lock, flags);
-
-	dwc2_writel(((dwc2_readl(g_hsotg->regs + HPRT0) & 0xfff61fff) |
-		(value << HPRT0_TSTCTL_SHIFT)), g_hsotg->regs + HPRT0);
-
-
-	spin_unlock_irqrestore(&g_hsotg->lock, flags);
+	printk(KERN_WARNING "%s() not support otg host test mode.\n",
+		__func__);
+	printk(KERN_WARNING "%s() check kernel Documentation.\n",
+		__func__);
+	printk(KERN_WARNING "%s() Documentation/usb/ehset_compliance.txt\n",
+		__func__);
 
 	return count;
 }
