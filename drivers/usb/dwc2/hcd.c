@@ -55,8 +55,6 @@
 #include "core.h"
 #include "hcd.h"
 
-static void dwc2_port_resume(struct dwc2_hsotg *hsotg);
-
 /*
  * =========================================================================
  *  Host Core Layer Functions
@@ -2243,7 +2241,7 @@ static int dwc2_hcd_endpoint_reset(struct dwc2_hsotg *hsotg,
  * @hsotg:         Programming view of the DWC_otg controller
  * @initial_setup: If true then this is the first init for this instance.
  */
-static int dwc2_core_init(struct dwc2_hsotg *hsotg, bool initial_setup)
+int dwc2_core_init(struct dwc2_hsotg *hsotg, bool initial_setup)
 {
 	u32 usbcfg, otgctl;
 	int retval;
@@ -3335,71 +3333,6 @@ void dwc2_hcd_queue_transactions(struct dwc2_hsotg *hsotg,
 	}
 }
 
-static ssize_t sel_dr_mode_show(struct device *dev,
-                                  struct device_attribute *attr, char *buf)
-{
-       struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
-
-       if (hsotg->dr_mode == USB_DR_MODE_HOST)
-               return sprintf(buf, "%s", "host\n");
-       else if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL)
-               return sprintf(buf, "%s", "device\n");
-       else
-               return sprintf(buf, "%s", "otg\n");
-}
-
-static ssize_t sel_dr_mode_store(struct device *dev,
-				   struct device_attribute *attr,
-				   const char *buf, size_t count)
-{
-	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
-	unsigned long flags;
-
-	if (!strncmp(buf, "host", 4)) {
-		spin_lock(&hsotg->lock);
-		dwc2_hsotg_disconnect(hsotg);
-		spin_unlock(&hsotg->lock);
-		hsotg->dr_mode = USB_DR_MODE_HOST;
-		dwc2_core_reset_and_force_dr_mode(hsotg);
-		dev_dbg(hsotg->dev, "set dr mode to host\n");
-
-		/* A-Device connector (Host Mode) */
-		dev_dbg(hsotg->dev, "connId A\n");
-		hsotg->op_state = OTG_STATE_A_HOST;
-
-		/* Initialize the Core for Host mode */
-		dwc2_core_init(hsotg, false);
-		dwc2_enable_global_interrupts(hsotg);
-		dwc2_hcd_start(hsotg);
-	} else if (!strncmp(buf, "device", 5)) {
-		dwc2_hcd_disconnect(hsotg, true);
-		hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
-		dwc2_core_reset_and_force_dr_mode(hsotg);
-		if (hsotg->bus_suspended) {
-			dev_info(hsotg->dev,
-				 "Do port resume before switching to device mode\n");
-			dwc2_port_resume(hsotg);
-		}
-		hsotg->op_state = OTG_STATE_B_PERIPHERAL;
-		dwc2_core_init(hsotg, false);
-		dwc2_enable_global_interrupts(hsotg);
-		spin_lock_irqsave(&hsotg->lock, flags);
-		dwc2_hsotg_disconnect(hsotg);
-		dwc2_hsotg_core_init_disconnected(hsotg, false);
-		dwc2_hsotg_core_connect(hsotg);
-		spin_unlock_irqrestore(&hsotg->lock, flags);
-		dev_dbg(hsotg->dev, " set dr mode to device\n");
-	} else {
-		hsotg->dr_mode = USB_DR_MODE_OTG;
-		dwc2_core_reset_and_force_dr_mode(hsotg);
-		dev_dbg(hsotg->dev, " set dr mode to otg\n");
-	}
-
-	return count;
-}
-
-DEVICE_ATTR(sel_dr_mode, S_IRUGO|S_IWUSR, sel_dr_mode_show, sel_dr_mode_store);
-
 static ssize_t h_ddma_en_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
@@ -3617,7 +3550,7 @@ static void dwc2_port_suspend(struct dwc2_hsotg *hsotg, u16 windex)
 }
 
 /* Must NOT be called with interrupt disabled or spinlock held */
-static void dwc2_port_resume(struct dwc2_hsotg *hsotg)
+void dwc2_port_resume(struct dwc2_hsotg *hsotg)
 {
 	unsigned long flags;
 	u32 hprt0;
@@ -5587,10 +5520,6 @@ int dwc2_hcd_init(struct dwc2_hsotg *hsotg)
 #endif
 	if (of_device_is_compatible(hsotg->dev->of_node,
 				    "nexell,nexell-dwc2otg")) {
-		device_property_read_u32(hsotg->dev, "nouse_idcon",
-					 &hsotg->nouse_idcon);
-		if (hsotg->nouse_idcon)
-			device_create_file(hsotg->dev, &dev_attr_sel_dr_mode);
 		device_create_file(hsotg->dev, &dev_attr_h_ddma_en);
 	}
 

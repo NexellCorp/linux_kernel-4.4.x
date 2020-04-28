@@ -811,6 +811,9 @@ int dwc2_host_get_speed(struct dwc2_hsotg *hsotg, void *context);
 void dwc2_host_complete(struct dwc2_hsotg *hsotg, struct dwc2_qtd *qtd,
 			int status);
 
+int dwc2_core_init(struct dwc2_hsotg *hsotg, bool initial_setup);
+void dwc2_port_resume(struct dwc2_hsotg *hsotg);
+
 #ifdef DEBUG
 /*
  * Macro to sample the remaining PHY clocks left in the current frame. This
