@@ -1028,7 +1028,6 @@ struct dwc2_hsotg {
 	u64 hfnum_other_frrem_accum_b;
 #endif
 	u32 ext_vbus_io;
-	u32 nouse_idcon;
 #endif /* CONFIG_USB_DWC2_HOST || CONFIG_USB_DWC2_DUAL_ROLE */
 
 #if IS_ENABLED(CONFIG_USB_DWC2_PERIPHERAL) || IS_ENABLED(CONFIG_USB_DWC2_DUAL_ROLE)
@@ -1059,6 +1058,11 @@ struct dwc2_hsotg {
 	struct dwc2_hsotg_ep *eps_in[MAX_EPS_CHANNELS];
 	struct dwc2_hsotg_ep *eps_out[MAX_EPS_CHANNELS];
 #endif /* CONFIG_USB_DWC2_PERIPHERAL || CONFIG_USB_DWC2_DUAL_ROLE */
+
+#if IS_ENABLED(CONFIG_USB_DWC2_DUAL_ROLE)
+	u32 nouse_idcon;
+	u32 init_mode;
+#endif
 };
 
 /* Reasons for halting a host channel */
@@ -1240,5 +1244,7 @@ static inline int dwc2_restore_host_registers(struct dwc2_hsotg *hsotg)
 { return 0; }
 
 #endif
+
+void dwc2_set_dr_mode(struct dwc2_hsotg *hsotg, int mode);
 
 #endif /* __DWC2_CORE_H__ */

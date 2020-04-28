@@ -616,6 +616,101 @@ static int dwc2_get_dr_mode(struct dwc2_hsotg *hsotg)
 	return 0;
 }
 
+void dwc2_set_dr_mode(struct dwc2_hsotg *hsotg, int mode)
+{
+	unsigned long flags;
+
+	switch (mode) {
+	case USB_DR_MODE_HOST:
+		spin_lock(&hsotg->lock);
+		dwc2_hsotg_disconnect(hsotg);
+		spin_unlock(&hsotg->lock);
+		hsotg->dr_mode = USB_DR_MODE_HOST;
+		dwc2_core_reset_and_force_dr_mode(hsotg);
+		dev_dbg(hsotg->dev, "set dr mode to host\n");
+
+		/* A-Device connector (Host Mode) */
+		dev_dbg(hsotg->dev, "connId A\n");
+		hsotg->op_state = OTG_STATE_A_HOST;
+
+		/* Initialize the Core for Host mode */
+		dwc2_core_init(hsotg, false);
+		dwc2_enable_global_interrupts(hsotg);
+		dwc2_hcd_start(hsotg);
+		break;
+
+	case USB_DR_MODE_PERIPHERAL:
+		dwc2_hcd_disconnect(hsotg, true);
+		hsotg->dr_mode = USB_DR_MODE_PERIPHERAL;
+		dwc2_core_reset_and_force_dr_mode(hsotg);
+		if (hsotg->bus_suspended) {
+			dev_info(hsotg->dev,
+				 "Do port resume before switching to device mode\n");
+			dwc2_port_resume(hsotg);
+		}
+		hsotg->op_state = OTG_STATE_B_PERIPHERAL;
+		dwc2_core_init(hsotg, false);
+		dwc2_enable_global_interrupts(hsotg);
+		spin_lock_irqsave(&hsotg->lock, flags);
+		dwc2_hsotg_disconnect(hsotg);
+		dwc2_hsotg_core_init_disconnected(hsotg, false);
+		dwc2_hsotg_core_connect(hsotg);
+		spin_unlock_irqrestore(&hsotg->lock, flags);
+		dev_dbg(hsotg->dev, "set dr mode to device\n");
+		break;
+	case USB_DR_MODE_OTG:
+		hsotg->dr_mode = USB_DR_MODE_OTG;
+		dwc2_core_reset_and_force_dr_mode(hsotg);
+		dev_dbg(hsotg->dev, "sel dr mode to otg\n");
+		break;
+	default:
+		dev_dbg(hsotg->dev, "sel dr mode to nothing\n");
+		break;
+	}
+}
+
+void set_initial_mode(struct dwc2_hsotg *hsotg, int mode)
+{
+	dwc2_set_dr_mode(hsotg, mode);
+}
+
+static ssize_t sel_dr_mode_show(struct device *dev,
+                                  struct device_attribute *attr, char *buf)
+{
+       struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
+
+       if (hsotg->dr_mode == USB_DR_MODE_HOST)
+               return sprintf(buf, "%s", "host\n");
+       else if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL)
+               return sprintf(buf, "%s", "device\n");
+       else
+               return sprintf(buf, "%s", "otg\n");
+}
+
+static ssize_t sel_dr_mode_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
+{
+	struct dwc2_hsotg *hsotg = dev_get_drvdata(dev);
+
+	if ((!strncmp(buf, "host", 4)) &&
+	    (hsotg->dr_mode != USB_DR_MODE_HOST)) {
+		dwc2_set_dr_mode(hsotg, USB_DR_MODE_HOST);
+	} else if ((!strncmp(buf, "device", 5)) &&
+		    (hsotg->dr_mode != USB_DR_MODE_PERIPHERAL)) {
+		dwc2_set_dr_mode(hsotg, USB_DR_MODE_PERIPHERAL);
+	} else if ((!strncmp(buf, "otg", 3)) &&
+		    (hsotg->dr_mode != USB_DR_MODE_OTG)) {
+		dwc2_set_dr_mode(hsotg, USB_DR_MODE_OTG);
+	} else {
+		dev_dbg(hsotg->dev, " sel dr mode to nothing\n");
+	}
+
+	return count;
+}
+
+DEVICE_ATTR(sel_dr_mode, S_IRUGO|S_IWUSR, sel_dr_mode_show, sel_dr_mode_store);
+
 static int __dwc2_lowlevel_hw_enable(struct dwc2_hsotg *hsotg)
 {
 	struct platform_device *pdev = to_platform_device(hsotg->dev);
@@ -935,6 +1030,12 @@ static int dwc2_driver_probe(struct platform_device *dev)
 			}
 		}
 #endif
+		device_property_read_u32(hsotg->dev, "nouse_idcon",
+					 &hsotg->nouse_idcon);
+		if (hsotg->nouse_idcon)
+			device_create_file(hsotg->dev, &dev_attr_sel_dr_mode);
+		device_property_read_u32(hsotg->dev, "init_mode",
+					 &hsotg->init_mode);
 	}
 
 	retval = dwc2_lowlevel_hw_enable(hsotg);
@@ -993,6 +1094,10 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	/* Gadget code manages lowlevel hw on its own */
 	if (hsotg->dr_mode == USB_DR_MODE_PERIPHERAL)
 		dwc2_lowlevel_hw_disable(hsotg);
+
+	if ((hsotg->dr_mode == USB_DR_MODE_OTG) &&
+		(hsotg->init_mode != USB_DR_MODE_UNKNOWN))
+		set_initial_mode(hsotg, hsotg->init_mode);
 
 	return 0;
 
@@ -1144,7 +1249,7 @@ static struct platform_driver dwc2_platform_driver = {
 	.remove = dwc2_driver_remove,
 	.shutdown = dwc2_driver_shutdown,
 };
-#if CONFIG_DWC_INIT_LEVEL_UP
+#ifdef CONFIG_DWC_INIT_LEVEL_UP
 static int __init dwc2_pltfm_init(void)
 {
 	return platform_driver_register(&dwc2_platform_driver);
