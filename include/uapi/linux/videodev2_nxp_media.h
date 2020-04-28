@@ -76,5 +76,6 @@ enum v4l2_mpeg_video_h263_profile {
 };
 
 #define V4L2_CID_MPEG_VIDEO_THUMBNAIL_MODE	(V4L2_CID_NXP_VPU_BASE + 0xC)
+#define V4L2_CID_DISABLE_VIDEO_OUT_REORDER	(V4L2_CID_NXP_VPU_BASE + 0xD)
 
 #endif

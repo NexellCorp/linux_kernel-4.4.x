@@ -71,6 +71,15 @@ static struct v4l2_queryctrl controls[] = {
 		.step = 1,
 		.default_value = 0,
 	},
+	{
+		.id = V4L2_CID_DISABLE_VIDEO_OUT_REORDER,
+		.type = V4L2_CTRL_TYPE_BOOLEAN,
+		.name = "Disable videoOutReorder",
+		.minimum = 0,
+		.maximum = 1,
+		.step = 1,
+		.default_value = 0,
+	},
 };
 #define NUM_CTRLS ARRAY_SIZE(controls)
 
@@ -458,6 +467,8 @@ static int vidioc_s_ctrl(struct file *file, void *priv, struct v4l2_control
 
 	if (ctrl->id == V4L2_CID_MPEG_VIDEO_THUMBNAIL_MODE) {
 		ctx->codec.dec.thumbnailMode = ctrl->value;
+	} else if (ctrl->id == V4L2_CID_DISABLE_VIDEO_OUT_REORDER) {
+		ctx->codec.dec.disableVideoOutReorder = ctrl->value;
 	} else {
 		NX_ErrMsg("Invalid control(ID = %x)\n", ctrl->id);
 		return -EINVAL;
@@ -922,6 +933,9 @@ int vpu_dec_parse_vid_cfg(struct nx_vpu_ctx *ctx)
 
 	seqArg.outWidth = ctx->width;
 	seqArg.outHeight = ctx->height;
+
+	/* Used when there is no B-Frame. */
+	seqArg.disableOutReorder = dec_ctx->disableVideoOutReorder;
 
 	seqArg.thumbnailMode = dec_ctx->thumbnailMode;
 
