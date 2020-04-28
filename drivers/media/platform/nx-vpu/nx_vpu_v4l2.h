@@ -137,6 +137,9 @@ struct vpu_dec_ctx {
 	int32_t thumbnailMode;
 
 	struct vpu_dec_reg_frame_arg *frameArg;
+
+	/* Used when there is no B-Frame. */
+	int32_t disableVideoOutReorder;
 };
 
 struct nx_vpu_fmt {
