@@ -926,6 +926,9 @@ void nx_soc_dp_plane_video_set_address_3p(struct nx_plane_layer *layer,
 	cb_a = cb_a + (cl/us) + (ct/uh * cb_s);
 	cr_a = cr_a + (cl/us) + (ct/uh * cr_s);
 
+	if (layer->format & FMT_VID_YUV_TO_YVU)
+		swap(cb_a, cr_a);
+
 	pr_debug("%s: %s, lu:0x%x,%d, cb:0x%x,%d, cr:0x%x,%d\n",
 		__func__, layer->name, lu_a, lu_s, cb_a, cb_s, cr_a, cr_s);
 

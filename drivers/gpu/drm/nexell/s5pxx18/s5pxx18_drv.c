@@ -154,16 +154,25 @@ static uint32_t convert_format_video(uint32_t fourcc,
 	switch (fourcc) {
 	case DRM_FORMAT_YUV420:
 	case DRM_FORMAT_YVU411:
-		fmt = nx_mlc_yuvfmt_420 | 0x1<<31;
+		fmt = nx_mlc_yuvfmt_420;
+		break;
+	case DRM_FORMAT_YVU420:
+		fmt = nx_mlc_yuvfmt_420 | FMT_VID_YUV_TO_YVU;
 		break;
 	case DRM_FORMAT_YUV422:
-		fmt = nx_mlc_yuvfmt_422 | 0x1<<31;
+		fmt = nx_mlc_yuvfmt_422;
+		break;
+	case DRM_FORMAT_YVU422:
+		fmt = nx_mlc_yuvfmt_422 | FMT_VID_YUV_TO_YVU;
 		break;
 	case DRM_FORMAT_YUV444:
-		fmt = nx_mlc_yuvfmt_444 | 0x1<<31;
+		fmt = nx_mlc_yuvfmt_444;
+		break;
+	case DRM_FORMAT_YVU444:
+		fmt = nx_mlc_yuvfmt_444 | FMT_VID_YUV_TO_YVU;
 		break;
 	case DRM_FORMAT_YUYV:
-		fmt = nx_mlc_yuvfmt_yuyv | 0x1<<31;
+		fmt = nx_mlc_yuvfmt_yuyv;
 		break;
 	default:
 		DRM_ERROR("Failed, not support fourcc %s\n",

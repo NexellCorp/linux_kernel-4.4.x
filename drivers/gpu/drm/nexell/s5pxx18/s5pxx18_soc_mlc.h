@@ -138,6 +138,8 @@ enum nx_mlc_yuvfmt {
 	nx_mlc_yuvfmt_420_cbcr = 5ul << 16,
 };
 
+#define FMT_VID_YUV_TO_YVU (0x1<<31)
+
 #ifdef __arm
 #pragma diag_default 66
 #endif
