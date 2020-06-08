@@ -352,7 +352,7 @@
 				vout1 {PMIC_PDATA_INIT(0,
 					"mp8845c_vout0",
 					600000, 1500000,
-					1250000, 1, 1, 0xF)
+					1250000, 1, 0, 0xF)
 					regulator-always-on;
 					regulator-boot-on;};
 		};
@@ -373,7 +373,7 @@
 				vout2 {PMIC_PDATA_INIT(1,
 					"mp8845c_vout1",
 					600000, 1500000,
-					1200000, 1, 1, 0xF)
+					1200000, 1, 0, 0xF)
 					regulator-always-on;
 					regulator-boot-on;};
 		};
