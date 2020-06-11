@@ -1,0 +1,60 @@
+/*
+ * Copyright (C) 2020  Nexell Co., Ltd.
+ * Author: Juntae, Kim <jt.kim@coasianexell.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#include "s5p6818-audio-dfs-pll2.dtsi"
+#include "s5p6818-audio-dfs-pll3.dtsi"
+/ {
+	soc {
+		clocks {
+			vip0:vip@c00c1000 {
+				clk-input = <(CLK_INPUT_VIP0 &
+					~(I_PLL2 | I_PLL3))>;
+			};
+
+			vip1:vip@c00c2000 {
+				clk-input = <(CLK_INPUT_VIP1 &
+					~(I_PLL2 | I_PLL3))>;
+			};
+
+			vip2:vip@c009a000 {
+				clk-input = <(CLK_INPUT_VIP2 &
+					~(I_PLL2 | I_PLL3))>;
+			};
+
+			gmac:gmac@c00c8000 {
+				clk-input = <(CLK_INPUT_GMAC &
+					~(I_PLL2 | I_PLL3))>;
+				clk-input1  = <(CLK_INPUT_GMAC_IN1 &
+					~(I_PLL2 | I_PLL3))>;
+			};
+
+			usbhost:usbhost@c006b000 {
+				clk-input  = <(CLK_INPUT_EHCI &
+					~(I_PLL2 | I_PLL3))>;
+				clk-input1  = <(CLK_INPUT_EHCI_IN1 &
+					~(I_PLL2 | I_PLL3))>;
+			};
+
+			otg:otg@6c00b000 {
+				clk-input  = <(CLK_INPUT_OTG &
+					~(I_PLL2 | I_PLL3))>;
+				clk-input1  = <(CLK_INPUT_OTG_IN1 &
+					~(I_PLL2 | I_PLL3))>;
+			};
+		};
+	};
+};

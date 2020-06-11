@@ -1,0 +1,1097 @@
+/*
+ * Copyright (C) 2020  Nexell Co., Ltd.
+ * Author: Juntae, Kim <jt.kim@coasianexell.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include "s5p6818.dtsi"
+#include "s5p6818-audio-dfs-pll3.dtsi"
+
+/ {
+	memory {
+		device_type = "memory";
+		reg = <0x40000000 0x7db00000>;
+	};
+
+	aliases {
+		i2c3 = &i2c_gpio3;
+		i2c4 = &i2c_gpio4;
+		i2c5 = &i2c_gpio5;
+		i2c6 = &i2c_gpio6;
+		i2c7 = &i2c_gpio7;
+		i2c8 = &i2c_gpio8;
+		i2c9 = &i2c_gpio9;
+	};
+
+	nx-v4l2 {
+		status = "okay";
+	};
+
+	soc {
+		#include "s5p6818-pinctrl.dtsi"
+		clocks {
+			uart0:uart@c00a9000 { clock-frequency = <147500000>; };
+			uart1:uart@c00a8000 { clock-frequency = <147500000>; };
+			uart3:uart@c00ab000 { clock-frequency = <147500000>; };
+			uart4:uart@c006e000 { clock-frequency = <147500000>; };
+			vip0:vip@c00c1000 { clock-frequency = <300000000>; };
+			vip2:vip@c009a000 { src-force = <4>; };
+			spi2:spi@c00a7000  { clock-frequency = <20000000>; };
+
+			pwm0:pwm0@c00ba000 {
+				clk-input = <I_PLL2>;
+				clock-frequency = <10000000>;
+			};
+			pwm3:pwm3@c00be000 {
+				clk-input = <I_PLL2>;
+				clock-frequency = <10000000>;
+			};
+
+			i2s0:i2s@c00b2000 { clk-input = <I_PLL2>; };
+			i2s1:i2s@c00b3000 { clk-input = <I_PLL2>; };
+			i2s2:i2s@c00b4000 { clk-input = <I_EXTCLK1>; };
+
+			i2c0:i2c@c00ae000 { clock-frequency = <200000000>; };
+			i2c1:i2c@c00af000 { clock-frequency = <200000000>; };
+			i2c2:i2c@c00b0000 { clock-frequency = <200000000>; };
+		};
+
+		dynamic-freq@bb000 {
+			supply_name = "vdd_core_regulator";
+			vdd_core_regulator-supply = <&VCC_DCDC0>;
+		};
+
+		serial0:serial@c00a1000 {
+			status ="okay";
+		};
+
+		serial1:serial@c00a0000 {
+			/* dmas = <&pl08xdma0 0 0>, <&pl08xdma0 1 0>; */
+			/* dma-names = "tx", "rx"; */
+			pinctrl-0 = <&serial1_pin>, <&serial1_flow>;
+			status ="okay";
+		};
+
+		serial3:serial@c00a3000 {
+			status ="okay";
+		};
+
+		serial4:serial@c006d000 {
+			status ="disabled";
+		};
+		/* for bt/wifi */
+		dw_mmc_1_btwifi:dw_mmc_btwifi@c0068000 {
+			compatible = "nexell,s5p6818-dw-mshc";
+			interrupts = <0 IRQ_SDMMC1 0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <PHYS_BASE_SDMMC1 0x1000>;
+			resets  = <&nexell_reset RESET_ID_SDMMC1>;
+			reset-names = "dw_mmc-reset";
+			clock-names = "biu","ciu";
+			clocks = <&sdhc1>, <&sdhc1>;
+			deferred-probe;
+			num-slots = <1>;
+			bus-width = <4>;
+			cap-sd-highspeed;
+			clock-frequency = <100000000>;
+			cd-type-external;
+			broken-cd;
+			pm-ignore-notify;
+			keep-power-in-suspend;
+			powered-resumed-nonremovable-card;
+			cd-type = <2>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sdmmc1_cclk &sdmmc1_cmd &sdmmc1_bus4
+			    &cfg_wlanen &cfg_wlanhostwake>;
+			fifo-detph = <0x20>;
+			nexell,drive_dly = <0x0>;
+			nexell,drive_shift = <0x02>;
+			nexell,sample_dly = <0x00>;
+			nexell,sample_shift = <0x01>;
+			status = "disabled";
+		};
+		/* for sdcard */
+		dw_mmc_1:dw_mmc@c0068000 {
+			deferred-probe;
+			num-slots = <1>;
+			bus-width = <4>;
+			cap-sd-highspeed;
+			clock-frequency = <100000000>;
+			card-detect-delay = <200>;
+			disable-wp;
+			cd-gpios = <&gpio_e 31 0>;
+			cd-inverted;
+			nexell,drive_dly = <0x0>;
+			nexell,drive_shift = <0x02>;
+			nexell,sample_dly = <0x00>;
+			nexell,sample_shift = <0x01>;
+			status = "disabled";
+		};
+
+		dw_mmc_0:dw_mmc@c0062000 {
+			deferred-probe;
+			num-slots = <1>;
+			bus-width = <4>;
+			cap-sd-highspeed;
+			clock-frequency = <100000000>;
+			card-detect-delay = <200>;
+			disable-wp;
+			cd-gpios = <&gpio_e 7 0>;
+			cd-inverted;
+			nexell,drive_dly = <0x0>;
+			nexell,drive_shift = <0x02>;
+			nexell,sample_dly = <0x00>;
+			nexell,sample_shift = <0x01>;
+			status = "okay";
+		};
+
+		amba {
+			pl08xdma0:pl08xdma@c0000000 {
+				deferred-probe;
+				use_isr;
+
+				ch12 {
+					slave_wait_flush_dma;
+				};
+
+				ch13 {
+					slave_wait_flush_dma;
+				};
+
+				ch14 {
+					slave_wait_flush_dma;
+				};
+
+				ch15 {
+					slave_wait_flush_dma;
+				};
+			};
+
+			pl08xdma1:pl08xdma@c0001000 {
+				deferred-probe;
+				use_isr;
+
+				ch0 {
+					slave_wait_flush_dma;
+				};
+
+				ch1 {
+					slave_wait_flush_dma;
+				};
+			};
+		};
+
+		spdif_tx: spdiftx@c0059000 {
+			deferred-probe;
+			#sound-dai-cells = <1>;
+			pcm-bit = <16>;
+			sample_rate = <48000>;
+			status = "okay";
+		};
+
+		watchdog@c0019000 {
+			status = "okay";
+		};
+
+		rtc@c0010c00 {
+			status = "okay";
+		};
+
+		nexell_usbphy: nexell-usbphy@c0012000 {
+			deferred-probe;
+			status = "okay";
+		};
+
+		ehci@c0030000 {
+			deferred-probe;
+			status = "okay";
+			port@0 {
+				status = "okay";
+			};
+		};
+
+		ohci@c0020000 {
+			deferred-probe;
+			status = "okay";
+			port@0 {
+				status = "okay";
+			};
+		};
+
+		dwc2otg@c0040000 {
+			deferred-probe;
+			nouse_idcon = <1>;
+			status = "okay";
+		};
+
+		i2s_0:i2s@c0055000 {
+			/*dfs;
+			dfs-pll = <3>;*/
+			#sound-dai-cells = <1>;
+			master-mode = <1>;
+			mclk-in = <0>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <1>;
+			status = "okay";
+		};
+
+		i2s_1:i2s@c0056000 {
+			dfs;
+			dfs-pll = <2>;
+			#sound-dai-cells = <1>;
+			master-mode = <1>;
+			mclk-in = <0>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <48000>;
+			pre-supply-mclk = <1>;
+			status = "okay";
+		};
+
+		i2s_2:i2s@c0057000 {
+			#sound-dai-cells = <1>;
+			master-mode = <0>;
+			mclk-in = <1>;
+			trans-mode = <0>;
+			frame-bit = <32>;
+			sample-rate = <16000>;
+			pre-supply-mclk = <0>;
+			dfs;
+			status = "okay";
+		};
+
+		pwm:pwm@c0018000 {
+			deferred-probe;
+			clock-names = "timers", "pwm-tclk0", "pwm-tclk3";
+			clocks = <&pclk>, <&pwm0>, <&pwm3>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pwm0_pin &pwm3_pin>;
+			samsung,pwm-outputs = <0>, <3>;
+			status = "okay";
+		};
+
+		dw_mmc_2:dw_mmc@c0069000 {
+			num-slots = <1>;
+			bus-width = <8>;
+			mmc-ddr-1_8v;
+			pinctrl-0 = <&sdmmc2_cclk &sdmmc2_cmd
+						&sdmmc2_bus4 &sdmmc2_bus8>;
+			soc,tieoff = <NX_TIEOFF_MMC_8BIT 1>;
+			cap-mmc-highspeed;
+			broken-cd;
+			non-removable;
+			clock-frequency = <200000000>;
+			card-detect-delay = <200>;
+			disable-wp;
+			status = "okay";
+			nexell,drive_dly = <0x0>;
+			nexell,drive_shift = <0x03>;
+			nexell,sample_dly = <0x00>;
+			nexell,sample_shift = <0x02>;
+		};
+
+		tmuctrl_0: tmuctrl@c0096000 {
+			status = "disabled";
+		};
+
+		thermal-zones {
+			cpu0_thermal: cpu0-thermal {
+				thermal-sensors = <&tmuctrl_0>;
+				polling-delay-passive = <1000>;
+				polling-delay = <1000>;
+				trips {
+					cpu_alert0: cpu-alert-0 {
+						temperature = <80000>;
+						hysteresis = <0>;
+						type = "active";
+					};
+					cpu_alert1: cpu-alert1 {
+						temperature = <85000>;
+						hysteresis = <0>;
+						type = "active";
+					};
+					cpu-crit-0 {
+						temperature = <115000>;
+						hysteresis = <0>;
+						type = "critical";
+					};
+				};
+
+				cooling-maps {
+					map0 {
+						trip = <&cpu_alert0>;
+						cooling-device = <&cpu0 0 9>;
+					};
+					map1 {
+						trip = <&cpu_alert1>;
+						cooling-device = <&cpu0 9 10>;
+					};
+				};
+			};
+		};
+
+		i2c_1:i2c@c00a5000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			samsung,i2c-max-bus-freq = <400000>;
+			samsung,i2c-sda-delay = <1>;
+			status = "okay";
+
+			nxe2000@32 {
+				deferred-probe;
+				compatible = "nexell,nxe2000";
+				reg = <0x32>;
+				interrupt-parent = <&alive_0>;
+				interrupts = <0x4 IRQ_TYPE_EDGE_FALLING>;
+				#include "s5p6818-con_svma-nxe2000.dtsi"
+			};
+		};
+
+		i2c_2:i2c@c00a6000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+		};
+
+		/*
+		 * logical device started from clipper3
+		 * the number of the device is calculated by following way
+		 * ((module * VIP_MAX_LOGICAL_DEV(3)) + logical_num)
+		 */
+		clipper_3:clipper3@c0063000 {
+			compatible = "nexell,nx-clipper";
+			module = <0>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		clipper_4:clipper4@c0063000 {
+			compatible = "nexell,nx-clipper";
+			module = <0>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		clipper_5:clipper5@c0063000 {
+			compatible = "nexell,nx-clipper";
+			module = <0>;
+			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
+		};
+
+		clipper_6:clipper6@c0064000 {
+			compatible = "nexell,nx-clipper";
+			module = <1>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		clipper_7:clipper7@c0064000 {
+			compatible = "nexell,nx-clipper";
+			module = <1>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		clipper_8:clipper8@c0064000 {
+			compatible = "nexell,nx-clipper";
+			module = <1>;
+			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
+		};
+
+		clipper_9:clipper9@c0099000 {
+			compatible = "nexell,nx-clipper";
+			module = <2>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		clipper_10:clipper10@c0099000 {
+			compatible = "nexell,nx-clipper";
+			module = <2>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		clipper_11:clipper11@c0099000 {
+			compatible = "nexell,nx-clipper";
+			module = <2>;
+			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
+		};
+
+		/*
+		 * logical device started from decimator3
+		 * the number of the device is calculated by following way
+		 * ((module * VIP_MAX_LOGICAL_DEV(3)) + logical_num)
+		 */
+
+		decimator_3:decimator3@c0063000 {
+			compatible = "nexell,nx-decimator";
+			module = <0>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		decimator_4:decimator4@c0063000 {
+			compatible = "nexell,nx-decimator";
+			module = <0>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		decimator_5:decimator5@c0063000 {
+			compatible = "nexell,nx-decimator";
+			module = <0>;
+			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
+		};
+
+		decimator_6:decimator6@c0064000 {
+			compatible = "nexell,nx-decimator";
+			module = <1>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		decimator_7:decimator7@c0064000 {
+			compatible = "nexell,nx-decimator";
+			module = <1>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		decimator_8:decimator8@c0064000 {
+			compatible = "nexell,nx-decimator";
+			module = <1>;
+			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
+		};
+
+		decimator_9:decimator9@c0099000 {
+			compatible = "nexell,nx-decimator";
+			module = <2>;
+			logical = <1>;
+			logical_num = <0>;
+			status = "disabled";
+		};
+
+		decimator_10:decimator10@c0099000 {
+			compatible = "nexell,nx-decimator";
+			module = <2>;
+			logical = <1>;
+			logical_num = <1>;
+			status = "disabled";
+		};
+
+		decimator_11:decimator11@c0099000 {
+			compatible = "nexell,nx-decimator";
+			module = <2>;
+			logical = <1>;
+			logical_num = <2>;
+			status = "disabled";
+		};
+
+		scaler@c0066000 {
+			status = "okay";
+		};
+
+		pinctrl@C0010000 {
+			key_power:key_power {
+				nexell,pins = "alive-0";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <1>;
+				nexell,pin-strength = <0>;
+			};
+
+			key_back:key_back {
+				nexell,pins = "gpioc-4";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <1>;
+				nexell,pin-strength = <0>;
+			};
+
+			tp2825_reset:tp2825_reset {
+				nexell,pins = "gpioc-2";
+				nexell,pin-function = <1>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+
+			bt_cfg_hostwake:bt_cfg_hostwake {
+				nexell,pins = "gpiod-16";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+
+			bt_cfg_btwake:bt_cfg_btwake {
+				nexell,pins = "gpiod-20";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+
+			bt_cfg_en:bt_cfg_en {
+				nexell,pins = "gpiob-23";
+				nexell,pin-function = <1>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+
+			cfg_wlanen: cfg-wlanen {
+				nexell,pins ="gpioc-30";
+				nexell,pin-function = <0>;
+				nexell,pin-pull = <2>;
+				nexell,pin-strength = <0>;
+			};
+
+			cfg_wlanhostwake: cfg-wlanhostwake {
+				nexell,pins = "gpioe-31";
+				nexell,pin-function = <1>;
+				nexell,pin-pull = <1>;
+				nexell,pin-strength = <0>;
+			};
+
+			i2s2_bus:i2s2 {
+				/delete-node/ i2s2-mclk;
+			};
+
+		};
+	}; /*** soc ***/
+
+	i2c_gpio3: i2c@3 {
+		compatible = "i2c-gpio";
+		gpios = <&gpio_c 26 0 /* sda */
+			&gpio_e 30 0 /* scl */>;
+		i2c-gpio,delay-us = <1>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		rt5633_1: rt5633_1@1c {
+			deferred-probe;
+			#sound-dai-cells = <0>;
+			compatible = "realtek,rt5633";
+			reg = <0x1c>;
+		};
+	};
+
+	i2c_gpio4: i2c@4 {
+		compatible = "i2c-gpio";
+		gpios = <&gpio_b 14 0 /* sda */
+			&gpio_b 16 0 /* scl */>;
+		i2c-gpio,delay-us = <1>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		rt5633_2: rt5633_2@1a {
+			#sound-dai-cells = <0>;
+			compatible = "realtek,rt5633";
+			reg = <0x1c>;
+		};
+	};
+
+	i2c_gpio5: i2c@5 {
+		compatible = "i2c-gpio";
+		gpios = <&gpio_c 27 0 /* sda */
+			&gpio_c 25 0 /* scl */
+			>;
+		i2c-gpio,delay-us = <5>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		usb2514: usb2514@2c {
+			deferred-probe;
+			compatible = "smsc,usb2514";
+			reg = <0x2c>;
+			reset-gpios = <&gpio_b 22 1>;
+			initial-mode = <1>;
+		};
+	};
+
+	i2c_gpio6: i2c@6 {
+		compatible = "i2c-gpio";
+		gpios = <&gpio_e 9 0 /* sda */
+			&gpio_e 8 0 /* scl */
+			>;
+		i2c-gpio,delay-us = <5>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	}; /* Touch */
+
+	i2c_gpio7: i2c@7 {
+		compatible = "i2c-gpio";
+		gpios = <&gpio_c 1 0 /* sda */
+			&gpio_c 0 0 /* scl */
+			>;
+		i2c-gpio,delay-us = <5>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	}; /* TVI : TP2825 */
+
+	i2c_gpio8: i2c@8 {
+		compatible = "i2c-gpio";
+		gpios = <&gpio_d 3 0 /* sda */
+			&gpio_d 2 0 /* scl */
+			>;
+		i2c-gpio,delay-us = <5>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	}; /* TW9900 */
+
+	i2c_gpio9: i2c@9 {
+		compatible = "i2c-gpio";
+		gpios = <&gpio_b 31 0 /* sda */
+			&gpio_b 30 0 /* scl */
+			>;
+		i2c-gpio,delay-us = <5>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	}; /* HDMI */
+
+	snd_null: snd_null@10 {
+		deferred-probe;
+		#sound-dai-cells = <0>;
+		compatible = "nexell,snd-null";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0 0>;
+	};
+
+	sound {
+		deferred-probe;
+		compatible = "nexell,simple-audio-card";
+		simple-audio-card,name = "s5p6818 Convergence Car Audio Main";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,widgets =
+			"Line", "Line Out",
+			"Microphone", "Mic Jack",
+			"Line", "Line In",
+			"Speaker", "Speaker Out";
+		simple-audio-card,routing =
+			"Line Out", "AUXOUTL",
+			"Line Out", "AUXOUTR",
+			"Speaker Out", "SPOL",
+			"Speaker Out", "SPOR",
+			"MIC1", "Mic Jack",
+			"LINE1L", "Line In",
+			"LINE1R", "Line In";
+
+		status = "okay";
+
+		simple-audio-card,dai-link@0 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_1 0>;
+			};
+
+			codec {
+				sound-dai = <&rt5633_2>;
+			};
+		};
+
+		simple-audio-card,dai-link@1 {
+			format = "i2s";
+			cpu {
+				sound-dai = <&i2s_2 0>;
+			};
+
+			codec {
+				sound-dai = <&snd_null>;
+			};
+		};
+
+		simple-audio-card,dai-link@2 {
+			format = "spdif";
+			cpu {
+				sound-dai = <&spdif_tx 0>;
+			};
+
+			codec {
+				sound-dai = <&spdif_out>;
+			};
+		};
+	};
+
+	sound-sub {
+		deferred-probe;
+		compatible = "nexell,simple-audio-card";
+		simple-audio-card,name = "s5p6818 Convergence Car Audio Sub";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,widgets =
+			"Line", "Line Out",
+			"Microphone", "Mic Jack",
+			"Line", "Line In",
+			"Speaker", "Speaker Out";
+		simple-audio-card,routing =
+			"Line Out", "AUXOUTL",
+			"Line Out", "AUXOUTR",
+			"Speaker Out", "SPOL",
+			"Speaker Out", "SPOR",
+			"MIC1", "Mic Jack",
+			"LINE1L", "Line In",
+			"LINE1R", "Line In";
+		status = "okay";
+
+		simple-audio-card,dai-link@0 {
+			format = "i2s";
+			cpu {
+			sound-dai = <&i2s_0 0>;
+			};
+
+			codec {
+			sound-dai = <&rt5633_1>;
+			};
+		};
+	};
+
+	spdif_out: spdif-out {
+		deferred-probe;
+		#sound-dai-cells = <0>;
+		compatible = "linux,spdif-dit";
+	};
+
+	gpio_key: gpio_keys {
+		deferred-probe;
+		compatible = "gpio-keys";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&key_power &key_back>;
+
+		power {
+			label = "Power";
+			gpios = <&alive_0 0 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_POWER>;
+			gpio-key,wakeup;
+		};
+
+		back {
+			label = "Back";
+			gpios = <&gpio_c 4 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_BACK>;
+		};
+	};
+
+	nexell-ion@0 {
+		compatible = "nexell,ion";
+
+		heap_sys_user@0 {
+			heap-type = "ion_system";
+		};
+
+		heap_sys_contig@0 {
+			heap-type = "ion_system_contig";
+		};
+
+		heap_dma@0 {
+			heap-type = "ion_dma";
+		};
+	};
+
+	backlight: pwm-backlight {
+		deferred-probe;
+		compatible = "pwm-backlight";
+		pwm-names = "pwm-backlight";
+		pwms = <&pwm 0 25000 0>;
+		brightness-levels = <
+			10 11 12 13 14 15 16 17 18 19
+			20 21 22 23 24 25 26 27 28 29
+			30 31 32 33 34 35 36 37 38 39
+			40 41 42 43 44 45 46 47 48 49
+			50 51 52 53 54 55 56 57 58 59
+			60 61 62 63 64 65 66 67 68 69
+			70 71 72 73 74 75 76 77 78 79
+			80 81 82 83 84 85 86 87 88 89
+			90 91 92 93 94 95 96 97 98 99
+			100 101 102 103 104 105 106 107 108 109
+			110 111 112 113 114 115 116 117 118 119
+			120 121 122 123 124 125 126 127 128 129
+			130 131 132 133 134 135 136 137 138 139
+			140 141 142 143 144 145 146 147 148 149
+			150 151 152 153 154 155 156 157 158 159
+			160 161 162 163 164 165 166 167 168 169
+			170 171 172 173 174 175 176 177 178 179
+			180 181 182 183 184 185 186 187 188 189
+			190 191 192 193 194 195 196 197 198 199
+			200 201 202 203 204 205 206 207 208 209
+			210 211 212 213 214 215 216 217 218 219
+			220 221 222 223 224 225 226 227 228 229
+			230 231 232 233 234 235 236 237 238 239
+			240 241 242 243 244 245 246 247 248 249
+			250 251 252 253 254 255
+			>;
+		default-brightness-level = <60>;
+		status = "okay";
+	};
+
+	bt_control:nx_bt {
+		deferred-probe;
+		compatible = "broadcom,bcm434545bt";
+		gpios = <&gpio_b 23 0 /* GPIOB23 = BT_EN, output */
+			&gpio_d 20 0 /* GPIOD20 = BT_WAKE, output */
+			&gpio_d 16 1 /* GPIOD16 = BT_HOST_WAKE, input */
+			>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&bt_cfg_hostwake &bt_cfg_btwake &bt_cfg_en>;
+		status = "okay";
+	};
+
+	wlan:nx_wlan {
+		deferred-probe;
+		compatible = "nexell,brcm-wlan";
+		wlan_reg_on = <&gpio_c 30 0>;
+		wlan_host_wake = <&gpio_e 31 1>;
+		status = "okay";
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				vendor {
+					compatible = "android,vendor";
+					dev = "/dev/block/platform/c0000000.soc/c0069000.dw_mmc/by-name/vendor";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,inode_readahead_blks=8";
+					fsmgr_flags = "wait,slotselect";
+				};
+			};
+		};
+	};
+};
+
+&vip_0 {
+    status = "okay";
+};
+
+&mipi_csi {
+    data_lane = <4>;
+    pllval = <750>;
+    hssettle = <12>;
+    interrupts = <IRQ_MIPI>;
+    status = "disabled";
+};
+
+&clipper_0 {
+    interface_type = <NX_CAPTURE_INTERFACE_MIPI_CSI>;
+    gpios = <&gpio_b 12 0 &gpio_c 13 0>;
+    data_order = <NX_VIN_CBY0CRY1>;
+    interlace = <0>;
+    status = "disabled";
+    external_sync = <0>;
+
+    sensor {
+        type = <NX_CAPTURE_SENSOR_I2C>;
+        i2c_name = "max9286";
+        i2c_adapter = <2>;
+        addr = <0x48>;
+    };
+
+    power {
+        enable_seq = <
+        NX_ACTION_START NX_ACTION_TYPE_GPIO 0 1 20 NX_ACTION_END
+        NX_ACTION_START NX_ACTION_TYPE_GPIO 1 1 10 NX_ACTION_END
+        >;
+
+        disable_seq = <
+        NX_ACTION_START NX_ACTION_TYPE_GPIO 1 0 2 NX_ACTION_END
+        NX_ACTION_START NX_ACTION_TYPE_GPIO 0 0 15 NX_ACTION_END
+        >;
+    };
+};
+
+&decimator_0 {
+	status = "disabled";
+};
+
+&vip_2 {
+	status = "okay";
+};
+
+&clipper_2 {
+	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&vid0_data_clk>;
+	data_order = <NX_VIN_CBY0CRY1>;
+	port = <0>;
+	external_sync = <0>;
+	interlace = <1>;
+	status = "disabled";
+
+	sensor {
+		type = <NX_CAPTURE_SENSOR_I2C>;
+		i2c_name = "tw9900";
+		i2c_adapter = <8>;
+		addr = <0x44>;
+	};
+};
+
+&decimator_2 {
+	status = "disabled";
+};
+
+&clipper_9 {
+	interface_type = <NX_CAPTURE_INTERFACE_PARALLEL>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&tp2825_reset &vid0_data_clk>;
+	gpios = <&gpio_c 2 0>;
+	data_order = <NX_VIN_CBY0CRY1>;
+	port = <0>;
+	external_sync = <0>;
+	interlace = <0>;
+	status = "disabled";
+
+	sensor {
+		type = <NX_CAPTURE_SENSOR_I2C>;
+		i2c_name = "tp2825";
+		i2c_adapter = <7>;
+		addr = <0x45>;
+	};
+
+	power {
+		enable_seq = <
+		NX_ACTION_START NX_ACTION_TYPE_GPIO 0 1 1 NX_ACTION_END
+		>;
+	};
+};
+
+&decimator_9 {
+	status = "disabled";
+};
+
+&deinterlacer {
+	status = "okay";
+};
+
+&dp_drm {
+	status = "okay";
+	ports {
+		port@0 {
+			reg = <0>;
+			back_color = < 0x0 >;
+			color_key = < 0x0 >;
+			plane-names = "rgb", "primary", "video";
+		};
+		port@1 {
+			reg = <1>;
+			back_color = < 0x0 >;
+			color_key = < 0xff00ff >;
+			plane-names = "primary", "video";
+		};
+	};
+};
+
+&dp_drm_rgb {
+	status = "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&dp_rgb_vclk &dp_rgb_vsync &dp_rgb_hsync
+	&dp_rgb_de &dp_rgb_R &dp_rgb_G &dp_rgb_B>;
+
+	display-timing {
+		clock-frequency = <88000000>;
+
+		hactive = <1920>;
+		vactive = <720>;
+
+		hback-porch = <30>;
+		hfront-porch = <30>;
+		hsync-len = <4>;
+
+		vback-porch = <10>;
+		vfront-porch = <10>;
+		vsync-len = <2>;
+
+		hsync-active = <1>;
+		vsync-active = <1>;
+		pixelclk-active = <1>;
+		de-active = <1>;
+	};
+
+	dp_control {
+		clk_src_lv0 = <0>;
+		clk_div_lv0 = <9>;
+		clk_src_lv1 = <7>;
+		clk_div_lv1 = <1>;
+		out_format = <3>;
+	};
+};
+
+&dp_drm_hdmi {
+	deferred-probe;
+	ddc-i2c-bus = <&i2c_gpio9>;
+	skip-boot-connect;
+	status = "ok";
+};
+
+&spi_2 {
+	deferred-probe;
+	status = "okay";
+	cs-gpios = <&gpio_c 10 0>;
+	can0: can@0 {
+		compatible = "microchip,mcp2515";
+		reg = <0>;
+		clocks = <&spi2>;
+		interrupt-parent = <&gpio_b>;
+		interrupts = <24 IRQ_TYPE_EDGE_FALLING>;
+		spi-max-frequency = <24000000>;
+
+		controller-data {
+			samsung,spi-feedback-delay = <0>;
+		};
+	};
+};
+
+&i2c_gpio6 {
+	compatible = "i2c-gpio";
+	gpios = <&gpio_e 9 0 /* sda */
+		&gpio_e 8 0 /* scl */
+		>;
+	status = "okay";
+
+	goodix@5d {
+		deferred-probe;
+		compatible = "goodix,gt9271";
+		reg = <0x5d>;
+		interrupt-parent = <&gpio_e>;
+		interrupts = <10 IRQ_TYPE_EDGE_FALLING>;
+		irq-gpios = <&gpio_e 10 0>;
+		reset-gpios = <&gpio_c 8 0>;
+	};
+};
+
