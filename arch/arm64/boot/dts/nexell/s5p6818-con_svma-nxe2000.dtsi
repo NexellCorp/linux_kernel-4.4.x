@@ -1,0 +1,301 @@
+/*
+ * Copyright (C) 2020 Nexell Co., Ltd.
+ * Author: Juntae Kim <jt.kim@coasianexell.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/* DCDC Enable Value = 0: Off, 1: On, OTP = On */
+#define	NXE2000_DEF_DDC1_ON 1
+#define	NXE2000_DEF_DDC2_ON 1
+#define	NXE2000_DEF_DDC3_ON 1
+#define	NXE2000_DEF_DDC4_ON 1
+#define	NXE2000_DEF_DDC5_ON 1
+
+/* LDO Enable Value = 0: Off, 1: On */
+#define	NXE2000_DEF_LDO1_ON 0
+#define	NXE2000_DEF_LDO2_ON 0
+#define	NXE2000_DEF_LDO3_ON 1
+#define	NXE2000_DEF_LDO4_ON 0
+#define	NXE2000_DEF_LDO5_ON 0
+#define	NXE2000_DEF_LDO6_ON 1
+#define	NXE2000_DEF_LDO7_ON 0
+#define	NXE2000_DEF_LDO8_ON 0
+#define	NXE2000_DEF_LDO9_ON 0
+#define	NXE2000_DEF_LDO10_ON 1
+#define	NXE2000_DEF_LDORTC1_ON 1
+#define	NXE2000_DEF_LDORTC2_ON 1
+
+/* DCDC Voltage Value(uV) = 0: 0.60 ~ 3.5V, Step 12.5 mV */
+#define	NXE2000_DEF_DDC1_VOL 1250000 /* OTP = 1.3V */
+#define	NXE2000_DEF_DDC2_VOL 1200000 /* OTP = 1.2V */
+#define	NXE2000_DEF_DDC3_VOL 3300000 /* OTP = 3.3V */
+#define	NXE2000_DEF_DDC4_VOL 1500000 /* OTP = 1.5V */
+#define	NXE2000_DEF_DDC5_VOL 1500000 /* OTP = 1.5V */
+
+/* LDO1~4 Voltage Value(uV) = 0: 0.90 ~ 3.5V, Step = 25mV */
+/* LDO5~6 Voltage Value(uV) = 0: 0.60 ~ 3.5V, Step = 25mV */
+/* LDO7~10 Voltage Value(uV) = 0: 0.90 ~ 3.5V, Step = 25mV */
+#define	NXE2000_DEF_LDO1_VOL 3300000 /* OTP = 3.30V */
+#define	NXE2000_DEF_LDO2_VOL 1800000 /* OTP = 1.80V */
+#define	NXE2000_DEF_LDO3_VOL 1800000 /* OTP = 1.80V */
+#define	NXE2000_DEF_LDO4_VOL 1800000 /* OTP = 1.80V */
+#define	NXE2000_DEF_LDO5_VOL 2800000 /* OTP = 2.80V */
+#define	NXE2000_DEF_LDO6_VOL 3300000 /* OTP = 3.30V */
+#define	NXE2000_DEF_LDO7_VOL 2800000 /* OTP = 2.80V */
+#define	NXE2000_DEF_LDO8_VOL 3300000 /* OTP = 3.30V */
+#define	NXE2000_DEF_LDO9_VOL 3300000 /* OTP = 3.30V */
+#define	NXE2000_DEF_LDO10_VOL 1000000 /* OTP = 1.20V */
+#define	NXE2000_DEF_LDORTC1_VOL 1800000 /* OTP = 1.80V */
+#define	NXE2000_DEF_LDORTC2_VOL 1000000 /* OTP = 1.00V */
+
+/* Set Voltage Value */
+#define	NXE2000_DEF_DDC1_SET_VOL 0
+#define	NXE2000_DEF_DDC2_SET_VOL 0
+#define	NXE2000_DEF_DDC3_SET_VOL 1
+#define	NXE2000_DEF_DDC4_SET_VOL 0
+#define	NXE2000_DEF_DDC5_SET_VOL 0
+#define	NXE2000_DEF_LDO1_SET_VOL 1
+#define	NXE2000_DEF_LDO2_SET_VOL 1
+#define	NXE2000_DEF_LDO3_SET_VOL 1
+#define	NXE2000_DEF_LDO4_SET_VOL 1
+#define	NXE2000_DEF_LDO5_SET_VOL 1
+#define	NXE2000_DEF_LDO6_SET_VOL 1
+#define	NXE2000_DEF_LDO7_SET_VOL 1
+#define	NXE2000_DEF_LDO8_SET_VOL 1
+#define	NXE2000_DEF_LDO9_SET_VOL 1
+#define	NXE2000_DEF_LDO10_SET_VOL 1
+#define	NXE2000_DEF_LDORTC1_SET_VOL 1
+#define	NXE2000_DEF_LDORTC2_SET_VOL 1
+
+/* Set Sleep Slot */
+#define	NXE2000_DEF_DDC1_SLP_SLOT 0x4
+#define	NXE2000_DEF_DDC2_SLP_SLOT 0x4
+#define	NXE2000_DEF_DDC3_SLP_SLOT 0x0
+#define	NXE2000_DEF_DDC4_SLP_SLOT 0xF
+#define	NXE2000_DEF_DDC5_SLP_SLOT 0x4
+#define	NXE2000_DEF_LDO1_SLP_SLOT 0x0
+#define	NXE2000_DEF_LDO2_SLP_SLOT 0x0
+#define	NXE2000_DEF_LDO3_SLP_SLOT 0x2
+#define	NXE2000_DEF_LDO4_SLP_SLOT 0x2
+#define	NXE2000_DEF_LDO5_SLP_SLOT 0x0
+#define	NXE2000_DEF_LDO6_SLP_SLOT 0xF
+#define	NXE2000_DEF_LDO7_SLP_SLOT 0x1
+#define	NXE2000_DEF_LDO8_SLP_SLOT 0x0
+#define	NXE2000_DEF_LDO9_SLP_SLOT 0x0
+#define	NXE2000_DEF_LDO10_SLP_SLOT 0x0
+#define	NXE2000_DEF_LDORTC1_SLP_SLOT 0xF
+#define	NXE2000_DEF_LDORTC2_SLP_SLOT 0xF
+
+regulators {
+	VCC_DCDC0:dcdc1 {
+		regulator-name = "nxe2000_dcdc1";
+		regulator-min-microvolt = <900000>;
+		regulator-max-microvolt = <1500000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <0>;
+		nx,init_enable = <NXE2000_DEF_DDC1_ON>;
+		nx,init_uV = <NXE2000_DEF_DDC1_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_DDC1_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_DDC1_SLP_SLOT>;
+	};
+	VCC_DCDC1:dcdc2	{
+		regulator-name = "nxe2000_dcdc2";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <1500000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <1>;
+		nx,init_enable = <NXE2000_DEF_DDC2_ON>;
+		nx,init_uV = <NXE2000_DEF_DDC2_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_DDC2_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_DDC2_SLP_SLOT>;
+	};
+	VCC_DCDC2:dcdc3 {
+		regulator-name = "nxe2000_dcdc3";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <2>;
+		nx,init_enable = <NXE2000_DEF_DDC3_ON>;
+		nx,init_uV = <NXE2000_DEF_DDC3_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_DDC3_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_DDC3_SLP_SLOT>;
+	};
+	VCC_DCDC3:dcdc4	{
+		regulator-name = "nxe2000_dcdc4";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <2000000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <3>;
+		nx,init_enable = <NXE2000_DEF_DDC4_ON>;
+		nx,init_uV = <NXE2000_DEF_DDC4_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_DDC4_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_DDC4_SLP_SLOT>;
+	};
+	VCC_DCDC4:dcdc5 {
+		regulator-name = "nxe2000_dcdc5";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <2000000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <4>;
+		nx,init_enable = <NXE2000_DEF_DDC5_ON>;
+		nx,init_uV = <NXE2000_DEF_DDC5_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_DDC5_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_DDC5_SLP_SLOT>;
+	};
+	VCC_LDO0:ldo1 {
+		regulator-name = "nxe2000_ldo1";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-boot-on;
+		nx,id = <5>;
+		nx,init_enable = <NXE2000_DEF_LDO1_ON>;
+		nx,init_uV = <NXE2000_DEF_LDO1_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDO1_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDO1_SLP_SLOT>;
+	};
+	VCC_LDO1:ldo2 {
+		regulator-name = "nxe2000_ldo2";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-boot-on;
+		nx,id = <6>;
+		nx,init_enable = <NXE2000_DEF_LDO2_ON>;
+		nx,init_uV = <NXE2000_DEF_LDO2_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDO2_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDO2_SLP_SLOT>;
+	};
+	VCC_LDO2:ldo3 {
+		regulator-name = "nxe2000_ldo3";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <7>;
+		nx,init_enable = <NXE2000_DEF_LDO3_ON>;
+		nx,init_uV = <NXE2000_DEF_LDO3_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDO3_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDO3_SLP_SLOT>;
+	};
+	VCC_LDO3:ldo4 {
+		regulator-name = "nxe2000_ldo4";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <8>;
+		nx,init_enable = <NXE2000_DEF_LDO4_ON>;
+		nx,init_uV = <NXE2000_DEF_LDO4_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDO4_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDO4_SLP_SLOT>;
+	};
+	VCC_LDO4:ldo5 {
+		regulator-name = "nxe2000_ldo5";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-boot-on;
+		nx,id = <9>;
+		nx,init_enable = <NXE2000_DEF_LDO5_ON>;
+		nx,init_uV = <NXE2000_DEF_LDO5_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDO5_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDO5_SLP_SLOT>;
+	};
+	VCC_LDO5:ldo6 {
+		regulator-name = "nxe2000_ldo6";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <10>;
+		nx,init_enable = <NXE2000_DEF_LDO6_ON>;
+		nx,init_uV = <NXE2000_DEF_LDO6_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDO6_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDO6_SLP_SLOT>;
+	};
+	VCC_LDO6:ldo7 {
+		regulator-name = "nxe2000_ldo7";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <11>;
+		nx,init_enable = <NXE2000_DEF_LDO7_ON>;
+		nx,init_uV = <NXE2000_DEF_LDO7_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDO7_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDO7_SLP_SLOT>;
+	};
+	VCC_LDO7:ldo8 {
+		regulator-name = "nxe2000_ldo8";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-boot-on;
+		nx,id = <12>;
+		nx,init_enable = <NXE2000_DEF_LDO8_ON>;
+		nx,init_uV = <NXE2000_DEF_LDO8_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDO8_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDO8_SLP_SLOT>;
+	};
+	VCC_LDO8:ldo9 {
+		regulator-name = "nxe2000_ldo9";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-boot-on;
+		nx,id = <13>;
+		nx,init_enable = <NXE2000_DEF_LDO9_ON>;
+		nx,init_uV = <NXE2000_DEF_LDO9_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDO9_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDO9_SLP_SLOT>;
+	};
+	VCC_LDO9:ldo10 {
+		regulator-name = "nxe2000_ldo10";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <14>;
+		nx,init_enable = <NXE2000_DEF_LDO10_ON>;
+		nx,init_uV = <NXE2000_DEF_LDO10_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDO10_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDO10_SLP_SLOT>;
+	};
+	VCC_RTC0:ldortc1 {
+		regulator-name = "nxe2000_rtc1";
+		regulator-min-microvolt = <1700000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <15>;
+		nx,init_enable = <NXE2000_DEF_LDORTC1_ON>;
+		nx,init_uV = <NXE2000_DEF_LDORTC1_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDORTC1_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDORTC1_SLP_SLOT>;
+	};
+	VCC_RTC1:ldortc2 {
+		regulator-name = "nxe2000_rtc2";
+		regulator-min-microvolt = <1000000>;
+		regulator-max-microvolt = <3500000>;
+		regulator-always-on;
+		regulator-boot-on;
+		nx,id = <16>;
+		nx,init_enable = <NXE2000_DEF_LDORTC2_ON>;
+		nx,init_uV = <NXE2000_DEF_LDORTC2_VOL>;
+		nx,set_init_uV = <NXE2000_DEF_LDORTC2_SET_VOL>;
+		nx,sleep_slots = <NXE2000_DEF_LDORTC2_SLP_SLOT>;
+	};
+}; /* regulators */
