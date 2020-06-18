@@ -38,6 +38,8 @@ static struct list_head dp_dpc_list = LIST_HEAD_INIT(dp_dpc_list);
 #define	dp_to_control(d)	\
 		((struct nx_control_dev *)d->context)
 
+#define	LAYER_VIDEO_FMT_MASK	0xffffff
+
 static const uint32_t support_formats_rgb[] = {
 	DRM_FORMAT_RGB565,
 	DRM_FORMAT_BGR565,
@@ -152,16 +154,25 @@ static uint32_t convert_format_video(uint32_t fourcc,
 	switch (fourcc) {
 	case DRM_FORMAT_YUV420:
 	case DRM_FORMAT_YVU411:
-		fmt = nx_mlc_yuvfmt_420 | 0x1<<31;
+		fmt = nx_mlc_yuvfmt_420;
+		break;
+	case DRM_FORMAT_YVU420:
+		fmt = nx_mlc_yuvfmt_420 | FMT_VID_YUV_TO_YVU;
 		break;
 	case DRM_FORMAT_YUV422:
-		fmt = nx_mlc_yuvfmt_422 | 0x1<<31;
+		fmt = nx_mlc_yuvfmt_422;
+		break;
+	case DRM_FORMAT_YVU422:
+		fmt = nx_mlc_yuvfmt_422 | FMT_VID_YUV_TO_YVU;
 		break;
 	case DRM_FORMAT_YUV444:
-		fmt = nx_mlc_yuvfmt_444 | 0x1<<31;
+		fmt = nx_mlc_yuvfmt_444;
+		break;
+	case DRM_FORMAT_YVU444:
+		fmt = nx_mlc_yuvfmt_444 | FMT_VID_YUV_TO_YVU;
 		break;
 	case DRM_FORMAT_YUYV:
-		fmt = nx_mlc_yuvfmt_yuyv | 0x1<<31;
+		fmt = nx_mlc_yuvfmt_yuyv;
 		break;
 	default:
 		DRM_ERROR("Failed, not support fourcc %s\n",
@@ -928,40 +939,62 @@ static int plane_set_property(struct drm_plane *plane,
 			struct drm_property *property, uint64_t val)
 {
 	struct nx_plane_layer *layer = to_nx_plane(plane)->context;
-	struct plane_property *prop = &layer->property;
-	union color *color = &prop->color;
 
 	DRM_DEBUG_KMS("%s : %s 0x%llx\n", layer->name, property->name, val);
 
-	if (property == color->yuv.colorkey) {
+	if (!strcmp(property->name, "colorkey")) {
 		layer->color.colorkey = val;
 		plane_set_color(plane, NX_COLOR_COLORKEY,
-			layer->color.colorkey, layer->colorkey_on);
+		layer->color.colorkey, layer->colorkey_on);
 	}
 
-	if (property == color->yuv.transcolor) {
-		layer->color.yuv_transcolor = val;
-		plane_set_color(plane, NX_COLOR_TRANS,
-			layer->color.yuv_transcolor, true);
+	if (!strcmp(property->name, "transcolor")) {
+		if (layer->format & LAYER_VIDEO_FMT_MASK) {
+			layer->color.yuv_transcolor = val;
+			plane_set_color(plane, NX_COLOR_TRANS,
+				layer->color.yuv_transcolor, true);
+		} else {
+			layer->color.transcolor = val;
+			plane_set_color(plane, NX_COLOR_TRANS,
+				layer->color.transcolor, layer->transcolor_on);
+		}
 	}
 
-	if (property == color->rgb.transcolor) {
-		layer->color.transcolor = val;
-		plane_set_color(plane, NX_COLOR_TRANS,
-			layer->color.transcolor, layer->transcolor_on);
-	}
-
-	if (property == color->rgb.alphablend) {
+	if (!strcmp(property->name, "alphablend")) {
 		layer->color.alphablend = val;
 		plane_set_color(plane, NX_COLOR_ALPHA,
-			layer->color.alphablend, layer->alphablend_on);
+				layer->color.alphablend, layer->alphablend_on);
 	}
 
-	if (property == prop->priority) {
+	if (!strcmp(property->name, "video-priority")) {
 		struct nx_top_plane *top = layer->top_plane;
 
 		top->video_priority = val;
 		plane_set_priority(plane, val);
+	}
+
+	if (!strcmp(property->name, "brightness")) {
+		layer->color.bright = val;
+		plane_set_color(plane, NX_COLOR_BRIGHT,
+			layer->color.bright, true);
+	}
+
+	if (!strcmp(property->name, "contrast")) {
+		layer->color.contrast = val;
+		plane_set_color(plane, NX_COLOR_CONTRAST,
+			layer->color.contrast, true);
+	}
+
+	if (!strcmp(property->name, "hue")) {
+		layer->color.hue = val;
+		plane_set_color(plane, NX_COLOR_HUE,
+			layer->color.hue, true);
+	}
+
+	if (!strcmp(property->name, "saturation")) {
+		layer->color.saturation = val;
+		plane_set_color(plane, NX_COLOR_SATURATION,
+			layer->color.saturation, true);
 	}
 
 	return 0;
@@ -972,24 +1005,35 @@ static int plane_get_property(struct drm_plane *plane,
 			struct drm_property *property, uint64_t *val)
 {
 	struct nx_plane_layer *layer = to_nx_plane(plane)->context;
-	struct plane_property *prop = &layer->property;
-	union color *color = &prop->color;
 
 	DRM_DEBUG_KMS("%s : %s\n", layer->name, property->name);
 
-	if (property == color->yuv.colorkey)
+	if (!strcmp(property->name, "colorkey"))
 		*val = layer->color.colorkey;
 
-	if (property == color->yuv.transcolor)
-		*val = layer->color.yuv_transcolor;
+	if (!strcmp(property->name, "transcolor")) {
+		if (layer->format & LAYER_VIDEO_FMT_MASK)
+			*val = layer->color.yuv_transcolor;
+		else
+			*val = layer->color.transcolor;
+	}
 
-	if (property == color->rgb.transcolor)
-		*val = layer->color.transcolor;
+	if (!strcmp(property->name, "brightness"))
+		*val = layer->color.bright;
 
-	if (property == color->rgb.alphablend)
+	if (!strcmp(property->name, "contrast"))
+		*val = layer->color.contrast;
+
+	if (!strcmp(property->name, "hue"))
+		*val = layer->color.hue;
+
+	if (!strcmp(property->name, "saturation"))
+		*val = layer->color.saturation;
+
+	if (!strcmp(property->name, "alphablend"))
 		*val = layer->color.alphablend;
 
-	if (property == prop->priority) {
+	if (!strcmp(property->name, "video-priority")) {
 		struct nx_top_plane *top = layer->top_plane;
 
 		*val = top->video_priority;
@@ -997,6 +1041,13 @@ static int plane_get_property(struct drm_plane *plane,
 
 	return 0;
 }
+
+static struct drm_prop_enum_list hue_enum_list[] = {
+	{ 0, "0" },
+	{ 1, "90" },
+	{ 2, "180" },
+	{ 3, "270" },
+};
 
 static void plane_ops_create_proeprties(struct drm_device *drm,
 			struct drm_crtc *crtc, struct drm_plane *plane,
@@ -1006,6 +1057,7 @@ static void plane_ops_create_proeprties(struct drm_device *drm,
 	struct nx_top_plane *top = layer->top_plane;
 	struct plane_property *prop = &layer->property;
 	union color *color = &prop->color;
+	int sz;
 
 	DRM_DEBUG_KMS("crtc.%d plane.%d (%s)\n",
 		layer->module, layer->num, layer->name);
@@ -1022,6 +1074,27 @@ static void plane_ops_create_proeprties(struct drm_device *drm,
 		drm_property_create_range(drm, 0, "transcolor", 0, 0xffffffff);
 		drm_object_attach_property(&plane->base,
 			color->yuv.transcolor, layer->color.yuv_transcolor);
+
+		color->yuv.brightness =
+		drm_property_create_signed_range(drm, 0, "brightness", -127, 127);
+		drm_object_attach_property(&plane->base,
+			color->yuv.brightness, layer->color.bright);
+
+		color->yuv.contrast =
+		drm_property_create_range(drm, 0, "contrast", 0, 0x7);
+		drm_object_attach_property(&plane->base,
+			color->yuv.contrast, layer->color.contrast);
+
+		sz = ARRAY_SIZE(hue_enum_list);
+		color->yuv.hue =
+		drm_property_create_enum(drm, 0, "hue", hue_enum_list, sz);
+		drm_object_attach_property(&plane->base,
+			color->yuv.hue, layer->color.hue);
+
+		color->yuv.saturation =
+		drm_property_create_signed_range(drm, 0, "saturation", 1, 126);
+		drm_object_attach_property(&plane->base,
+			color->yuv.saturation, layer->color.saturation);
 	} else {
 		/* RGB color */
 		color->rgb.transcolor =
@@ -1079,7 +1152,7 @@ static int plane_create(struct drm_device *drm,
 	layer->num = plane_num;
 	layer->is_bgr = bgr;
 	layer->type |= plane_num == PLANE_VIDEO_NUM ? NX_PLANE_TYPE_VIDEO : 0;
-	layer->color.alpha = layer->type & NX_PLANE_TYPE_VIDEO ? 15 : 0;
+	layer->color.alpha = MAX_ALPHA_VALUE;
 	layer->alphablend_on = top->alpla_blend_on;
 	layer->colorkey_on = top->color_key_on;
 	layer->transcolor_on = true;
@@ -1454,7 +1527,11 @@ static void display_irq_disable(struct nx_drm_display *display,
 static void display_irq_done(struct nx_drm_display *display,
 			unsigned int pipe)
 {
-	nx_soc_dp_cont_irq_done((int)pipe);
+	struct nx_drm_connector *nx_connector = display->connector;
+	struct drm_connector *connector = &nx_connector->connector;
+	struct drm_crtc *crtc = connector->state->crtc;
+
+	nx_soc_dp_cont_irq_done((int)pipe, to_nx_crtc(crtc)->num_planes);
 }
 
 struct nx_drm_display *nx_drm_display_get(struct device *dev,

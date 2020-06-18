@@ -61,6 +61,7 @@ struct nx_plane_rect {
 #define NX_PLANE_FORMAT_SCREEN_SIZE	(1<<0)
 #define NX_PLANE_FORMAT_VIDEO_PRIORITY	(1<<1)
 #define NX_PLANE_FORMAT_BACK_COLOR	(1<<2)
+#define	MAX_ALPHA_VALUE		15 /* 0: transparency, 15: opacity */
 
 struct plane_top_format {
 	int module;
@@ -76,10 +77,18 @@ struct plane_property {
 		struct {
 			struct drm_property *transcolor;
 			struct drm_property *alphablend;
+			struct drm_property *dummy1;
+			struct drm_property *dummy2;
+			struct drm_property *dummy3;
+			struct drm_property *dummy4;
 		} rgb;
 		struct {
 			struct drm_property *transcolor;
 			struct drm_property *colorkey;
+			struct drm_property *brightness;
+			struct drm_property *contrast;
+			struct drm_property *hue;
+			struct drm_property *saturation;
 		} yuv;
 	} color;
 	struct drm_property *priority;
@@ -117,20 +126,24 @@ struct nx_plane_layer {
 	/* color */
 	union {
 		struct {
+			u32 alphablend;
 			u32 transcolor;
 			u32 invertcolor;
-			u32 alphablend;
 			u32 colorkey;
+			u32 dummy1;
+			u32 dummy2;
+			u32 dummy3;
+			u32 dummy4;
 		};
 		struct {
-			int alpha;	/* def= 15, 0 <= Range <= 16 */
+			u32 alpha;	/* def= 15, 0 <= Range <= 16 */
+			u32 yuv_transcolor;
 			int bright;	/* def= 0, -128 <= Range <= 128*/
 			int contrast; /* def= 0, 0 <= Range <= 8 */
-			double hue;	/* def= 0, 0 <= Range <= 360 */
-			double saturation; /* def = 0, -100 <= Range <= 100 */
+			int hue;	/* def= 0, 0 <= Range <= 360 */
+			int saturation; /* def = 0, -100 <= Range <= 100 */
 			int satura;
 			int gamma;
-			u32 yuv_transcolor;
 		};
 	} color;
 
@@ -370,7 +383,7 @@ int  nx_soc_dp_cont_prepare(struct nx_control_dev *control);
 int  nx_soc_dp_cont_power_status(struct nx_control_dev *control);
 void nx_soc_dp_cont_power_on(struct nx_control_dev *control, bool on);
 void nx_soc_dp_cont_irq_on(int module, bool on);
-void nx_soc_dp_cont_irq_done(int module);
+void nx_soc_dp_cont_irq_done(int module, int layers);
 
 void nx_soc_dp_plane_top_prepare(struct nx_top_plane *top);
 void nx_soc_dp_plane_top_set_format(struct nx_top_plane *top,
