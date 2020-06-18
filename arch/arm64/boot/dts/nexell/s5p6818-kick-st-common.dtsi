@@ -529,5 +529,4 @@
 	ddc-i2c-bus = <&i2c_gpio4>;
 	status = "ok";
 	q_range = <0>;
-	skip-boot-connect;
 };
