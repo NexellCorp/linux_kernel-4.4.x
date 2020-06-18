@@ -900,7 +900,6 @@
 &dp_drm_hdmi {
 	deferred-probe;
 	ddc-i2c-bus = <&i2c_gpio9>;
-	skip-boot-connect;
 	status = "ok";
 };
 
