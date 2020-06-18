@@ -582,7 +582,6 @@
 
 &dp_drm_hdmi {
 	ddc-i2c-bus = <&i2c_gpio6>;
-	skip-boot-connect;
 	status = "ok";
 };
 
