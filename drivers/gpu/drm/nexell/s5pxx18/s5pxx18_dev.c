@@ -33,6 +33,7 @@
 #define	LAYER_VIDEO		PLANE_VIDEO_NUM
 
 #define	LAYER_VIDEO_FMT_MASK	0xffffff
+#define LAYER_DIRTY_WAIT_COUNT	20000
 
 static struct plane_top_format top_format[2];
 
@@ -87,6 +88,31 @@ static inline unsigned int R3G3B2toR8G8B8(u8 RGB)
 	return R8B8G8;
 }
 
+static inline void dp_plane_wait_dirty_clear(int module, int layers)
+{
+	bool enable, dirty;
+	int layer, i = 0;
+
+	for (i = 0; i < layers; i++) {
+		if (module == 0 && i == 2)
+			layer = PLANE_VIDEO_NUM;
+		else if (module == 1 && i == 1)
+			layer = PLANE_VIDEO_NUM;
+		else
+			layer = i;
+
+		enable = nx_mlc_get_layer_enable(module, layer);
+		dirty = nx_mlc_get_dirty_flag(module, layer);
+
+		if (enable && dirty) {
+			int count = LAYER_DIRTY_WAIT_COUNT;
+
+			while (count-- > 0 && dirty)
+				dirty = nx_mlc_get_dirty_flag(module, layer);
+		}
+	}
+}
+
 static inline void dp_wait_vblank_done(int module, int layer)
 {
 	bool on = nx_mlc_get_layer_enable(module, layer);
@@ -100,7 +126,7 @@ static inline void dp_wait_vblank_done(int module, int layer)
 	}
 }
 
-static inline void dp_plane_adjust(int module, int layer, bool now)
+static inline void dp_plane_set_dirty_flag(int module, int layer, bool now)
 {
 	if (now)
 		nx_mlc_set_dirty_flag(module, layer);
@@ -384,7 +410,7 @@ void nx_soc_dp_cont_irq_on(int module, bool on)
 	nx_dpc_set_interrupt_enable_all(module, on ? 1 : 0);
 }
 
-void nx_soc_dp_cont_irq_done(int module)
+void nx_soc_dp_cont_irq_done(int module, int layers)
 {
 	nx_dpc_clear_interrupt_pending_all(module);
 }
@@ -519,7 +545,7 @@ int nx_soc_dp_plane_top_set_enable(struct nx_top_plane *top, bool on)
 			nx_mlc_set_lock_size(module, layer->num, m_lock_size);
 			if (layer->enable) {
 				nx_mlc_set_layer_enable(module, layer->num, 1);
-				dp_plane_adjust(module, layer->num, true);
+				dp_plane_set_dirty_flag(module, layer->num, true);
 				pr_debug("%s: %s on\n", __func__, layer->name);
 			}
 		}
@@ -528,7 +554,7 @@ int nx_soc_dp_plane_top_set_enable(struct nx_top_plane *top, bool on)
 		list_for_each_entry(layer, &top->plane_list, list) {
 			if (layer->enable) {
 				nx_mlc_set_layer_enable(module, layer->num, 0);
-				dp_plane_adjust(module, layer->num, true);
+				dp_plane_set_dirty_flag(module, layer->num, true);
 			}
 		}
 
@@ -568,6 +594,11 @@ int nx_soc_dp_plane_rgb_set_format(struct nx_plane_layer *layer,
 	    format == nx_mlc_rgbfmt_a8b8g8r8)
 		en_alpha = 1;
 
+	/* set by property */
+	if (layer->color.alphablend < MAX_ALPHA_VALUE)
+		en_alpha = 1;
+
+	/* force disable alpha blend */
 	if (!layer->alphablend_on)
 		en_alpha = 0;
 
@@ -584,7 +615,7 @@ int nx_soc_dp_plane_rgb_set_format(struct nx_plane_layer *layer,
 	nx_mlc_set_format_rgb(module, num, (enum nx_mlc_rgbfmt)format);
 	nx_mlc_set_rgblayer_invalid_position(module, num, 0, 0, 0, 0, 0, 0);
 	nx_mlc_set_rgblayer_invalid_position(module, num, 1, 0, 0, 0, 0, 0);
-	dp_plane_adjust(module, num, adjust);
+	dp_plane_set_dirty_flag(module, num, adjust);
 
 	return 0;
 }
@@ -627,7 +658,7 @@ int nx_soc_dp_plane_rgb_set_position(struct nx_plane_layer *layer,
 		 sx, sy, ex, ey, adjust);
 
 	nx_mlc_set_position(module, num, sx, sy, ex - 1, ey - 1);
-	dp_plane_adjust(module, num, adjust);
+	dp_plane_set_dirty_flag(module, num, adjust);
 
 	return 0;
 }
@@ -658,7 +689,7 @@ void nx_soc_dp_plane_rgb_set_address(struct nx_plane_layer *layer,
 
 	nx_mlc_set_rgblayer_stride(module, num, pixelbyte, stride);
 	nx_mlc_set_rgblayer_address(module, num, phys);
-	dp_plane_adjust(module, num, adjust);
+	dp_plane_set_dirty_flag(module, num, adjust);
 }
 
 void nx_soc_dp_plane_rgb_set_enable(struct nx_plane_layer *layer,
@@ -672,7 +703,7 @@ void nx_soc_dp_plane_rgb_set_enable(struct nx_plane_layer *layer,
 
 	if (on != layer->enable) {
 		nx_mlc_set_layer_enable(module, num, (on ? 1 : 0));
-		dp_plane_adjust(module, num, adjust);
+		dp_plane_set_dirty_flag(module, num, adjust);
 	}
 
 	layer->enable = on;
@@ -697,23 +728,24 @@ void nx_soc_dp_plane_rgb_set_color(struct nx_plane_layer *layer,
 	int module = layer->module;
 	int num = layer->num;
 
-	pr_debug("%s: %s, type:%d color:0x%x, pixel %d, %s (%d)\n",
+	pr_debug("%s: %s, type:%d color:0x%x, pixel %d, %s [%s]\n",
 		__func__, layer->name, type, color, layer->pixelbyte,
-		on ? "on" : "off", num);
+		on ? "on" : "off", adjust ? "sync" : "async");
 
 	switch (type) {
 	case NX_COLOR_ALPHA:
 		if (color <= 0)
 			color = 0;
-		if (color >= 15)
-			color = 15;
+
+		if (color > MAX_ALPHA_VALUE)
+			on = false;
 
 		layer->color.alpha = (on ? color : 15);
 
 		nx_mlc_set_alpha_blending(module, num,
 			 (on ? 1 : 0), (u32)color);
 
-		dp_plane_adjust(module, num, adjust);
+		dp_plane_set_dirty_flag(module, num, adjust);
 		break;
 
 	case NX_COLOR_TRANS:
@@ -731,7 +763,7 @@ void nx_soc_dp_plane_rgb_set_color(struct nx_plane_layer *layer,
 		nx_mlc_set_transparency(module, num,
 			(on ? 1 : 0), (u32)(color & 0x00FFFFFF));
 
-		dp_plane_adjust(module, num, adjust);
+		dp_plane_set_dirty_flag(module, num, adjust);
 		break;
 
 	case NX_COLOR_INVERT:
@@ -751,7 +783,23 @@ void nx_soc_dp_plane_rgb_set_color(struct nx_plane_layer *layer,
 			(on ? 1 : 0),
 			(u32)(color & 0x00FFFFFF));
 
-		dp_plane_adjust(module, num, adjust);
+		dp_plane_set_dirty_flag(module, num, adjust);
+		break;
+	case NX_COLOR_BRIGHT:
+		nx_mlc_set_video_layer_brightness(module, color);
+		dp_plane_set_dirty_flag(module, num, adjust);
+		break;
+	case NX_COLOR_CONTRAST:
+		nx_mlc_set_video_layer_contrast(module, color);
+		dp_plane_set_dirty_flag(module, num, adjust);
+		break;
+	case NX_COLOR_HUE:
+		nx_mlc_set_video_layer_hue(module, color);
+		dp_plane_set_dirty_flag(module, num, adjust);
+		break;
+	case NX_COLOR_SATURATION:
+		nx_mlc_set_video_layer_saturation(module, color);
+		dp_plane_set_dirty_flag(module, num, adjust);
 		break;
 	default:
 		break;
@@ -775,7 +823,7 @@ int nx_soc_dp_plane_video_set_format(struct nx_plane_layer *layer,
 
 	nx_mlc_set_lock_size(module, LAYER_VIDEO, m_lock_size);
 	nx_mlc_set_format_yuv(module, (enum nx_mlc_yuvfmt)format);
-	dp_plane_adjust(module, LAYER_VIDEO, adjust);
+	dp_plane_set_dirty_flag(module, LAYER_VIDEO, adjust);
 
 	return 0;
 }
@@ -842,7 +890,7 @@ int nx_soc_dp_plane_video_set_position(struct nx_plane_layer *layer,
 			ex ? ex - 1 : ex, ey ? ey - 1 : ey);
 	nx_mlc_set_video_layer_scale(module, src_w, src_h,
 			dst_w, dst_h, hf, hf, vf, vf);
-	dp_plane_adjust(module, LAYER_VIDEO, adjust);
+	dp_plane_set_dirty_flag(module, LAYER_VIDEO, adjust);
 
 	return 0;
 }
@@ -859,7 +907,7 @@ void nx_soc_dp_plane_video_set_address_1p(struct nx_plane_layer *layer,
 		__func__, layer->name, addr, phys, stride);
 
 	nx_mlc_set_video_layer_address_yuyv(module, phys, stride);
-	dp_plane_adjust(module, LAYER_VIDEO, adjust);
+	dp_plane_set_dirty_flag(module, LAYER_VIDEO, adjust);
 }
 
 void nx_soc_dp_plane_video_set_address_3p(struct nx_plane_layer *layer,
@@ -893,6 +941,9 @@ void nx_soc_dp_plane_video_set_address_3p(struct nx_plane_layer *layer,
 	cb_a = cb_a + (cl/us) + (ct/uh * cb_s);
 	cr_a = cr_a + (cl/us) + (ct/uh * cr_s);
 
+	if (layer->format & FMT_VID_YUV_TO_YVU)
+		swap(cb_a, cr_a);
+
 	pr_debug("%s: %s, lu:0x%x,%d, cb:0x%x,%d, cr:0x%x,%d\n",
 		__func__, layer->name, lu_a, lu_s, cb_a, cb_s, cr_a, cr_s);
 
@@ -901,7 +952,7 @@ void nx_soc_dp_plane_video_set_address_3p(struct nx_plane_layer *layer,
 
 	nx_mlc_set_video_layer_stride(module, lu_s, cb_s, cr_s);
 	nx_mlc_set_video_layer_address(module, lu_a, cb_a, cr_a);
-	dp_plane_adjust(module, LAYER_VIDEO, adjust);
+	dp_plane_set_dirty_flag(module, LAYER_VIDEO, adjust);
 }
 
 void nx_soc_dp_plane_video_set_enable(struct nx_plane_layer *layer,
@@ -919,10 +970,10 @@ void nx_soc_dp_plane_video_set_enable(struct nx_plane_layer *layer,
 		nx_mlc_set_video_layer_line_buffer_power_mode(module, 1);
 		nx_mlc_set_video_layer_line_buffer_sleep_mode(module, 0);
 		nx_mlc_set_layer_enable(module, LAYER_VIDEO, 1);
-		dp_plane_adjust(module, LAYER_VIDEO, adjust);
+		dp_plane_set_dirty_flag(module, LAYER_VIDEO, adjust);
 	} else {
 		nx_mlc_set_layer_enable(module, LAYER_VIDEO, 0);
-		dp_plane_adjust(module, LAYER_VIDEO, adjust);
+		dp_plane_set_dirty_flag(module, LAYER_VIDEO, adjust);
 		WAIT_VBLANK(module, LAYER_VIDEO, 1);
 
 		nx_mlc_get_video_layer_scale_filter(module, &hl, &hc, &vl, &vc);
@@ -930,7 +981,7 @@ void nx_soc_dp_plane_video_set_enable(struct nx_plane_layer *layer,
 			nx_mlc_set_video_layer_scale_filter(module, 0, 0, 0, 0);
 		nx_mlc_set_video_layer_line_buffer_power_mode(module, 0);
 		nx_mlc_set_video_layer_line_buffer_sleep_mode(module, 1);
-		dp_plane_adjust(module, LAYER_VIDEO, adjust);
+		dp_plane_set_dirty_flag(module, LAYER_VIDEO, adjust);
 	}
 
 	layer->enable = on;

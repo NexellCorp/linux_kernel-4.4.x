@@ -59,6 +59,8 @@ struct drm_modeset_acquire_ctx {
 	 * Trylock mode, use only for panic handlers!
 	 */
 	bool trylock_only;
+
+	uint32_t flags;
 };
 
 /**

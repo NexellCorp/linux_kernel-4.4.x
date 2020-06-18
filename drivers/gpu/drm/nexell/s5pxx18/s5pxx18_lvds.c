@@ -121,9 +121,8 @@ static int lvds_ops_prepare(struct nx_drm_display *display)
 		return 0;
 	}
 #endif
-	if (!lvds) {
+	if (!lvds)
 		return -EINVAL;
-	}
 
 	pr_debug("%s: format: %d\n", __func__, format);
 
